@@ -3,3 +3,7 @@
 *.ncb
 *.o
 Debug/
+.project
+.pydevproject
+.settings
+.cproject
