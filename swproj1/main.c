@@ -32,7 +32,7 @@ int num_of_users = 0;
 /*
  * shorthand method for calculating the digest of the given buffer
  */
-void calc_md5(unsigned char digest[DIGEST_SIZE], char * buf, unsigned int len)
+void calc_md5(unsigned char digest[DIGEST_SIZE], unsigned char * buf, unsigned int len)
 {
 	MD5_CTX ctx;
 	MD5Init(&ctx);
@@ -116,7 +116,7 @@ int find_user(const char * username)
 void cmd_add(void)
 {
 	char username[81];
-	char password[81];
+	unsigned char password[81];
 	int i = num_of_users;
 
 	scanf("%80s\t%80s", username, password);
@@ -150,7 +150,7 @@ void cmd_add(void)
 void cmd_login()
 {
 	char username[81];
-	char password[81];
+	unsigned char password[81];
 	int i;
 	unsigned char digest[DIGEST_SIZE];
 
@@ -184,9 +184,10 @@ int main (int argc, char *argv[])
 {
 	char cmd[81];
 
-	// make sure the entire array is initlaized to zeros
+	/* make sure the entire array is initlaized to zeros */
 	memset(users_array, 0, sizeof(users_array));
 
+	/* main loop */
 	while (1) {
 		printf(">> ");
 		scanf("%80s", cmd);
