@@ -32,11 +32,11 @@ int num_of_users = 0;
 /*
  * shorthand method for calculating the digest of the given buffer
  */
-void calc_md5(unsigned char digest[DIGEST_SIZE], unsigned char * buf, unsigned int len)
+void calc_md5(unsigned char digest[DIGEST_SIZE], void * buf, size_t size)
 {
 	MD5_CTX ctx;
 	MD5Init(&ctx);
-	MD5Update(&ctx, buf, len);
+	MD5Update(&ctx, (unsigned char*)buf, size);
 	MD5Final(&ctx);
 	memcpy(digest, ctx.digest, DIGEST_SIZE);
 }
@@ -116,7 +116,7 @@ int find_user(const char * username)
 void cmd_add(void)
 {
 	char username[81];
-	unsigned char password[81];
+	char password[81];
 	int i = num_of_users;
 
 	scanf("%80s\t%80s", username, password);
@@ -138,7 +138,7 @@ void cmd_add(void)
 	}
 
 	strcpy(users_array[i].username, username);
-	calc_md5(users_array[i].digested_password, password, strlen(password));
+	calc_md5(users_array[i].digested_password, (unsigned char*)password, strlen(password));
 	num_of_users++;
 }
 
@@ -147,10 +147,10 @@ void cmd_add(void)
  * check if the digest of the given password matches the known digest 
  * of the password
  */
-void cmd_login()
+void cmd_login(void)
 {
 	char username[81];
-	unsigned char password[81];
+	char password[81];
 	int i;
 	unsigned char digest[DIGEST_SIZE];
 
