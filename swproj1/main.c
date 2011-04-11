@@ -6,8 +6,11 @@
 /*
  * constants
  */
-#define DIGEST_SIZE  (16)
-#define MAX_USERS    (7)
+#define DIGEST_SIZE   (16)
+#define MAX_LINE_SIZE (150)
+#define MAX_USERNAME  (MAX_LINE_SIZE)
+#define MAX_USERS     (7)
+#define WHITESPACE    " \t\n"
 
 /*
  * types
@@ -19,7 +22,7 @@ typedef enum {
 
 struct user
 {
-	char username[80];
+	char username[MAX_USERNAME + 1];
 	unsigned char digested_password[DIGEST_SIZE];
 };
 
@@ -32,7 +35,7 @@ int num_of_users = 0;
 /*
  * shorthand method for calculating the digest of the given buffer
  */
-void calc_md5(unsigned char digest[DIGEST_SIZE], void * buf, size_t size)
+static void calc_md5(unsigned char digest[DIGEST_SIZE], void * buf, size_t size)
 {
 	MD5_CTX ctx;
 	MD5Init(&ctx);
@@ -44,7 +47,7 @@ void calc_md5(unsigned char digest[DIGEST_SIZE], void * buf, size_t size)
 /*
  * prints the given digest in hex format
  */
-void print_md5(unsigned char digest[DIGEST_SIZE])
+static void print_md5(unsigned char digest[DIGEST_SIZE])
 {
 	int i;
 	for (i = 0; i < DIGEST_SIZE; i++) {
@@ -55,7 +58,7 @@ void print_md5(unsigned char digest[DIGEST_SIZE])
 /*
  * print command: displays the currently existing users
  */
-void cmd_print(void)
+static void cmd_print(void)
 {
 	int i;
 	for (i = 0; i < num_of_users; i++) {
@@ -68,7 +71,7 @@ void cmd_print(void)
 /*
  * checks if the username is valid (returns TRUE or FALSE)
  */
-bool_t is_valid_username(const char * username)
+static bool_t is_valid_username(const char * username)
 {
 	const char *p;
 	for(p = username; *p != '\0'; p++) {
@@ -83,7 +86,7 @@ bool_t is_valid_username(const char * username)
 /*
  * checks if the password is valid (returns TRUE or FALSE)
  */
-bool_t is_valid_password(const char * password)
+static bool_t is_valid_password(const char * password)
 {
 	const char *p;
 	for(p = password; *p != '\0'; p++) {
@@ -98,7 +101,7 @@ bool_t is_valid_password(const char * password)
 /*
  * return the index of the user in the users_array, or -1 if not found
  */
-int find_user(const char * username)
+static int find_user(const char * username)
 {
 	int i;
 	for(i=0; i < num_of_users; i++) {
@@ -109,27 +112,76 @@ int find_user(const char * username)
 	return -1;
 }
 
+/*
+ * returns true iff str is made of only whitespace chars
+ */
+static bool_t is_all_whitespace(const char * str)
+{
+	const char *p;
+	for(p = str; *p != '\0'; p++) {
+		if (strchr(WHITESPACE, *p) == NULL) {
+			/* we found a non-whitespace char */
+			return FALSE;
+		}
+	}
+	return TRUE;
+}
+
+/*
+ * reads the username and password from the command line and checks for errors.
+ * returns TRUE if everything went OK, FALSE otherwise (in this case, an error
+ * message is printed)
+ */
+static bool_t get_username_and_password(char **username, char **password)
+{
+	char *tail = NULL;
+	*username = NULL;
+	*password = NULL;
+
+	*username = strtok(NULL, WHITESPACE);
+	if (*username == NULL) {
+		printf("Error: Missing username\n");
+		return FALSE;
+	}
+	*password = strtok(NULL, WHITESPACE);
+	if (*password == NULL) {
+		printf("Error: Missing password\n");
+		return FALSE;
+	}
+	/* read up to the terminator (fgets places \0 there) */
+	tail = strtok(NULL, "\0");
+	if (tail != NULL && !is_all_whitespace(tail)) {
+		printf("Error: Expected end of line\n");
+		return FALSE;
+	}
+	if (!is_valid_username(*username)) {
+		printf("Error: Illegal username\n");
+		return FALSE;
+	}
+	if (!is_valid_password(*password)) {
+		printf("Error: Illegal password\n");
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
 /* 
  * add user command: read username, password, validate prerequisites and 
  * add the user with its hashed password 
  */
 void cmd_add(void)
 {
-	char username[81];
-	char password[81];
+	char *username = NULL;
+	char *password = NULL;
 	int i = num_of_users;
 
-	scanf("%80s\t%80s", username, password);
+	if (!get_username_and_password(&username, &password)) {
+		/* already prints error message */
+		return;
+	}
 	if (num_of_users >= MAX_USERS) {
 		printf("Error: Not enough space for new users\n");
-		return;
-	}
-	if (!is_valid_username(username)) {
-		printf("Error: Illegal username\n");
-		return;
-	}
-	if (!is_valid_password(password)) {
-		printf("Error: Illegal password\n");
 		return;
 	}
 	if (find_user(username) >= 0) {
@@ -149,29 +201,24 @@ void cmd_add(void)
  */
 void cmd_login(void)
 {
-	char username[81];
-	char password[81];
+	char *username = NULL;
+	char *password = NULL;
 	int i;
 	unsigned char digest[DIGEST_SIZE];
 
-	scanf("%80s\t%80s", username, password);
-	if (!is_valid_username(username)) {
-		printf("Error: Illegal username\n");
-		return;
-	}
-	if (!is_valid_password(password)) {
-		printf("Error: Illegal password\n");
+	if (!get_username_and_password(&username, &password)) {
+		/* already prints error message */
 		return;
 	}
 	i = find_user(username);
 	if (i < 0) {
-		printf("Error: Nonexistent username\n");
+		printf("Error: Nonexistent user\n");
 		return;
 	}
 
 	calc_md5(digest, password, strlen(password));
 
-	if (memcmp(digest, users_array[i].digested_password, 16) == 0) {
+	if (memcmp(digest, users_array[i].digested_password, DIGEST_SIZE) == 0) {
 		printf("approved.\n");
 	}
 	else {
@@ -182,15 +229,22 @@ void cmd_login(void)
 
 int main (int argc, char *argv[])
 {
-	char cmd[81];
+	char line[MAX_LINE_SIZE + 1];
+	char *cmd = NULL;
 
-	/* make sure the entire array is initlaized to zeros */
+	/* make sure the entire array is initialized to zeros */
 	memset(users_array, 0, sizeof(users_array));
 
 	/* main loop */
 	while (1) {
 		printf(">> ");
-		scanf("%80s", cmd);
+		if (fgets(line, MAX_LINE_SIZE, stdin) == NULL) {
+			break; /* EOF */
+		}
+		cmd = strtok(line, WHITESPACE);
+		if (cmd == NULL) {
+			continue; /* empty line */
+		}
 
 		if (strcmp(cmd, "quit") == 0) {
 			break;
