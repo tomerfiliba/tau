@@ -23,13 +23,13 @@ typedef int (*BasicHashFunctionPtr)(const unsigned char *,int,unsigned char *);
 
 #define MD5_OUTPUT_LENGTH_IN_BYTES    16   
 int MD5BasicHash ( const unsigned char *in,int len, unsigned char *outBuf); 
-	/* import code, based on supplied internet link & example.        */
-    /* You are allowed to find yourself a different source if desired.*/
+/* import code, based on supplied internet link & example.        */
+/* You are allowed to find yourself a different source if desired.*/
 
 #define SHA1_OUTPUT_LENGTH_IN_BYTES   20
 int SHA1BasicHash ( const unsigned char *in,int len, unsigned char *outBuf); 
-	/* import code, based on supplied internet link & example.        */
-    /* You are allowed to find yourself a different source if desired.*/
+/* import code, based on supplied internet link & example.        */
+/* You are allowed to find yourself a different source if desired.*/
 
 /*************************************************************************/
 /* Function cryptHash do it on an ascii string.                          */
@@ -79,7 +79,7 @@ int binary2hexa(const unsigned char *bufIn, int lengthIn,
 /*************************************************************************/
 /* type definition of LONG_INDEX_PROJ is a 64bit index can password space*/
 /*************************************************************************/
-#define LONG_INDEX_PROJ unsigned long
+#define LONG_INDEX_PROJ unsigned long long
 
 
 /*************************************************************************/
@@ -98,8 +98,8 @@ int binary2hexa(const unsigned char *bufIn, int lengthIn,
 /*   implementation. Just make it as generic as this one.                */
 /*************************************************************************/
 LONG_INDEX_PROJ pseudo_random_function(const unsigned char *x,
-										int inputLength,
-										LONG_INDEX_PROJ y);
+									   int inputLength,
+									   LONG_INDEX_PROJ y);
 /*See implementation in misc_partial.c . You are allowed to change it !  */
 
 /*****      You may add here more functions for your own use.      ********/

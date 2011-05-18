@@ -39,6 +39,7 @@
  */
 
 #include "sha1.h"
+#include <string.h>
 
 /*
  *  Define the circular shift macro
@@ -369,3 +370,5 @@ void SHA1PadMessage(SHA1Context *context)
 
     SHA1ProcessMessageBlock(context);
 }
+
+
