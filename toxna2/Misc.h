@@ -79,7 +79,8 @@ int binary2hexa(const unsigned char *bufIn, int lengthIn,
 /*************************************************************************/
 /* type definition of LONG_INDEX_PROJ is a 64bit index can password space*/
 /*************************************************************************/
-#define LONG_INDEX_PROJ unsigned long long
+// should be a long long!
+#define LONG_INDEX_PROJ unsigned long
 
 
 /*************************************************************************/

@@ -2,6 +2,7 @@
 #include "misc.h"
 
 
+
 int main(int argc, const char** argv)
 {
 	char _tmp[80];
@@ -12,6 +13,13 @@ int main(int argc, const char** argv)
 	printf("%d\n", SHA1BasicHash(text, sizeof(text), digest));
 	printf("%d\n", binary2hexa(digest, sizeof(digest), hexdigest, sizeof(hexdigest)));
 	printf("'%s'\n", hexdigest);*/
+
+	/*unsigned char buf[4];
+	unsigned char hexbuf[33];
+
+	printf("%d\n", hexa2binary("11223344", buf, sizeof(buf)));
+	printf("%d\n", binary2hexa(buf, sizeof(buf), hexbuf, sizeof(hexbuf)));
+	printf("'%s'\n", hexbuf);*/
 
 	gets(_tmp);
 	return 0;

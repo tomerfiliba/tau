@@ -191,6 +191,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\rulegen.c"
+				>
+			</File>
+			<File
 				RelativePath=".\sha1.c"
 				>
 			</File>

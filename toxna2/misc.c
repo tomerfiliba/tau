@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <ctype.h>
 #include "misc.h"
 #include "md5.h"
 #include "sha1.h"
@@ -6,7 +7,7 @@
 #define MAX_SEED_USAGE 24
 
 /* You are allowed to change it or keep as is. Up to you*/
-LONG_INDEX_PROJ pseudo_random_function(const unsigned char *x,int inputLength,LONG_INDEX_PROJ y)
+LONG_INDEX_PROJ pseudo_random_function(const unsigned char *x, int inputLength, LONG_INDEX_PROJ y)
 {
 	LONG_INDEX_PROJ md5res[MD5_OUTPUT_LENGTH_IN_BYTES/sizeof(LONG_INDEX_PROJ)];
 	unsigned char buffer4hashing[MAX_SEED_USAGE+sizeof(LONG_INDEX_PROJ)];
@@ -22,12 +23,12 @@ LONG_INDEX_PROJ pseudo_random_function(const unsigned char *x,int inputLength,LO
 	return ((md5res[0])&0x7fffffffffffffff);     
 }
 
-int cryptHash ( BasicHashFunctionPtr cryptHashPtr, const char *passwd, unsigned char *outBuf )
+int cryptHash (BasicHashFunctionPtr cryptHashPtr, const char *passwd, unsigned char *outBuf)
 {
 	return cryptHashPtr ( passwd, strlen(passwd) , outBuf) ; 
 }
 
-int MD5BasicHash ( const unsigned char *in,int len, unsigned char *outBuf)
+int MD5BasicHash (const unsigned char *in, int len, unsigned char *outBuf)
 {
 	/* when you want to compute MD5, first, declere the next struct */
 	MD5_CTX mdContext;
@@ -58,8 +59,7 @@ int SHA1BasicHash(const unsigned char * data, int size, unsigned char *digest)
 }
 
 
-int binary2hexa(const unsigned char *bufIn, int lengthIn,
-				char *outStr, int outMaxLen)
+int binary2hexa(const unsigned char *bufIn, int lengthIn, char *outStr, int outMaxLen)
 {
 	int i;
 
@@ -76,5 +76,58 @@ int binary2hexa(const unsigned char *bufIn, int lengthIn,
 	*(outStr + (lengthIn*2)) = '\0';
 
 	return lengthIn*2;
+}
+
+static int hexdigit_to_number(char ch)
+{
+	if (ch < '0')
+		return -1;
+	else if (ch <= '9')
+		return ch - '0';
+	else if (ch < 'A')
+		return -1;
+	else if (ch <= 'F')
+		return ch - 'A';
+	else if (ch < 'a')
+		return -1;
+	else if (ch <= 'f')
+		return ch - 'a';
+	else
+		return -1;
+}
+
+int hexa2binary(const char *strIn, unsigned char *outBuf, int outMaxLen)
+{
+	const int len = strlen(strIn);
+	int i, digit;
+	unsigned char prev_digit;
+	unsigned char * out_ch = outBuf;
+
+	if (len % 2 != 0) {
+		// invalid hex string: strIn of odd length
+		return -1;
+	}
+	if (len / 2 > outMaxLen) {
+		// out buffer too small
+		return -1;
+	}
+	memset(outBuf, 0, outMaxLen);
+	
+	for (i = 0; i < len; i++) {
+		digit = hexdigit_to_number(strIn[i]);
+		if (digit < 0) {
+			// invalid hex digit
+			return -1;
+		}
+		if (i % 2 == 1) {
+			*out_ch = (prev_digit << 4) | digit;
+			out_ch++;
+		}
+		else {
+			prev_digit = digit;
+		}
+	}
+
+	return len / 2;
 }
 
