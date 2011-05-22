@@ -23,9 +23,9 @@ LONG_INDEX_PROJ pseudo_random_function(const unsigned char *x, int inputLength, 
 	return ((md5res[0])&0x7fffffffffffffff);     
 }
 
-int cryptHash (BasicHashFunctionPtr cryptHashPtr, const char *passwd, unsigned char *outBuf)
+int cryptHash (BasicHashFunctionPtr cryptHashPtr, const unsigned char *passwd, unsigned char *outBuf)
 {
-	return cryptHashPtr ( passwd, strlen(passwd) , outBuf) ; 
+	return cryptHashPtr( passwd, strlen((const char*)passwd) , outBuf); 
 }
 
 int MD5BasicHash (const unsigned char *in, int len, unsigned char *outBuf)
@@ -104,11 +104,11 @@ int hexa2binary(const char *strIn, unsigned char *outBuf, int outMaxLen)
 	unsigned char * out_ch = outBuf;
 
 	if (len % 2 != 0) {
-		// invalid hex string: strIn of odd length
+		/* invalid hex string: strIn of odd length */
 		return -1;
 	}
 	if (len / 2 > outMaxLen) {
-		// out buffer too small
+		/* out buffer too small */
 		return -1;
 	}
 	memset(outBuf, 0, outMaxLen);
@@ -116,7 +116,7 @@ int hexa2binary(const char *strIn, unsigned char *outBuf, int outMaxLen)
 	for (i = 0; i < len; i++) {
 		digit = hexdigit_to_number(strIn[i]);
 		if (digit < 0) {
-			// invalid hex digit
+			/* invalid hex digit */
 			return -1;
 		}
 		if (i % 2 == 1) {

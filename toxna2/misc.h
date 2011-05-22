@@ -40,7 +40,7 @@ int SHA1BasicHash ( const unsigned char *in,int len, unsigned char *outBuf);
 /* Output: number bytes fulfilled in output (e.g. 16 for MD5)            */
 /* usage like cryptHash ( MD5BasicHash , passwd , outbufWith20Bytes );   */
 /*************************************************************************/
-int cryptHash ( BasicHashFunctionPtr cryptHashPtr, const char *passwd, unsigned char *outBuf );
+int cryptHash ( BasicHashFunctionPtr cryptHashPtr, const unsigned char *passwd, unsigned char *outBuf );
 /* See implementation in misc_partial.c*/ 
 
 /*************************************************************************/
@@ -79,7 +79,7 @@ int binary2hexa(const unsigned char *bufIn, int lengthIn,
 /*************************************************************************/
 /* type definition of LONG_INDEX_PROJ is a 64bit index can password space*/
 /*************************************************************************/
-// should be a long long!
+/* should be a long long! */
 #define LONG_INDEX_PROJ unsigned long
 
 
