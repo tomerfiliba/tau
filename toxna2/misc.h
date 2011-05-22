@@ -101,7 +101,11 @@ int binary2hexa(const unsigned char *bufIn, int lengthIn,
 LONG_INDEX_PROJ pseudo_random_function(const unsigned char *x,
 									   int inputLength,
 									   LONG_INDEX_PROJ y);
-/*See implementation in misc_partial.c . You are allowed to change it !  */
+
+long longpow(int base, int exp);
+
+int randint(int bound);
+
 
 /*****      You may add here more functions for your own use.      ********/
 

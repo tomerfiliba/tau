@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <ctype.h>
+#include <stdlib.h>
+#include <time.h>
 #include "misc.h"
 #include "md5.h"
 #include "sha1.h"
@@ -129,5 +131,21 @@ int hexa2binary(const char *strIn, unsigned char *outBuf, int outMaxLen)
 	}
 
 	return len / 2;
+}
+
+long longpow(int base, int exp)
+{
+	long val = 1;
+	for (; exp > 0; exp--) {
+		val *= base;
+	}
+	return val;
+}
+
+int randint(int bound)
+{
+	time_t t = time(NULL);
+	LONG_INDEX_PROJ r = pseudo_random_function((char*)&t, sizeof(t), rand());
+	return r % bound;
 }
 
