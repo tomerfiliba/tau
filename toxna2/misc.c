@@ -9,42 +9,48 @@
 #define MAX_SEED_USAGE 24
 
 /* You are allowed to change it or keep as is. Up to you*/
-LONG_INDEX_PROJ pseudo_random_function(const unsigned char *x, int inputLength, LONG_INDEX_PROJ y)
+LONG_INDEX_PROJ pseudo_random_function(const unsigned char *x, int inputLength,
+        LONG_INDEX_PROJ y)
 {
-	LONG_INDEX_PROJ md5res[MD5_OUTPUT_LENGTH_IN_BYTES/sizeof(LONG_INDEX_PROJ)];
-	unsigned char buffer4hashing[MAX_SEED_USAGE+sizeof(LONG_INDEX_PROJ)];
+	LONG_INDEX_PROJ
+	        md5res[MD5_OUTPUT_LENGTH_IN_BYTES / sizeof(LONG_INDEX_PROJ)];
+	unsigned char buffer4hashing[MAX_SEED_USAGE + sizeof(LONG_INDEX_PROJ)];
 
-	if(inputLength>MAX_SEED_USAGE) inputLength = MAX_SEED_USAGE; 
+	if (inputLength > MAX_SEED_USAGE)
+		inputLength = MAX_SEED_USAGE;
 	/*for efficiency purpose*/
-	memcpy(buffer4hashing,x,inputLength);/*copy y itself*/
-	memcpy(buffer4hashing+inputLength,&y,sizeof(LONG_INDEX_PROJ)); 
-	/*concatenate step to the y*/ 
-	MD5BasicHash( buffer4hashing, inputLength+sizeof(LONG_INDEX_PROJ) , (unsigned char *)md5res ); 
-	/*main step, hash both y and index as fusion process*/ 
+	memcpy(buffer4hashing, x, inputLength);/*copy y itself*/
+	memcpy(buffer4hashing + inputLength, &y, sizeof(LONG_INDEX_PROJ));
+	/*concatenate step to the y*/
+	MD5BasicHash(buffer4hashing, inputLength + sizeof(LONG_INDEX_PROJ),
+	        (unsigned char *) md5res);
+	/*main step, hash both y and index as fusion process*/
 	/*now just harvest 63 bit out of 128*/
-	return ((md5res[0])&0x7fffffffffffffff);     
+	/*return ((md5res[0])&0x7fffffffffffffffull); */
+	return md5res[0] >> 1;
 }
 
-int cryptHash (BasicHashFunctionPtr cryptHashPtr, const unsigned char *passwd, unsigned char *outBuf)
+int cryptHash(BasicHashFunctionPtr cryptHashPtr, const unsigned char *passwd,
+        unsigned char *outBuf)
 {
-	return cryptHashPtr( passwd, strlen((const char*)passwd) , outBuf); 
+	return cryptHashPtr(passwd, strlen((const char*) passwd), outBuf);
 }
 
-int MD5BasicHash (const unsigned char *in, int len, unsigned char *outBuf)
+int MD5BasicHash(const unsigned char *in, int len, unsigned char *outBuf)
 {
 	/* when you want to compute MD5, first, declere the next struct */
 	MD5_CTX mdContext;
 	/* then, init it before the first use */
-	MD5Init (&mdContext);
+	MD5Init(&mdContext);
+
 
 	/* compute your string's hash using the next to calls */
-	MD5Update (&mdContext, (unsigned char *)in, len);
-	MD5Final (&mdContext);
+	MD5Update(&mdContext, (unsigned char *) in, len);
+	MD5Final(&mdContext);
 
-	memcpy(outBuf,mdContext.digest,MD5_OUTPUT_LENGTH_IN_BYTES);
+	memcpy(outBuf, mdContext.digest, MD5_OUTPUT_LENGTH_IN_BYTES);
 	return MD5_OUTPUT_LENGTH_IN_BYTES;
 }
-
 
 int SHA1BasicHash(const unsigned char * data, int size, unsigned char *digest)
 {
@@ -60,8 +66,8 @@ int SHA1BasicHash(const unsigned char * data, int size, unsigned char *digest)
 	return SHA1_OUTPUT_LENGTH_IN_BYTES;
 }
 
-
-int binary2hexa(const unsigned char *bufIn, int lengthIn, char *outStr, int outMaxLen)
+int binary2hexa(const unsigned char *bufIn, int lengthIn, char *outStr,
+        int outMaxLen)
 {
 	int i;
 
@@ -73,11 +79,11 @@ int binary2hexa(const unsigned char *bufIn, int lengthIn, char *outStr, int outM
 	}
 
 	for (i = 0; i < lengthIn; i++) {
-		sprintf(outStr + (i*2), "%02x", bufIn[i]);
+		sprintf(outStr + (i * 2), "%02x", bufIn[i]);
 	}
-	*(outStr + (lengthIn*2)) = '\0';
+	*(outStr + (lengthIn * 2)) = '\0';
 
-	return lengthIn*2;
+	return lengthIn * 2;
 }
 
 static int hexdigit_to_number(char ch)
@@ -98,24 +104,29 @@ static int hexdigit_to_number(char ch)
 		return -1;
 }
 
+
 int hexa2binary(const char *strIn, unsigned char *outBuf, int outMaxLen)
 {
-	const int len = strlen(strIn);
 	int i, digit;
+	int len = strlen(strIn);
 	unsigned char prev_digit;
 	unsigned char * out_ch = outBuf;
+	const int bin_len = (len / 2) + (len % 2);
 
-	if (len % 2 != 0) {
-		/* invalid hex string: strIn of odd length */
-		return -1;
-	}
-	if (len / 2 > outMaxLen) {
+	if (bin_len > outMaxLen) {
 		/* out buffer too small */
 		return -1;
 	}
 	memset(outBuf, 0, outMaxLen);
+	if (len % 2 != 0) {
+		/* consume first uneven hexdigit */
+		*out_ch = hexdigit_to_number(strIn[0]);
+		out_ch++;
+		i = 1;
+		len -= 1;
+	}
 	
-	for (i = 0; i < len; i++) {
+	for (; i < len; i++) {
 		digit = hexdigit_to_number(strIn[i]);
 		if (digit < 0) {
 			/* invalid hex digit */
@@ -124,13 +135,12 @@ int hexa2binary(const char *strIn, unsigned char *outBuf, int outMaxLen)
 		if (i % 2 == 1) {
 			*out_ch = (prev_digit << 4) | digit;
 			out_ch++;
-		}
-		else {
+		} else {
 			prev_digit = digit;
 		}
 	}
 
-	return len / 2;
+	return bin_len;
 }
 
 long longpow(int base, int exp)
@@ -145,7 +155,8 @@ long longpow(int base, int exp)
 int randint(int bound)
 {
 	time_t t = time(NULL);
-	LONG_INDEX_PROJ r = pseudo_random_function((char*)&t, sizeof(t), rand());
+	LONG_INDEX_PROJ r = pseudo_random_function((unsigned char*) &t, sizeof(t),
+	        rand());
 	return r % bound;
 }
 

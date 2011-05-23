@@ -191,7 +191,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\rulegen.c"
+				RelativePath=".\rules.c"
 				>
 			</File>
 			<File
@@ -220,6 +220,10 @@
 				RelativePath=".\sha1.h"
 				>
 			</File>
+            <File
+                RelativePath=".\rules.h"
+                >
+            </File>
 		</Filter>
 		<Filter
 			Name="Resource Files"

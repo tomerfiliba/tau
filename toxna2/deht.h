@@ -21,11 +21,11 @@
 /******************************************************************/
 struct DEHTpreferences
 {
-    char sHashName[10];        /*Name for identification, e.g. "MD5\0" */
-    int numEntriesInHashTable; /*typically few millions*/
-    int nPairsPerBlock;        /*typically few hundreds*/
-    int nBytesPerValidationKey;/*length of key to be compared into, 
-							    e.g. 8 means 64bit key for validation*/	
+	char sHashName[10]; 				/*Name for identification, e.g. "MD5\0" */
+	int numEntriesInHashTable; 		/*typically few millions*/
+	int nPairsPerBlock;				/*typically few hundreds*/
+	int nBytesPerValidationKey;		/*length of key to be compared into,
+									 e.g. 8 means 64bit key for validation*/
 	/*********************************************************/
 	/*It is completely OK to add several members of your own */
 	/*Just remember that this struct is saved "as is" to disk*/
@@ -46,47 +46,57 @@ struct DEHTpreferences
 /* These function take a key and output an index in pointer table           */
 /* Note that these function operates on the original key (not condensed one)*/
 /* These function shall never fail (i.e. never return -1 or so)             */
-/****************************************************************************/
-typedef int (*hashKeyIntoTableFunctionPtr)(const unsigned char *,int,int); 
+/*                                                                          */
 /*Arguments are: */
-/* const unsigned char *keyBuf, i.e. Binary buffer input*/ 
+/* const unsigned char *keyBuf, i.e. Binary buffer input*/
 /* int keySizeof , i.e. in this project this is crypt output size, */
-/*          but in real life this size may vary (e.g. string input)*/ 
-/* int nTableSize, i.e. Output is 0 to (nTableSize-1) to fit table of pointers*/ 
+/*          but in real life this size may vary (e.g. string input)*/
+/* int nTableSize, i.e. Output is 0 to (nTableSize-1) to fit table of pointers*/
+/*                                                                          */
+/****************************************************************************/
+typedef int (*hashKeyIntoTableFunctionPtr)(const unsigned char *, int, int);
 
 /****************************************************************************/
 /* type definition of hashKeyforEfficientComparisonFunctionPtr:             */
 /* I is made to create a key signature (stored in DEHT) that distinguish    */
 /* it from any other key in same bucket. Namely to correct false matches    */
 /* caused by the hashKeyIntoTableFunctionPtr, thus must be independent of it*/
-/* Note that these functions consider nBytesPerValidationKey as hard coded  */ 
+/* Note that these functions consider nBytesPerValidationKey as hard coded  */
 /* E.g. stringTo32bit(very widely used) or cryptHashTo64bit(as in this proj)*/
-/****************************************************************************/
-typedef int (*hashKeyforEfficientComparisonFunctionPtr)(const unsigned char *,int, unsigned char *); 
+/*                                                                          */
 /*Arguments are: */
-/* const unsigned char *keyBuf, i.e. Binary buffer input*/ 
+/* const unsigned char *keyBuf, i.e. Binary buffer input*/
 /* int keySizeof , i.e. in this project this is crypt output size, */
-/*          but in real life this size may vary (e.g. string input)*/ 
-/* unsigned char *validationKeyBuf, i.e. Output buffer, assuming allocated with nBytesPerValidationKey bytes*/ 
+/*          but in real life this size may vary (e.g. string input)*/
+/* unsigned char *validationKeyBuf, i.e. Output buffer, assuming allocated with nBytesPerValidationKey bytes*/
+/*                                                                          */
+/****************************************************************************/
+typedef int (*hashKeyforEfficientComparisonFunctionPtr)(const unsigned char *,
+        int, unsigned char *);
 
-			
 /****************************************************************************/
 /* type definition of DEHT ! a struct containing all required to specify one*/
 /****************************************************************************/
-typedef struct /*This struct holds all needed during actual calls*/
+/*This struct holds all needed during actual calls*/
+typedef struct
 {
-    char sPrefixFileName[80]; /*prefix for filename (should create: prefix.key, prefix.data) */
-    FILE *keyFP;           /*file pointer to the .key file as stdio recognize*/ 
-    FILE *dataFP;
-    struct DEHTpreferences header; 
-    hashKeyIntoTableFunctionPtr hashFunc;                          /*key to table of pointers*/
-	hashKeyforEfficientComparisonFunctionPtr comparisonHashFunc;   /*key to validation process (distinguish collision for real match*/
-    DEHT_DISK_PTR *hashTableOfPointersImageInMemory;      /*null or some copy of what in file in case we cache it - efficient to cache this and header only*/
-	DEHT_DISK_PTR *hashPointersForLastBlockImageInMemory; /*null or some intermidiate to know whenever insert. It has no parallel on disk*/
-	int *anLastBlockSize; /*null or some intermidiate to know whenever insert. It has no parallel on disk. Block size to enable quick insert*/
-	/***YOU ARE ALLOWED TO ADD HERE EXTRA MEMBERS, BUT BE EFFICIENT**/
-	/***I don't think extra members are necessary                  **/
-}DEHT;
+	/*prefix for filename (should create: prefix.key, prefix.data) */
+	char sPrefixFileName[80];
+	/*file pointer to the .key file as stdio recognize*/
+	FILE *keyFP;
+	FILE *dataFP;
+	struct DEHTpreferences header;
+	/*key to table of pointers*/
+	hashKeyIntoTableFunctionPtr hashFunc;
+	/*key to validation process (distinguish collision for real match*/
+	hashKeyforEfficientComparisonFunctionPtr comparisonHashFunc;
+	/*null or some copy of what in file in case we cache it - efficient to cache this and header only*/
+	DEHT_DISK_PTR *hashTableOfPointersImageInMemory;
+	/*null or some intermidiate to know whenever insert. It has no parallel on disk*/
+	DEHT_DISK_PTR *hashPointersForLastBlockImageInMemory;
+	/*null or some intermidiate to know whenever insert. It has no parallel on disk. Block size to enable quick insert*/
+	int *anLastBlockSize;
+} DEHT;
 
 /********************************************************************************/
 /* Function create_empty_DEHT creates a new DEHT.                               */
@@ -98,10 +108,13 @@ typedef struct /*This struct holds all needed during actual calls*/
 /* Notes:                                                                       */
 /* Open them in RW permission (if exist then fail, do not overwrite).           */
 /* hashTableOfPointersImageInMemory, hashPointersForLastBlockImageInMemory:=NULL*/
+/*add .key and .data to open two files return NULL if fail creation*/
 /********************************************************************************/
-DEHT *create_empty_DEHT(const char *prefix,/*add .key and .data to open two files return NULL if fail creation*/
-                        hashKeyIntoTableFunctionPtr hashfun, hashKeyforEfficientComparisonFunctionPtr validfun,                        
-                        int numEntriesInHashTable, int nPairsPerBlock, int nBytesPerKey, const char *HashName);
+DEHT *create_empty_DEHT(const char *prefix,
+		hashKeyIntoTableFunctionPtr hashfun,
+        hashKeyforEfficientComparisonFunctionPtr validfun,
+        int numEntriesInHashTable, int nPairsPerBlock, int nBytesPerKey,
+        const char *HashName);
 
 /********************************************************************************/
 /* Function load_DEHT_from_files importes files created by previously used DEHT */
@@ -113,8 +126,8 @@ DEHT *create_empty_DEHT(const char *prefix,/*add .key and .data to open two file
 /* Returns NULL if fail (e.g. files are not exist) with message to stderr       */
 /********************************************************************************/
 DEHT *load_DEHT_from_files(const char *prefix,
-						   hashKeyIntoTableFunctionPtr hashfun, hashKeyforEfficientComparisonFunctionPtr validfun); 
-
+        hashKeyIntoTableFunctionPtr hashfun,
+        hashKeyforEfficientComparisonFunctionPtr validfun);
 
 /********************************************************************************/
 /* Function insert_uniquely_DEHT inserts an ellement.                           */
@@ -128,9 +141,9 @@ DEHT *load_DEHT_from_files(const char *prefix,
 /* if  null, do not load table of pointers into memory just make simple         */
 /* insert using several fseek when necessary.                                   */
 /********************************************************************************/
-int insert_uniquely_DEHT ( DEHT *ht, const unsigned char *key, int keyLength, 
-				 const unsigned char *data, int dataLength);
-			
+int insert_uniquely_DEHT(DEHT *ht, const unsigned char *key, int keyLength,
+        const unsigned char *data, int dataLength);
+
 /********************************************************************************/
 /* Function add_DEHT inserts an ellement,                                       */
 /*    whenever exists or not                                                    */
@@ -145,8 +158,8 @@ int insert_uniquely_DEHT ( DEHT *ht, const unsigned char *key, int keyLength,
 /* if both null, do not load table of pointers into memory just make simple     */
 /* insert using several fseek when necessary.                                   */
 /********************************************************************************/
-int add_DEHT ( DEHT *ht, const unsigned char *key, int keyLength, 
-				 const unsigned char *data, int dataLength);
+int add_DEHT(DEHT *ht, const unsigned char *key, int keyLength,
+        const unsigned char *data, int dataLength);
 /********************************************************************************/
 
 /* Function query_DEHT query a key.                                             */
@@ -160,8 +173,8 @@ int add_DEHT ( DEHT *ht, const unsigned char *key, int keyLength,
 /* Else access using table of pointers on disk.                                 */
 /* "ht" argument is non const as fseek is non const too (will change "keyFP")   */
 /********************************************************************************/
-int query_DEHT ( DEHT *ht, const unsigned char *key, int keyLength, 
-				 unsigned char *data, int dataMaxAllowedLength);
+int query_DEHT(DEHT *ht, const unsigned char *key, int keyLength,
+        unsigned char *data, int dataMaxAllowedLength);
 
 /********************************************************************************/
 /* Function read_DEHT_pointers_table loads pointer of tables from disk into RAM     */
@@ -171,7 +184,7 @@ int query_DEHT ( DEHT *ht, const unsigned char *key, int keyLength,
 /* If it is already cached, do nothing and return DEHT_STATUS_NOT_NEEDED.           */
 /* If fail, return DEHT_STATUS_FAIL, if success return DEHT_STATUS_NOT_SUCCESS      */
 /************************************************************************************/
-int read_DEHT_pointers_table(DEHT *ht); 
+int read_DEHT_pointers_table(DEHT *ht);
 
 /************************************************************************************/
 /* Function write_DEHT_pointers_table writes pointer of tables RAM to Disk & release*/
@@ -181,7 +194,7 @@ int read_DEHT_pointers_table(DEHT *ht);
 /* if fail return DEHT_STATUS_FAIL, if success return DEHT_STATUS_SUCCESS           */
 /* Note: do not forget to use "free" and put NULL.                                  */
 /************************************************************************************/
-int write_DEHT_pointers_table(DEHT *ht); 
+int write_DEHT_pointers_table(DEHT *ht);
 
 /************************************************************************************/
 /* Function close_DEHT_files closes the DEHT files and release memory.               */
@@ -193,7 +206,7 @@ int write_DEHT_pointers_table(DEHT *ht);
 void close_DEHT_files(DEHT *ht);
 
 /*****           You may add here more functions for your own use.           ********/
-       
+
 #endif
-/************************* EOF (DEHT.h) ****************/ 
+/************************* EOF (DEHT.h) ****************/
 
