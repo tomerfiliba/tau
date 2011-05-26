@@ -1,32 +1,84 @@
 #include <stdio.h>
+#include <malloc.h>
 #include "rules.h"
+#include "deht.h"
+
+
+#define MAX_DIGEST_LENGTH  ((SHA1_OUTPUT_LENGTH_IN_BYTES > MD5_OUTPUT_LENGTH_IN_BYTES) ? SHA1_OUTPUT_LENGTH_IN_BYTES : MD5_OUTPUT_LENGTH_IN_BYTES)
+
+static int populate_deht(DEHT * deht, rule_info_t * rule)
+{
+	int res;
+	int pwlength;
+	const int max_password = rule_max_password_length(rule);
+	char * password = (char*)malloc(max_password);
+	unsigned char * digest = (unsigned char*)malloc(rule->digest_size);
+
+	if (password == NULL) {
+		perror("allocating room for password failed\n");
+	}
+	if (digest == NULL) {
+		perror("allocating room for digest failed\n");
+	}
+
+	while (0==0) {
+		res = rule_generate_next_password(rule, password, max_password);
+		if (res == -2) {
+			/* exhausted all passwords */
+			return 0;
+		} else if (res != 0) {
+			/* error message is printed by rule_generate_password */
+			return -1;
+		}
+		pwlength = strlen(password);
+		if (rule->hashfunc((unsigned char*)password, pwlength, digest) < 0) {
+			fprintf(stderr, "%s of generated password failed\n", rule->hashname);
+			return -1;
+		}
+		res = insert_uniquely_DEHT(deht, digest, rule->digest_size, (unsigned char*)password, pwlength);
+		if (res == DEHT_STATUS_FAIL) {
+			/* error message is printed by insert_uniquely_DEHT */
+			return -1;
+		}
+	}
+}
 
 
 int main(int argc, const char** argv)
 {
-	unsigned long limit;
+	int res = 0;
 	rule_info_t rule;
-	char password[100];
-	int res;
+	DEHT * deht = NULL;
+	char ini_file[200];
 
-
-	if (rule_load_from_file(&rule, "SHA_SimpleRun.ini") != 0) {
+	if (argc != 2) {
+		fprintf(stderr, "Usage: %s <prefix>\n", argv[0]);
 		return 1;
 	}
-	limit = rule_limit(&rule);
-	printf("limit = %lu\n", limit);
 
-	while (1) {
-		res = rule_generate_password(&rule, password);
-		if (res == -2) {
-			break;
-		} else if (res != 0) {
-			printf("\nERROR\n");
-			break;
-		}
-		printf("'%s', ", password);
+	strncpy(ini_file, argv[1], sizeof(ini_file) - 5);
+	strcat(ini_file, ".ini");
+	if (rule_load_from_file(&rule, ini_file) != 0) {
+		/* error message printed by rule_load_from_file */
+		return 1;
 	}
-	printf("\n");
 
-	return 0;
+	deht = create_empty_DEHT(argv[1], NULL, NULL,
+			1000, /* numEntriesInHashTable */
+			10, /* nPairsPerBlock */
+			8, /* nBytesPerKey */
+			rule.hashname);
+
+	if (deht == NULL) {
+		/* error message printed by create_empty_DEHT */
+		return 1;
+	}
+
+	if (populate_deht(deht, &rule) != 0) {
+		/* error message printed by create_empty_DEHT */
+		res = 1;
+	}
+
+	close_DEHT_files(deht);
+	return res;
 }

@@ -117,11 +117,11 @@ DEHT *create_empty_DEHT(const char *prefix,
         const char *HashName);
 
 /********************************************************************************/
-/* Function load_DEHT_from_files importes files created by previously used DEHT */
+/* Function load_DEHT_from_files imports files created by previously used DEHT */
 /* Inputs: file names on disk (as prefix).                                      */
 /* Output: an allocated DEHT struct pointer.                                    */
 /* Notes:                                                                       */
-/* It open files (RW permissions) and create appropriate data-strucre on memory */
+/* It open files (RW permissions) and create appropriate data-structure on memory */
 /* hashTableOfPointersImageInMemory, hashPointersForLastBlockImageInMemory:=NULL*/
 /* Returns NULL if fail (e.g. files are not exist) with message to stderr       */
 /********************************************************************************/
@@ -130,7 +130,7 @@ DEHT *load_DEHT_from_files(const char *prefix,
         hashKeyforEfficientComparisonFunctionPtr validfun);
 
 /********************************************************************************/
-/* Function insert_uniquely_DEHT inserts an ellement.                           */
+/* Function insert_uniquely_DEHT inserts an element.                           */
 /* Inputs: DEHT to insert into, key and data (as binary buffer with size)       */
 /* Output: just status of action:                                               */
 /* If exist returns DEHT_STATUS_NOT_NEEDED(does not insert new key and data)    */
@@ -145,8 +145,7 @@ int insert_uniquely_DEHT(DEHT *ht, const unsigned char *key, int keyLength,
         const unsigned char *data, int dataLength);
 
 /********************************************************************************/
-/* Function add_DEHT inserts an ellement,                                       */
-/*    whenever exists or not                                                    */
+/* Function add_DEHT inserts an element, whether it exists or not               */
 /* Inputs: DEHT to insert into, key and data (as binary buffer with size)       */
 /* Output: just status of action:                                               */
 /* If successfully insert returns DEHT_STATUS_SUCCESS.                          */
@@ -160,8 +159,8 @@ int insert_uniquely_DEHT(DEHT *ht, const unsigned char *key, int keyLength,
 /********************************************************************************/
 int add_DEHT(DEHT *ht, const unsigned char *key, int keyLength,
         const unsigned char *data, int dataLength);
-/********************************************************************************/
 
+/********************************************************************************/
 /* Function query_DEHT query a key.                                             */
 /* Inputs: DEHT to query in, key input and data output buffer.                  */
 /* Output:                                                                      */
@@ -205,8 +204,6 @@ int write_DEHT_pointers_table(DEHT *ht);
 /************************************************************************************/
 void close_DEHT_files(DEHT *ht);
 
-/*****           You may add here more functions for your own use.           ********/
 
 #endif
-/************************* EOF (DEHT.h) ****************/
 

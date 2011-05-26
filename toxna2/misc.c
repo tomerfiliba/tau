@@ -43,7 +43,6 @@ int MD5BasicHash(const unsigned char *in, int len, unsigned char *outBuf)
 	/* then, init it before the first use */
 	MD5Init(&mdContext);
 
-
 	/* compute your string's hash using the next to calls */
 	MD5Update(&mdContext, (unsigned char *) in, len);
 	MD5Final(&mdContext);

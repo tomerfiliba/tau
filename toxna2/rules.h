@@ -3,6 +3,11 @@
 
 #include "misc.h"
 
+#define RULE_STATUS_EXHAUSTED  (-2)
+#define RULE_STATUS_ERROR      (-1)
+#define RULE_STATUS_OK         (0)
+
+
 typedef enum
 {
 	TERM_DIGIT, TERM_LATIN, TERM_ASCII, TERM_LEXICON
@@ -23,6 +28,8 @@ typedef struct
 	int num_of_words;
 	char ** words;
 	BasicHashFunctionPtr hashfunc;
+	int digest_size;
+	char hashname[10];
 	int limit; /* the "flag"; -1 means "all" */
 	int remaining;
 } rule_info_t;
@@ -30,7 +37,8 @@ typedef struct
 int rule_load_from_file(rule_info_t * info, const char * inifilename);
 int rule_load(rule_info_t * info, const char * pattern,
         const char * lexfilename, const char * hashname, const char * flag);
-unsigned long rule_limit(rule_info_t * info);
-int rule_generate_password(rule_info_t * info, char * output);
+unsigned long rule_num_of_passwords(rule_info_t * info);
+int rule_max_password_length(rule_info_t * info);
+int rule_generate_next_password(rule_info_t * info, char * output, int output_length);
 
 #endif /* RULES_H_INCLUDED */

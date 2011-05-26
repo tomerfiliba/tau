@@ -174,7 +174,7 @@ static int rule_load_lexicon(rule_info_t * info, const char* filename)
 
 	if (f == NULL) {
 		/* fopen failed; */
-		perror("fopen");
+		perror("rule_load_lexicon: fopen of lexicon file failed");
 		return -1;
 	}
 
@@ -210,13 +210,14 @@ static int rule_load_lexicon(rule_info_t * info, const char* filename)
 
 	if (fclose(f) != 0) {
 		/* fclose failed */
-		perror("fclose");
+		perror("rule_load_lexicon: fclose failed");
 		return -1;
 	}
 
 	return 0;
 
-	error_cleanup: for (i = 0; i < info->num_of_words; i++) {
+error_cleanup:
+	for (i = 0; i < info->num_of_words; i++) {
 		free(info->words[i]);
 	}
 	if (info->words != NULL) {
@@ -235,14 +236,14 @@ static int rule_load_pattern(rule_info_t * info, const char* pattern)
 
 	if (pattern_len % 2 != 0) {
 		/* invalid syntax */
-		printf("invalid rule pattern\n");
+		fprintf(stderr, "invalid rule pattern\n");
 		return -1;
 	}
 	info->num_of_terms = pattern_len / 2;
 	info->terms = (term_info_t*) malloc(sizeof(term_info_t)
 	        * info->num_of_terms);
 	if (info->terms == NULL) {
-		printf("memory allocation (3) failed\n");
+		fprintf(stderr, "rule_load_pattern: memory allocation (3) failed\n");
 		goto error_cleanup;
 	}
 
@@ -272,7 +273,7 @@ static int rule_load_pattern(rule_info_t * info, const char* pattern)
 				break;
 			default:
 				/* invalid syntax */
-				printf("invalid rule pattern\n");
+				fprintf(stderr, "rule_load_pattern: invalid pattern '%c'\n", pattern[i]);
 				goto error_cleanup;
 		}
 		/*printf("%d count=%d, limit=%d\n", info->terms[j].type, info->terms[j].count, info->terms[j].limit);*/
@@ -280,7 +281,8 @@ static int rule_load_pattern(rule_info_t * info, const char* pattern)
 
 	return 0;
 
-	error_cleanup: if (info->terms != NULL) {
+error_cleanup:
+	if (info->terms != NULL) {
 		free(info->terms);
 	}
 	info->num_of_terms = 0;
@@ -296,15 +298,21 @@ int rule_load(rule_info_t * info, const char * pattern,
 	} else {
 		if (sscanf(flag, "%d", &info->limit) != 1) {
 			/* invalid flag */
+			fprintf(stderr, "rule_load: invalid flag '%s'", flag);
 			return -1;
 		}
 	}
 	if (strcasecmp(hashname, "md5") == 0) {
+		strcpy(info->hashname, "MD5");
 		info->hashfunc = MD5BasicHash;
+		info->digest_size = MD5_OUTPUT_LENGTH_IN_BYTES;
 	} else if (strcasecmp(hashname, "sha1") == 0) {
+		strcpy(info->hashname, "SHA1");
 		info->hashfunc = SHA1BasicHash;
+		info->digest_size = SHA1_OUTPUT_LENGTH_IN_BYTES;
 	} else {
 		/* invalid hash */
+		fprintf(stderr, "rule_load: invalid hash name '%s'", hashname);
 		return -1;
 	}
 	info->remaining = info->limit;
@@ -317,16 +325,31 @@ int rule_load(rule_info_t * info, const char * pattern,
 	return 0;
 }
 
-unsigned long rule_limit(rule_info_t * info)
+unsigned long rule_num_of_passwords(rule_info_t * info)
 {
 	int i;
 	unsigned long limit = 1;
 
+	if (info->limit > 0) {
+		return info->limit;
+	}
 	for (i = 0; i < info->num_of_terms; i++) {
 		limit *= (info->terms[i].limit + 1);
 	}
 
 	return limit;
+}
+
+int rule_max_password_length(rule_info_t * info)
+{
+	int i;
+	int max_length = 0;
+
+	for (i = 0; i < info->num_of_terms; i++) {
+		max_length += info->terms[i].count;
+	}
+
+	return max_length;
 }
 
 static int rule_generate_incrementing(rule_info_t * info, char * output)
@@ -412,8 +435,13 @@ static int rule_generate_random(rule_info_t * info, char * output)
 	return 0;
 }
 
-int rule_generate_password(rule_info_t * info, char * output)
+int rule_generate_next_password(rule_info_t * info, char * output, int output_length)
 {
+	if (output_length < rule_max_password_length(info)) {
+		fprintf(stderr, "rule_generate_next_password: output buffer too small\n");
+		return -1;
+	}
+
 	if (info->limit < 0) {
 		return rule_generate_incrementing(info, output);
 	} else {
@@ -433,7 +461,7 @@ int rule_load_from_file(rule_info_t * info, const char * inifilename)
 	int res;
 
 	if (f == NULL) {
-		perror("fopen");
+		perror("rule_load_from_file: fopen failed");
 		return -1;
 	}
 
@@ -464,27 +492,28 @@ int rule_load_from_file(rule_info_t * info, const char * inifilename)
 		}
 	}
 	if (fclose(f) != 0) {
-		perror("fclose");
+		perror("rule_load_from_file: fclose failed");
 		return -1;
 	}
 
 	if (lexfilename[0] == '\0') {
-		printf("INI file did not specify lexicon_name\n");
+		fprintf(stderr, "INI file did not specify lexicon_name\n");
 		return -1;
 	} else if (pattern[0] == '\0') {
-		printf("INI file did not specify rule\n");
+		fprintf(stderr, "INI file did not specify rule\n");
 		return -1;
 	} else if (flag[0] == '\0') {
-		printf("INI file did not specify flag\n");
+		fprintf(stderr, "INI file did not specify flag\n");
 		return -1;
 	} else if (hashname[0] == '\0') {
-		printf("INI file did not specify hash_name\n");
+		fprintf(stderr, "INI file did not specify hash_name\n");
 		return -1;
 	}
 
 	return rule_load(info, pattern, lexfilename, hashname, flag);
 
-	error_cleaup: fclose(f);
+error_cleaup:
+	fclose(f);
 	return -1;
 }
 
