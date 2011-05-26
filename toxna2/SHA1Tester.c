@@ -34,12 +34,13 @@ void Sha1FromString (char *inString)
     }
 }
 
+/*
 int main (int argc, char *argv[])
 {
   int i;
-  /* For each command line argument it prints sha1 hash and contents of string */
+  /-* For each command line argument it prints sha1 hash and contents of string *-/
     for (i = 1; i < argc; i++)
         Sha1FromString (argv[i]);
   return 0;
 }
-
+*/
