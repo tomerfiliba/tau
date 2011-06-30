@@ -126,7 +126,7 @@ def complete(col, state):
 def parse(rule, text):
     # core earley algorithm
     table = [Column(i, tok) for i, tok in enumerate([None] + text.lower().split())]
-    table[0].add(State("q0", Production(rule), 0, table[0]))
+    table[0].add(State("&&", Production(rule), 0, table[0]))
     
     for i, col in enumerate(table):
         for state in col:
@@ -143,20 +143,21 @@ def parse(rule, text):
     
     # find q0 in last table column (otherwise fail)
     for st in table[-1]:
-        if st.name == "q0" and st.completed():
+        if st.name == "&&" and st.completed():
             q0 = st
             break
     else:
         raise ValueError("parsing failed")
     
-    # build all parse trees
-    return build_trees(q0)
+    return q0
 
-def find_matching(state, rule, start_column, end_column):
+def find_matching(state, rule, start_column, end_column, ignorelist):
     matches = []
-    for st in end_column:
+    for i, st in enumerate(end_column):
         if st is state:
             break
+        if ignorelist[-1] == i:
+            continue
         if not st.completed():
             continue
         if start_column is not None and st.start_column is not start_column:
@@ -165,20 +166,21 @@ def find_matching(state, rule, start_column, end_column):
             matches.append(st)
     return matches
 
-def build_trees(state):
+def build_tree(state, ignorelist):
     node = Node(state)
     rules = reversed(list(enumerate(t for t in state.production if isinstance(t, Rule))))
     end_column = state.end_column
     
     for i, rule in rules:
         start_column = state.start_column if i == 0 else None
-        matches = find_matching(state, rule, start_column, end_column)
-        if len(matches):
-            child = build_trees(matches[0])
+        matches = find_matching(state, rule, start_column, end_column, ignorelist)
+        if matches:
+            child = build_tree(matches[0])
             node.append(child)
             end_column = matches[0].start_column
     
     return node
+
 
 
 
@@ -188,8 +190,10 @@ EXPR = Rule("EXPR", Production(SYM))
 EXPR.add(Production(EXPR, OP, EXPR))
 
 
-t = parse(EXPR, "a + a + a")
-t.print_()
+root = parse(EXPR, "a + a + a")
+
+tree = build_tree(root)
+tree.print_()
 
 
 
