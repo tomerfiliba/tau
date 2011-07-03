@@ -73,7 +73,8 @@ class Column(object):
         print "[#%s] %r" % (self.index, self.token)
         print "--------------------------------------------"
         for r in self:
-            print r
+            if r.completed():
+                print r
         print
     def add(self, state):
         if state not in self.states:
@@ -156,7 +157,7 @@ def parse(root, text):
 Q = Rule("Q", Production("+"), Production("*"))
 F = Rule("F", Production("x"))
 E = Rule("E", Production(F))
-E.add(Production(E, Q, F))
+E.add(Production(E, Q, E))
 root = parse(E, "x + x * x")     # (x+x)*x, x+(x*x)
 
 def build_trees(table, state, level = 0):

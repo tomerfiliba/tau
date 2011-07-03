@@ -68,6 +68,9 @@ class Column(object):
         return iter(self.states)
     def __getitem__(self, index):
         return self.states[index]
+    def enumfrom(self, index):
+        for i in range(index, len(self.states)):
+            yield i, self.states[i]
     def add(self, state):
         if state not in self._unique:
             self._unique.add(state)
@@ -89,14 +92,28 @@ class Node(object):
         self.value = value
         self.parent = None
         self.children = []
-    def append(self, child):
+    def add(self, child):
         self.children.append(child)
         child.parent = self
         return child
-    def dup(self):
+    def dup(self, target):
+        node2 = None
         n = Node(self.value)
         for child in self.children:
-            n.append(child.dup())
+            child2, node2 = child.dup(target)
+            n.add(child2)
+        if target is self:
+            node2 = n
+        return n, node2
+    def width(self):
+        if not self.children:
+            return 1
+        else:
+            return sum(child.width() for child in self.children)
+    def root(self):
+        n = self
+        while n.parent is not None:
+            n = n.parent
         return n
     def print_(self, level = 0):
         print "  " * level + str(self.value)
@@ -124,7 +141,6 @@ def complete(col, state):
             col.add(State(st.name, st.production, st.dot_index + 1, st.start_column))
 
 def parse(rule, text):
-    # core earley algorithm
     table = [Column(i, tok) for i, tok in enumerate([None] + text.lower().split())]
     table[0].add(State("&&", Production(rule), 0, table[0]))
     
@@ -151,52 +167,71 @@ def parse(rule, text):
     
     return q0
 
-def find_matching(state, rule, start_column, end_column, ignorelist):
-    matches = []
-    for i, st in enumerate(end_column):
-        if st is state:
-            break
-        if ignorelist[-1] == i:
-            continue
-        if not st.completed():
-            continue
-        if start_column is not None and st.start_column is not start_column:
-            continue
-        if rule.name == st.name:
-            matches.append(st)
-    return matches
-
-def build_tree(state, ignorelist):
-    node = Node(state)
-    rules = reversed(list(enumerate(t for t in state.production if isinstance(t, Rule))))
-    end_column = state.end_column
-    
-    for i, rule in rules:
-        start_column = state.start_column if i == 0 else None
-        matches = find_matching(state, rule, start_column, end_column, ignorelist)
-        if matches:
-            child = build_tree(matches[0])
-            node.append(child)
-            end_column = matches[0].start_column
-    
-    return node
-
-
-
+#def find_matching(state, rule, start_column, end_column):
+#    for i, st in enumerate(end_column):
+#        if st is state:
+#            break
+#        if not st.completed():
+#            continue
+#        if start_column is not None and st.start_column is not start_column:
+#            continue
+#        if rule.name == st.name:
+#            yield st
+#
+#def build_tree(state):
+#    node = Node(state)
+#    rules = reversed(list(enumerate(t for t in state.production if isinstance(t, Rule))))
+#    end_column = state.end_column
+#    
+#    for i, rule in rules:
+#        start_column = state.start_column if i == 0 else None
+#        matches = list(find_matching(state, rule, start_column, end_column))
+#        if matches:
+#            child = build_tree(matches[0])
+#            node.add(child)
+#            end_column = matches[0].start_column
+#    
+#    return node
 
 SYM = Rule("SYM", Production("a"))
 OP = Rule("OP", Production("+"), Production("*"))
 EXPR = Rule("EXPR", Production(SYM))
 EXPR.add(Production(EXPR, OP, EXPR))
 
+def _build_trees(state, first_row, forest, root, node):
+    rules = reversed(list(enumerate(t for t in state.production if isinstance(t, Rule))))
+    
+    for i, rule in rules:
+        start_column = state.start_column if i == 0 else None
+        for j, st in state.end_column.enumfrom(first_row):
+            if st is state:
+                break
+            if not st.completed():
+                continue
+            if start_column is not None and st.start_column is not start_column:
+                continue
+            if rule.name == st.name:
+                root2, node2 = root.dup(node)
+                forest.append(root2)
+                child = node2.add(Node(state))
+                _build_trees(st, j + 1 if st.end_column is state.end_column else 0, forest, root2, child)
+                #break
 
-root = parse(EXPR, "a + a + a")
+def build_trees(state):
+    r = Node("root")
+    forest = [r]
+    _build_trees(state, 0, forest, r, r)
+    return forest
+    #widest = max(t.width() for t in forest)
+    #return [t for t in forest if t.width() == widest]
 
-tree = build_tree(root)
-tree.print_()
 
-
-
+q0 = parse(EXPR, "a + a")
+forest = build_trees(q0)
+print "---------------------------"
+for t in forest:
+    t.print_()
+    print
 
 
 
