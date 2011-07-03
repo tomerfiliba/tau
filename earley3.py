@@ -198,40 +198,38 @@ OP = Rule("OP", Production("+"), Production("*"))
 EXPR = Rule("EXPR", Production(SYM))
 EXPR.add(Production(EXPR, OP, EXPR))
 
-def _build_trees(state, first_row, forest, root, node):
-    rules = reversed(list(enumerate(t for t in state.production if isinstance(t, Rule))))
+q0 = parse(EXPR, "a + a + a")
+
+
+def f(state):
+    node = Node(state)
+    rules = [t for t in state.production if isinstance(t, Rule)][::-1]
     
-    for i, rule in rules:
-        start_column = state.start_column if i == 0 else None
-        for j, st in state.end_column.enumfrom(first_row):
-            if st is state:
-                break
-            if not st.completed():
-                continue
-            if start_column is not None and st.start_column is not start_column:
-                continue
-            if rule.name == st.name:
-                root2, node2 = root.dup(node)
-                forest.append(root2)
-                child = node2.add(Node(state))
-                _build_trees(st, j + 1 if st.end_column is state.end_column else 0, forest, root2, child)
-                #break
+    g(rules, state.start_column, state.end_column)
+    
 
-def build_trees(state):
-    r = Node("root")
-    forest = [r]
-    _build_trees(state, 0, forest, r, r)
-    return forest
-    #widest = max(t.width() for t in forest)
-    #return [t for t in forest if t.width() == widest]
+def g(rules, start_column, end_column):
+    rule = rules.pop(0)
+    sc = start_column if not rules else None
+    
+    for i, st in end_column:
+        if st is state:
+            break
+        if not st.completed():
+            continue
+        if start_column is not None and st.start_column is not start_column:
+            continue
+        if rule.name == st.name:
+            break
 
 
-q0 = parse(EXPR, "a + a")
-forest = build_trees(q0)
-print "---------------------------"
-for t in forest:
-    t.print_()
-    print
+
+
+
+
+
+
+
 
 
 
