@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <strings.h>
 #include "rules.h"
 
 /* ============================= DIGIT TERM ================================ */
@@ -16,10 +15,10 @@ static int digit_term_get_limit(int count)
 static int digit_term_get(int count, int k, char * output)
 {
 	if (k < 0 || k > digit_term_get_limit(count)) {
-		return -1;
+		return RULE_STATUS_ERROR;
 	} else if (k == 0) {
 		*output = '\0';
-		return 0;
+		return RULE_STATUS_OK;
 	}
 	return digit_term_get_rec(count, k - 1, output);
 }
@@ -29,7 +28,7 @@ static int digit_term_get_rec(int count, int k, char * output)
 	int max = longpow(10, count);
 	if (k < max) {
 		sprintf(output, "%d", k);
-		return 0;
+		return RULE_STATUS_OK;
 	}
 	*output = '0';
 	return digit_term_get_rec(count - 1, k - max, output + 1);
@@ -47,10 +46,10 @@ static int latin_term_get_limit(int count)
 static int latin_term_get(int count, int k, char * output)
 {
 	if (k < 0 || k > latin_term_get_limit(count)) {
-		return -1;
+		return RULE_STATUS_ERROR;
 	} else if (k == 0) {
 		*output = '\0';
-		return 0;
+		return RULE_STATUS_OK;
 	}
 	return latin_term_get_rec(count, k - 1, output);
 }
@@ -73,7 +72,7 @@ static int latin_term_get_rec(int count, int k, char * output)
 	int max = longpow(26, count);
 	if (k < max) {
 		to_base(k, 'a', 26, output);
-		return 0;
+		return RULE_STATUS_OK;
 	} else {
 		*output = 'a';
 		return latin_term_get_rec(count - 1, k - max, output + 1);
@@ -93,9 +92,9 @@ static int ascii_term_get(int count, int k, char * output)
 {
 	if (k == 0) {
 		*output = '\0';
-		return 0;
+		return RULE_STATUS_OK;
 	} else if (k < 0 || k > ascii_term_get_limit(count)) {
-		return -1;
+		return RULE_STATUS_ERROR;
 	}
 	return ascii_term_get_rec(count, k - 1, output);
 }
@@ -105,7 +104,7 @@ static int ascii_term_get_rec(int count, int k, char * output)
 	int max = longpow(95, count);
 	if (k < max) {
 		to_base(k, ' ', 95, output);
-		return 0;
+		return RULE_STATUS_OK;
 	} else {
 		*output = ' ';
 		return ascii_term_get_rec(count - 1, k - max, output + 1);
@@ -126,10 +125,10 @@ static int lexicon_term_get(const char ** lexicon, int num_of_words, int count,
         int k, char * output)
 {
 	if (k < 0 || k > lexicon_term_get_limit(num_of_words, count)) {
-		return -1;
+		return RULE_STATUS_ERROR;
 	} else if (k == 0) {
 		*output = '\0';
-		return 0;
+		return RULE_STATUS_OK;
 	}
 	return lexicon_term_get_rec(lexicon, num_of_words, count, k - 1, output);
 }
@@ -150,7 +149,7 @@ static int lexicon_term_get_rec(const char ** lexicon, int num_of_words,
 			output += strlen(word);
 			k /= num_of_words;
 		}
-		return 0;
+		return RULE_STATUS_OK;
 	} else {
 		strcpy(output, lexicon[0]);
 		return lexicon_term_get_rec(lexicon, num_of_words, count - 1, k - max,
@@ -175,7 +174,7 @@ static int rule_load_lexicon(rule_info_t * info, const char* filename)
 	if (f == NULL) {
 		/* fopen failed; */
 		perror("rule_load_lexicon: fopen of lexicon file failed");
-		return -1;
+		return RULE_STATUS_ERROR;
 	}
 
 	while (1) {
@@ -211,10 +210,10 @@ static int rule_load_lexicon(rule_info_t * info, const char* filename)
 	if (fclose(f) != 0) {
 		/* fclose failed */
 		perror("rule_load_lexicon: fclose failed");
-		return -1;
+		return RULE_STATUS_ERROR;
 	}
 
-	return 0;
+	return RULE_STATUS_OK;
 
 error_cleanup:
 	for (i = 0; i < info->num_of_words; i++) {
@@ -226,7 +225,7 @@ error_cleanup:
 	info->num_of_words = 0;
 	info->words = NULL;
 	fclose(f);
-	return -1;
+	return RULE_STATUS_ERROR;
 }
 
 static int rule_load_pattern(rule_info_t * info, const char* pattern)
@@ -237,7 +236,7 @@ static int rule_load_pattern(rule_info_t * info, const char* pattern)
 	if (pattern_len % 2 != 0) {
 		/* invalid syntax */
 		fprintf(stderr, "invalid rule pattern\n");
-		return -1;
+		return RULE_STATUS_ERROR;
 	}
 	info->num_of_terms = pattern_len / 2;
 	info->terms = (term_info_t*) malloc(sizeof(term_info_t)
@@ -279,7 +278,7 @@ static int rule_load_pattern(rule_info_t * info, const char* pattern)
 		/*printf("%d count=%d, limit=%d\n", info->terms[j].type, info->terms[j].count, info->terms[j].limit);*/
 	}
 
-	return 0;
+	return RULE_STATUS_OK;
 
 error_cleanup:
 	if (info->terms != NULL) {
@@ -287,7 +286,7 @@ error_cleanup:
 	}
 	info->num_of_terms = 0;
 	info->terms = NULL;
-	return -1;
+	return RULE_STATUS_ERROR;
 }
 
 int rule_load(rule_info_t * info, const char * pattern,
@@ -299,7 +298,7 @@ int rule_load(rule_info_t * info, const char * pattern,
 		if (sscanf(flag, "%d", &info->limit) != 1) {
 			/* invalid flag */
 			fprintf(stderr, "rule_load: invalid flag '%s'", flag);
-			return -1;
+			return RULE_STATUS_ERROR;
 		}
 	}
 	if (strcasecmp(hashname, "md5") == 0) {
@@ -313,16 +312,16 @@ int rule_load(rule_info_t * info, const char * pattern,
 	} else {
 		/* invalid hash */
 		fprintf(stderr, "rule_load: invalid hash name '%s'", hashname);
-		return -1;
+		return RULE_STATUS_ERROR;
 	}
 	info->remaining = info->limit;
 	if (rule_load_lexicon(info, lexfilename) != 0) {
-		return -1;
+		return RULE_STATUS_ERROR;
 	}
 	if (rule_load_pattern(info, pattern) != 0) {
-		return -1;
+		return RULE_STATUS_ERROR;
 	}
-	return 0;
+	return RULE_STATUS_OK;
 }
 
 unsigned long rule_num_of_passwords(rule_info_t * info)
@@ -362,7 +361,7 @@ static int rule_generate_incrementing(rule_info_t * info, char * output)
 			info->terms[i].k = 0;
 			if (i == info->num_of_terms - 1) {
 				/* exhausted all terms */
-				return -2;
+				return RULE_STATUS_EXHAUSTED;
 			}
 			info->terms[i + 1].k += 1;
 		}
@@ -388,12 +387,12 @@ static int rule_generate_incrementing(rule_info_t * info, char * output)
 		}
 		if (succ != 0) {
 			printf("get next term failed\n");
-			return -1;
+			return RULE_STATUS_ERROR;
 		}
 		output += strlen(output);
 	}
 	info->terms[0].k += 1;
-	return 0;
+	return RULE_STATUS_OK;
 }
 
 static int rule_generate_random(rule_info_t * info, char * output)
@@ -404,7 +403,7 @@ static int rule_generate_random(rule_info_t * info, char * output)
 
 	if (info->remaining <= 0) {
 		/* exhausted */
-		return -2;
+		return RULE_STATUS_EXHAUSTED;
 	}
 
 	for (i = 0; i < info->num_of_terms; i++) {
@@ -427,19 +426,19 @@ static int rule_generate_random(rule_info_t * info, char * output)
 		}
 		if (succ != 0) {
 			printf("get next term failed\n");
-			return -1;
+			return RULE_STATUS_ERROR;
 		}
 		output += strlen(output);
 	}
 	info->remaining -= 1;
-	return 0;
+	return RULE_STATUS_OK;
 }
 
 int rule_generate_next_password(rule_info_t * info, char * output, int output_length)
 {
 	if (output_length < rule_max_password_length(info)) {
 		fprintf(stderr, "rule_generate_next_password: output buffer too small\n");
-		return -1;
+		return RULE_STATUS_ERROR;
 	}
 
 	if (info->limit < 0) {
@@ -462,7 +461,7 @@ int rule_load_from_file(rule_info_t * info, const char * inifilename)
 
 	if (f == NULL) {
 		perror("rule_load_from_file: fopen failed");
-		return -1;
+		return RULE_STATUS_ERROR;
 	}
 
 	lexfilename[0] = '\0';
@@ -493,27 +492,27 @@ int rule_load_from_file(rule_info_t * info, const char * inifilename)
 	}
 	if (fclose(f) != 0) {
 		perror("rule_load_from_file: fclose failed");
-		return -1;
+		return RULE_STATUS_ERROR;
 	}
 
 	if (lexfilename[0] == '\0') {
 		fprintf(stderr, "INI file did not specify lexicon_name\n");
-		return -1;
+		return RULE_STATUS_ERROR;
 	} else if (pattern[0] == '\0') {
 		fprintf(stderr, "INI file did not specify rule\n");
-		return -1;
+		return RULE_STATUS_ERROR;
 	} else if (flag[0] == '\0') {
 		fprintf(stderr, "INI file did not specify flag\n");
-		return -1;
+		return RULE_STATUS_ERROR;
 	} else if (hashname[0] == '\0') {
 		fprintf(stderr, "INI file did not specify hash_name\n");
-		return -1;
+		return RULE_STATUS_ERROR;
 	}
 
 	return rule_load(info, pattern, lexfilename, hashname, flag);
 
 error_cleaup:
 	fclose(f);
-	return -1;
+	return RULE_STATUS_ERROR;
 }
 

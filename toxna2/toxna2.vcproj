@@ -217,13 +217,13 @@
 				>
 			</File>
 			<File
+				RelativePath=".\rules.h"
+				>
+			</File>
+			<File
 				RelativePath=".\sha1.h"
 				>
 			</File>
-            <File
-                RelativePath=".\rules.h"
-                >
-            </File>
 		</Filter>
 		<Filter
 			Name="Resource Files"
