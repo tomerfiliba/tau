@@ -25,7 +25,7 @@
 typedef int
         (*BasicHashFunctionPtr)(const unsigned char *, int, unsigned char *);
 
-#define MD5_OUTPUT_LENGTH_IN_BYTES    16   
+#define MD5_OUTPUT_LENGTH_IN_BYTES    16
 int MD5BasicHash(const unsigned char *in, int len, unsigned char *outBuf);
 
 #define SHA1_OUTPUT_LENGTH_IN_BYTES   20

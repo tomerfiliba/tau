@@ -14,7 +14,7 @@
 /* Data-type of long (argument of "fseek" function) represents an   */
 /* offset in a file, which is "disk pointers" in our implementation */
 /********************************************************************/
-#define DEHT_DISK_PTR    long 
+#define DEHT_DISK_PTR    long
 
 /******************************************************************/
 /* structure of "first level header" - basic preferences of a DEHT*/
