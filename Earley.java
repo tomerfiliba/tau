@@ -305,7 +305,7 @@ public class Earley
 			String s = "";
 			for (int i = 0; i < production.size(); i++) {
 				if (i == dotIndex) {
-					s += "$ ";
+					s += "\u00B7 ";
 				}
 				ProductionTerm t = production.get(i);
 				if (t instanceof Rule) {
@@ -317,7 +317,7 @@ public class Earley
 				s += " ";
 			}
 			if (dotIndex == production.size()) {
-				s += "$";
+				s += "\u00B7";
 			}
 			return String.format("%-6s -> %-20s [%d-%d]", name, s, startCol.index, endCol.index);
 		}
