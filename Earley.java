@@ -1,7 +1,6 @@
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 
@@ -20,10 +19,16 @@ import java.util.List;
  */
 public class Earley 
 {
+	/* 
+	 * an abstract notion of the elements that can be placed within production
+	 */
 	public interface ProductionTerm
 	{
 	}
 	
+	/*
+	 * Represents a terminal element in a production
+	 */
 	public static class Terminal implements ProductionTerm
 	{
 		public final String value;
@@ -62,7 +67,7 @@ public class Earley
 	}
 	
 	/*
-	 * represents a production of the rule. 
+	 * Represents a production of the rule. 
 	 */
 	public static class Production implements Iterable<ProductionTerm>
 	{
@@ -155,8 +160,25 @@ public class Earley
 		}
 	}
 
+	// Epsilon transition: an empty production
 	public static final Production Epsilon = new Production();
 	
+	/*
+	 * A CFG rule. Since CFG rules can be self-referential, more productions may be added
+	 * to them after construction. For example:
+	 * 
+	 * Grammar:
+	 * 	   SYM -> a 
+	 * 	   OP -> + | -
+	 *     EXPR -> SYM | EXPR OP EXPR 
+	 * 
+	 * In Java:
+	 *     Rule SYM = new Rule("SYM", new Production("a"));
+	 *     Rule OP = new Rule("OP", new Production("+"), new Production("-"));
+	 *     Rule EXPR = new Rule("EXPR", new Production(SYM));
+	 *     EXPR.add(new Production(EXPR, OP, EXPR));            // needs to reference EXPR
+	 * 
+	 */
 	public static class Rule implements ProductionTerm, Iterable<Production>
 	{
 		public final String name;
@@ -214,6 +236,11 @@ public class Earley
 		}
 	}
 	
+	/*
+	 * Represents a state in the Earley parsing table. A state has a its rule's name,
+	 * the rule's production, dot-location, and starting- and ending-column in the parsing
+	 * table.
+	 */
 	protected static class TableState
 	{
 		public final String name;
@@ -221,6 +248,7 @@ public class Earley
 		public final int dotIndex;
 		public final TableColumn startCol;
 		public TableColumn endCol;
+		public ArrayList<TableState> parents;
 		
 		public TableState(String name, Production production, int dotIndex, TableColumn startCol)
 		{
@@ -229,6 +257,7 @@ public class Earley
 			this.dotIndex = dotIndex;
 			this.startCol = startCol;
 			endCol = null;
+			parents = new ArrayList<TableState>();
 		}
 		
 		public boolean isCompleted() {
@@ -240,6 +269,15 @@ public class Earley
 				return null;
 			}
 			return production.get(dotIndex);
+		}
+		
+		public boolean addParent(TableState state)
+		{
+			if (!parents.contains(state)) {
+				parents.add(state);
+				return true;
+			}
+			return false;
 		}
 		
 		@Override
@@ -285,28 +323,35 @@ public class Earley
 		}
 	}
 	
+	/*
+	 * Represents a column in the Earley parsing table
+	 */
 	protected static class TableColumn implements Iterable<TableState>
 	{
 		public final String token;
 		public final int index;
 		public final ArrayList<TableState> states;
-		public final HashSet<TableState> existingStates;
 		
 		public TableColumn(int index, String token) {
 			this.index = index;
 			this.token = token;
 			this.states = new ArrayList<TableState>();
-			this.existingStates = new HashSet<TableState>();
 		}
 		
-		public boolean add(TableState state) {
-			if (existingStates.contains(state)) {
-				return false;
+		/*
+		 * only insert a state if it is not already contained in the list of states. return the
+		 * inserted state, or the pre-existing one. 
+		 */
+		public TableState insert(TableState state) {
+			int index = states.indexOf(state);
+			if (index < 0) {
+				states.add(state);
+				state.endCol = this;
+				return state;
 			}
-			existingStates.add(state);
-			states.add(state);
-			state.endCol = this;
-			return true;
+			else {
+				return states.get(index);
+			}
 		}
 		
 		public int size() {
@@ -316,6 +361,10 @@ public class Earley
 			return states.get(index);
 		}
 		
+		/*
+		 * since we may modify the list as we traverse it, the built-in list iterator is not
+		 * suitable. this iterator wouldn't mind the list being changed.
+		 */
 		protected class ModifiableIterator implements Iterator<TableState>
 		{
 			protected int i = 0;
@@ -339,39 +388,45 @@ public class Earley
 			return new ModifiableIterator();
 		}
 		
-		@Override
-		public String toString()
+		public void print(PrintStream out, boolean showUncompleted)
 		{
-			String s = "[" + index + "] '" + token + "'\n=======================================\n";
+			out.printf("[%d] '%s'\n", index, token);
+			out.println("=======================================");
 			for (TableState state : this) {
-				s += state + "\n";
+				if (!state.isCompleted() && !showUncompleted) {
+					continue;
+				}
+				out.println(state);
 			}
-			return s;
+			out.println();
 		}
 	}
 	
-	public static class Node implements Iterable<Node>
+	/*
+	 * A generic tree node
+	 */
+	public static class Node<T> implements Iterable<Node<T>>
 	{
-		public final Object value;
-		public Node parent;
-		protected ArrayList<Node> children;
+		public final T value;
+		public Node<T> parent;
+		protected ArrayList<Node<T>> children;
 		
-		public Node(Object value) {
+		public Node(T value) {
 			this.value = value;
-			children = new ArrayList<Node>();
+			children = new ArrayList<Node<T>>();
 		}
 		
-		public Node add(Node child) {
+		public Node<T> add(Node<T> child) {
 			children.add(child);
 			child.parent = this;
 			return child;
 		}
-		public Node add(Object value) {
-			return add(new Node(value));
+		public Node<T> add(T value) {
+			return add(new Node<T>(value));
 		}
 		
-		public Node getRoot() {
-			Node n = this;
+		public Node<T> getRoot() {
+			Node<T> n = this;
 			while (n.parent != null) {
 				n = n.parent;
 			}
@@ -381,10 +436,10 @@ public class Earley
 		public int size() {
 			return children.size();
 		}
-		public int getWidth() {
+		/*public int getWidth() {
 			if (hasChildren()) {
 				int width = 0;
-				for (Node child : children) {
+				for (Node<T> child : children) {
 					width += child.getWidth();
 				}
 				return width;
@@ -392,26 +447,26 @@ public class Earley
 			else {
 				return 1;
 			}
-		}
+		}*/
 		public boolean hasChildren() {
 			return children.size() > 0;
 		}
 		@Override
-		public Iterator<Node> iterator() {
+		public Iterator<Node<T>> iterator() {
 			return children.iterator();
 		}
 		
-		protected Node duplicate() {
-			Node n = new Node(value);
-			for (Node child : children) {
+		/*protected Node duplicate() {
+			Node<T> n = new Node<T>(value);
+			for (Node<T> child : children) {
 				n.add(child.duplicate());
 			}
 			return n;
-		}
+		}*/
 
-		public void print()
+		public void print(PrintStream out)
 		{
-			print(System.out, 0);
+			print(out, 0);
 		}
 		
 		protected void print(PrintStream out, int level) {
@@ -420,12 +475,15 @@ public class Earley
 				indentation += "  ";
 			}
 			out.println(indentation + value);
-			for (Node child : children) {
+			for (Node<T> child : children) {
 				child.print(out, level + 1);
 			}
 		}
 	}
 	
+	/*
+	 * the exception raised by Parser should parsing fail
+	 */
 	public static class ParsingFailed extends Exception
 	{
 		private static final long serialVersionUID = -3489519608069949690L;
@@ -435,11 +493,25 @@ public class Earley
 		}
 	}
 	
+	/*
+	 * The Earley Parser.
+	 * 
+	 * Usage:
+	 *     Parser p = new Parser(StartRule, "my space-delimited statement");
+	 *     for (Node tree : p.getTrees()) {
+	 *         tree.print(System.out);
+	 *     }
+	 * 
+	 */
 	public static class Parser
 	{
 		protected TableColumn[] columns;
 		protected TableState finalState = null;
 		
+		/*
+		 * constructor: takes a start rule and a statement (made of space-separated words).
+		 * it initializes the table and invokes earley's algorithm
+		 */
 		public Parser(Rule startRule, String text) throws ParsingFailed
 		{
 			String[] tokens = text.split(" ");
@@ -455,11 +527,18 @@ public class Earley
 			}
 		}
 
-		private static final String SPECIAL_RULE = "&00&";
+		// this is the name of the special "gamma" rule added by the algorithm 
+		// (this is unicode for 'LATIN SMALL LETTER GAMMA')
+		private static final String GAMMA_RULE = "\u0263";      // "\u0194"
 
+		/*
+		 * the Earley algorithm's core: add gamma rule, fill up table, and check if the gamma rule
+		 * spans from the first column to the last one. return the final gamma state, or null,
+		 * if the parse failed.
+		 */
 		protected TableState parse(Rule startRule)
 		{
-			columns[0].add(new TableState(SPECIAL_RULE, new Production(startRule), 0, columns[0]));
+			columns[0].insert(new TableState(GAMMA_RULE, new Production(startRule), 0, columns[0]));
 
 			for (int i = 0; i < columns.length; i++) {
 				TableColumn col = columns[i];
@@ -477,52 +556,104 @@ public class Earley
 						}
 					}
 				}
-				System.out.println(col);
+				handleEpsilons(col);
+				
+				// DEBUG
+				col.print(System.out, false);
 			}
 			
 			// find end state (return null if not found)
 			for (TableState state : columns[columns.length - 1]) {
-				if (state.name.equals(SPECIAL_RULE) && state.isCompleted()) {
+				if (state.name.equals(GAMMA_RULE) && state.isCompleted()) {
 					return state;
 				}
 			}
 			return null;
 		}
 		
+		/*
+		 * Earley scan
+		 */
 		protected void scan(TableColumn col, TableState state, String token) {
 		    if (token.equals(col.token)) {
-			    col.add(new TableState(state.name, state.production, state.dotIndex + 1, state.startCol));
+			    col.insert(new TableState(state.name, state.production, state.dotIndex + 1, state.startCol));
 		    }
 		}
 		
-		protected void predict(TableColumn col, Rule rule) {
+		/*
+		 * Earley predict. returns true if the table has been changed, false otherwise
+		 */
+		protected boolean predict(TableColumn col, Rule rule) {
+			boolean changed = false;
 		    for (Production prod : rule) {
-		    	col.add(new TableState(rule.name, prod, 0, col));
+		    	TableState st = new TableState(rule.name, prod, 0, col);
+		    	TableState st2 = col.insert(st);
+		    	changed |= (st == st2);
 		    }
+		    return changed;
 		}
 		
-		protected void complete(TableColumn col, TableState state) {
+		/*
+		 * Earley complete. returns true if the table has been changed, false otherwise
+		 */
+		protected boolean complete(TableColumn col, TableState state) {
+			boolean changed = false;
 		    for (TableState st : state.startCol) {
 		    	ProductionTerm term = st.getNextTerm();
 		    	if (term instanceof Rule && ((Rule)term).name.equals(state.name)) {
-		            col.add(new TableState(st.name, st.production, st.dotIndex + 1, st.startCol));
+		    		TableState st1 = new TableState(st.name, st.production, st.dotIndex + 1, st.startCol);
+		            TableState st2 = col.insert(st1);
+		            st2.addParent(state);
+		            for (TableState p : st.parents) {
+		            	st2.addParent(p);
+		            }
+		            changed |= (st1 == st2);
 		    	}
 		    }
+		    return changed;
 		}
 		
-		public List<Node> getTrees() {
-			ArrayList<Node> forest = new ArrayList<Node>();
-			forest.add(buildTree3(finalState));
+		/*
+		 * call predict() and complete() for as long as the table keeps changing (may only happen 
+		 * if we've got epsilon transitions)
+		 */
+		protected void handleEpsilons(TableColumn col)
+		{
+			boolean changed = true;
+			
+			while (changed) {
+				changed = false;
+				for (TableState state : col) {
+					ProductionTerm term = state.getNextTerm();
+					if (term instanceof Rule) {
+						changed |= predict(col, (Rule)term);
+					}
+					if (state.isCompleted()) {
+						changed |= complete(col, state);
+					}
+				}
+			}
+		}
+		
+		/*
+		 * return all parse trees (forest)
+		 */
+		public List<Node<TableState>> getTrees() {
+			ArrayList<Node<TableState>> forest = new ArrayList<Node<TableState>>();
+			forest.add(buildTree1(finalState));
 			return forest;
 		}
 
-		protected Node buildTree1(TableState state) {
-			Node node = new Node(state);
+		protected Node<TableState> buildTree1(TableState state) {
+			Node<TableState> node = new Node<TableState>(state);
 			TableColumn endCol = state.endCol;
 			List<Rule> rules = state.production.getRules();
 			
+			// iterate over rules, from last to first
 			for (int i = rules.size() - 1; i >= 0; i--) {
 				Rule r = rules.get(i);
+				// if this is the first rule, it must span from startCol. if it's not the first,
+				// there's no restriction on that.
 				TableColumn startCol = (i == 0) ? state.startCol : null;
 				for (TableState st : endCol) {
 					if (st == state) {
@@ -542,7 +673,7 @@ public class Earley
 			return node;
 		}
 		
-		protected List<TableState> findMatches(TableState state, Rule rule, TableColumn startCol, TableColumn endCol)
+		/*protected List<TableState> findMatches(TableState state, Rule rule, TableColumn startCol, TableColumn endCol)
 		{
 			ArrayList<TableState> matches = new ArrayList<TableState>();
 			
@@ -560,8 +691,8 @@ public class Earley
 			return matches;
 		}
 		
-		protected Node buildTree2(TableState state) {
-			Node node = new Node(state);
+		protected Node<TableState> buildTree2(TableState state) {
+			Node<TableState> node = new Node<TableState>(state);
 			TableColumn endCol = state.endCol;
 			List<Rule> rules = state.production.getRules();
 			
@@ -576,29 +707,25 @@ public class Earley
 			}
 			
 			return node;
-		}
-		
-		protected Node buildTree3(TableState state) {
-			Node node = new Node(state);
-			TableColumn endCol = state.endCol;
-			List<Rule> rules = state.production.getRules();
-			
-			for (int i = rules.size() - 1; i >= 0; i--) {
-				TableColumn startCol = (i == 0) ? state.startCol : null;
-				List<TableState> matches = findMatches(state, rules.get(i), startCol, endCol);
-				if (!matches.isEmpty()) {
-					TableState st = matches.get(0);
-					node.add(buildTree3(st));
-					endCol = st.startCol;
-				}
-			}
-			
-			return node;
-		}
-		
-
+		}*/
 	}
 
+	static void printParents(TableState st)
+	{
+		printParents(st, 0);
+	}
+
+	static void printParents(TableState st, int level)
+	{
+		for (int i = 0; i < level; i++) {
+			System.out.printf("    ");
+		}
+		System.out.println(st);
+		for (TableState parent : st.parents) {
+			printParents(parent, level + 1);
+		}
+	}
+	
 	public static void main(String[] args) throws Exception {
 		Rule SYM = new Rule("SYM", new Production("a"));
 		Rule OP = new Rule("OP", new Production("+"), new Production("-"));
@@ -606,10 +733,12 @@ public class Earley
 		EXPR.add(new Production(EXPR, OP, EXPR));
 
 		Parser p = new Parser(EXPR, "a + a + a");
-		ArrayList<Node> forest = (ArrayList<Node>) p.getTrees();
-		for (Node n : forest) {
-			n.children.get(0).print();
+		//printParents(p.finalState);
+		
+		List<Node<TableState>> forest = p.getTrees();
+		for (Node<TableState> n : forest) {
 			System.out.println("- - - - - - - - - - - - - - - - - - -");
+			n.print(System.out);
 		}
 	}
 
