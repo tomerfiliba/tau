@@ -99,6 +99,17 @@ public class Earley
 			return terms.iterator();
 		}
 		
+		public List<Rule> getRules()
+		{
+			ArrayList<Rule> rules = new ArrayList<Rule>();
+			for (ProductionTerm term : terms) {
+				if (term instanceof Rule) {
+					rules.add((Rule)term);
+				}
+			}
+			return rules;
+		}
+		
 		@Override
 		public boolean equals(Object other) 
 		{
@@ -501,20 +512,14 @@ public class Earley
 		
 		public List<Node> getTrees() {
 			ArrayList<Node> forest = new ArrayList<Node>();
-			forest.add(buildTree1(finalState));
+			forest.add(buildTree3(finalState));
 			return forest;
 		}
 
 		protected Node buildTree1(TableState state) {
 			Node node = new Node(state);
 			TableColumn endCol = state.endCol;
-			
-			ArrayList<Rule> rules = new ArrayList<Rule>();
-			for (ProductionTerm term : state.production) {
-				if (term instanceof Rule) {
-					rules.add((Rule)term);
-				}
-			}
+			List<Rule> rules = state.production.getRules();
 			
 			for (int i = rules.size() - 1; i >= 0; i--) {
 				Rule r = rules.get(i);
@@ -555,30 +560,42 @@ public class Earley
 			return matches;
 		}
 		
-		protected List<Node> foo(TableState state, TableColumn endCol)
-		{
-			List<Node> nodes = new ArrayList<Node>();
-			ArrayList<Rule> rules = new ArrayList<Rule>();
-			for (ProductionTerm term : state.production) {
-				if (term instanceof Rule) {
-					rules.add((Rule)term);
-				}
-			}
+		protected Node buildTree2(TableState state) {
+			Node node = new Node(state);
+			TableColumn endCol = state.endCol;
+			List<Rule> rules = state.production.getRules();
 			
 			for (int i = rules.size() - 1; i >= 0; i--) {
 				TableColumn startCol = (i == 0) ? state.startCol : null;
 				List<TableState> matches = findMatches(state, rules.get(i), startCol, endCol);
-				for (TableState st : matches) {
-					Node n = new Node(st);
-					foo(st);
-					nodes.add()
+				if (!matches.isEmpty()) {
+					TableState st = matches.get(0);
+					node.add(buildTree2(st));
+					endCol = st.startCol;
 				}
 			}
 			
-			return nodes;
+			return node;
 		}
 		
-
+		protected Node buildTree3(TableState state) {
+			Node node = new Node(state);
+			TableColumn endCol = state.endCol;
+			List<Rule> rules = state.production.getRules();
+			
+			for (int i = rules.size() - 1; i >= 0; i--) {
+				TableColumn startCol = (i == 0) ? state.startCol : null;
+				List<TableState> matches = findMatches(state, rules.get(i), startCol, endCol);
+				if (!matches.isEmpty()) {
+					TableState st = matches.get(0);
+					node.add(buildTree3(st));
+					endCol = st.startCol;
+				}
+			}
+			
+			return node;
+		}
+		
 
 	}
 
@@ -591,8 +608,8 @@ public class Earley
 		Parser p = new Parser(EXPR, "a + a + a");
 		ArrayList<Node> forest = (ArrayList<Node>) p.getTrees();
 		for (Node n : forest) {
-			n.print();
-			System.out.println();
+			n.children.get(0).print();
+			System.out.println("- - - - - - - - - - - - - - - - - - -");
 		}
 	}
 
