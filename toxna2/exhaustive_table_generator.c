@@ -21,14 +21,14 @@ static int populate_deht(DEHT * deht, rule_info_t * rule)
 		perror("allocating room for digest failed\n");
 	}
 
-	while (0==0) {
+	for (;;) {
 		res = rule_generate_next_password(rule, password, max_password);
 		if (res == RULE_STATUS_EXHAUSTED) {
 			/* exhausted all passwords */
 			return 0;
 		} else if (res != RULE_STATUS_OK) {
 			/* error message is printed by rule_generate_password */
-			return ;
+			return -1;
 		}
 		pwlength = strlen(password);
 		if (rule->hashfunc((unsigned char*)password, pwlength, digest) < 0) {
@@ -42,7 +42,6 @@ static int populate_deht(DEHT * deht, rule_info_t * rule)
 		}
 	}
 }
-
 
 int main(int argc, const char** argv)
 {

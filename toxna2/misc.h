@@ -5,7 +5,14 @@
 #ifndef _MISC_H_
 #define _MISC_H_
 
+#ifdef _MSC_VER
+typedef signed __int32 sint32_t;
+typedef signed __int64 sint64_t;
+typedef unsigned __int32 uint32_t;
+typedef unsigned __int64 uint64_t;
+#else
 #include <stdint.h>
+#endif
 #include <string.h>
 
 /*************************************************************************/

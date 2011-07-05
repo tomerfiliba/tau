@@ -1,7 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <strings.h>
+#ifdef _MSC_VER
+	#define strcasecmp _stricmp
+#else
+	#include <strings.h>
+#endif
 #include "rules.h"
 
 /* ============================= DIGIT TERM ================================ */
