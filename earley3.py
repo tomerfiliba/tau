@@ -78,11 +78,11 @@ class Column(object):
             self.states.append(state)
             return True
         return False
-    def print_(self, completed = False):
+    def print_(self, completedOnly = False):
         print "[%s] %r" % (self.index, self.token)
         print "=" * 35
         for s in self.states:
-            if completed and not s.completed():
+            if completedOnly and not s.completed():
                 continue
             print repr(s)
         print
@@ -159,7 +159,7 @@ def parse(rule, text):
                 elif i + 1 < len(table):
                     scan(table[i+1], state, term)
         
-        col.print_(True)
+        col.print_(completedOnly = True)
     
     # find q0 in last table column (otherwise fail)
     for st in table[-1]:
