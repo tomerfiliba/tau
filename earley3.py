@@ -38,7 +38,7 @@ class State(object):
         self.dot_index = dot_index
     def __repr__(self):
         terms = [str(p) for p in self.production]
-        terms.insert(self.dot_index, "$")
+        terms.insert(self.dot_index, u"\u00B7")
         return "%-5s -> %-16s [%s-%s]" % (self.name, " ".join(terms), self.start_column, self.end_column)
     def __eq__(self, other):
         return (self.name, self.production, self.dot_index, self.start_column) == \
@@ -96,20 +96,22 @@ class Node(object):
         self.children.append(child)
         child.parent = self
         return child
-    def dup(self, target):
-        node2 = None
-        n = Node(self.value)
+    def duplicate(self):
+        root = self.root()
+        return root._duplicate(self)
+
+    def _duplicate(self, target):
+        duptarget = None
+        node2 = Node(self.value)
         for child in self.children:
-            child2, node2 = child.dup(target)
-            n.add(child2)
-        if target is self:
-            node2 = n
-        return n, node2
-    def width(self):
-        if not self.children:
-            return 1
-        else:
-            return sum(child.width() for child in self.children)
+            child2, target2 = child._duplicate(target)
+            node2.add(child2)
+            if target2 is not None:
+                duptarget = target2
+        if self is target:
+            duptarget = node2
+        return node2, duptarget
+
     def root(self):
         n = self
         while n.parent is not None:
@@ -140,9 +142,11 @@ def complete(col, state):
         if term.name == state.name:
             col.add(State(st.name, st.production, st.dot_index + 1, st.start_column))
 
+GAMMA_RULE = u"\u0263"
+
 def parse(rule, text):
     table = [Column(i, tok) for i, tok in enumerate([None] + text.lower().split())]
-    table[0].add(State("&&", Production(rule), 0, table[0]))
+    table[0].add(State(GAMMA_RULE, Production(rule), 0, table[0]))
     
     for i, col in enumerate(table):
         for state in col:
@@ -159,39 +163,13 @@ def parse(rule, text):
     
     # find q0 in last table column (otherwise fail)
     for st in table[-1]:
-        if st.name == "&&" and st.completed():
+        if st.name == GAMMA_RULE and st.completed():
             q0 = st
             break
     else:
         raise ValueError("parsing failed")
     
     return q0
-
-#def find_matching(state, rule, start_column, end_column):
-#    for i, st in enumerate(end_column):
-#        if st is state:
-#            break
-#        if not st.completed():
-#            continue
-#        if start_column is not None and st.start_column is not start_column:
-#            continue
-#        if rule.name == st.name:
-#            yield st
-#
-#def build_tree(state):
-#    node = Node(state)
-#    rules = reversed(list(enumerate(t for t in state.production if isinstance(t, Rule))))
-#    end_column = state.end_column
-#    
-#    for i, rule in rules:
-#        start_column = state.start_column if i == 0 else None
-#        matches = list(find_matching(state, rule, start_column, end_column))
-#        if matches:
-#            child = build_tree(matches[0])
-#            node.add(child)
-#            end_column = matches[0].start_column
-#    
-#    return node
 
 SYM = Rule("SYM", Production("a"))
 OP = Rule("OP", Production("+"), Production("*"))
@@ -201,33 +179,61 @@ EXPR.add(Production(EXPR, OP, EXPR))
 q0 = parse(EXPR, "a + a + a")
 
 
-def f(state):
+def build_trees(state):
+    rules = list(enumerate(t for t in state.production if isinstance(t, Rule)))[::-1]
+    end_column = state.end_column
     node = Node(state)
-    rules = [t for t in state.production if isinstance(t, Rule)][::-1]
     
-    g(rules, state.start_column, state.end_column)
+    for i, r in rules:
+        start_column = state.start_column if i == 0 else None
+        for st in end_column:
+            if st is state:
+                break
+            if not st.completed():
+                continue
+            if start_column is not None and st.start_column != start_column:
+                continue
+            if st.name == r.name:
+                node.add(build_trees(st))
+                end_column = st.start_column
+                break
     
+    return node
 
-def g(rules, start_column, end_column):
-    rule = rules.pop(0)
-    sc = start_column if not rules else None
-    
-    for i, st in end_column:
-        if st is state:
-            break
-        if not st.completed():
-            continue
-        if start_column is not None and st.start_column is not start_column:
-            continue
-        if rule.name == st.name:
-            break
+
+print "-------------------------------"
+tree = build_trees(q0)
+tree.print_()
 
 
 
-
-
-
-
+#def build_trees2(state, forest):
+#    rules = list(enumerate(t for t in state.production if isinstance(t, Rule)))[::-1]
+#    end_columns = [state.end_column]
+#    node = Node(state)
+#    
+#    for i, r in rules:
+#        start_column = state.start_column if i == 0 else None
+#        for ec in end_columns:
+#            for st in ec:
+#                if st is state:
+#                    break
+#                if not st.completed():
+#                    continue
+#                if start_column is not None and st.start_column != start_column:
+#                    continue
+#                if st.name == r.name:
+#                    root2, node2 = x.duplicate()
+#                    print "!!", root2 is node2
+#                    forest.append(root2)
+#                    build_trees(st, forest, node2)
+#                    end_columns.append(st.start_column)
+#
+#
+#forest = []
+#build_trees(q0, forest, Node("X"))
+#for t in forest:
+#    t.print_()
 
 
 
