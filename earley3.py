@@ -38,7 +38,7 @@ class State(object):
         self.dot_index = dot_index
     def __repr__(self):
         terms = [str(p) for p in self.production]
-        terms.insert(self.dot_index, u"$")
+        terms.insert(self.dot_index, "$")
         return "%-5s -> %-16s [%s-%s]" % (self.name, " ".join(terms), self.start_column, self.end_column)
     def __eq__(self, other):
         return (self.name, self.production, self.dot_index, self.start_column) == \
@@ -90,45 +90,19 @@ class Column(object):
 class Node(object):
     def __init__(self, value):
         self.value = value
-        self.parent = None
         self.children = []
     def add(self, child):
         self.children.append(child)
-        child.parent = self
         return child
-    
-    def width(self):
-        if not self.children:
-            return 1
-        else:
-            return sum(child.width() for child in self.children)
-
     def duplicate(self):
-        root = self.root()
-        return root._duplicate(self)
-
-    def _duplicate(self, target):
-        duptarget = None
-        node2 = Node(self.value)
+        dup = Node(self.value)
         for child in self.children:
-            child2, target2 = child._duplicate(target)
-            node2.add(child2)
-            if target2 is not None:
-                duptarget = target2
-        if self is target:
-            duptarget = node2
-        return node2, duptarget
-
-    def root(self):
-        n = self
-        while n.parent is not None:
-            n = n.parent
-        return n
+            dup.add(child.duplicate())
+        return dup
     def print_(self, level = 0):
         print "  " * level + str(self.value)
         for child in self.children:
             child.print_(level + 1)
-
 
 def predict(col, rule):
     for prod in rule.productions:
@@ -149,12 +123,12 @@ def complete(col, state):
         if term.name == state.name:
             col.add(State(st.name, st.production, st.dot_index + 1, st.start_column))
 
-GAMMA_RULE = u"GAMMA"
+GAMMA_RULE = "GAMMA"
 
 def parse(rule, text):
     table = [Column(i, tok) for i, tok in enumerate([None] + text.lower().split())]
     table[0].add(State(GAMMA_RULE, Production(rule), 0, table[0]))
-    
+
     for i, col in enumerate(table):
         for state in col:
             if state.completed():
@@ -165,52 +139,69 @@ def parse(rule, text):
                     predict(col, term)
                 elif i + 1 < len(table):
                     scan(table[i+1], state, term)
-        
-        col.print_(completedOnly = True)
-    
+
     # find q0 in last table column (otherwise fail)
     for st in table[-1]:
         if st.name == GAMMA_RULE and st.completed():
-            q0 = st
-            break
+            return st
     else:
         raise ValueError("parsing failed")
     
-    return q0
-
 SYM = Rule("SYM", Production("a"))
 OP = Rule("OP", Production("+"), Production("*"))
 EXPR = Rule("EXPR", Production(SYM))
 EXPR.add(Production(EXPR, OP, EXPR))
 
+def iter_rule(state, rule_name, start_column, end_column):
+    for st in end_column:
+        if st is state:
+            break
+        if not st.completed():
+            continue
+        if start_column is not None and st.start_column != start_column:
+            continue
+        if st.name == rule_name:
+            yield build_trees(st), st.start_column
 
 def build_trees(state):
     rules = list(enumerate(t for t in state.production if isinstance(t, Rule)))[::-1]
-    end_column = state.end_column
     node = Node(state)
-    
-    for i, r in rules:
-        start_column = state.start_column if i == 0 else None
-        for st in end_column:
-            if st is state:
-                break
-            if not st.completed():
-                continue
-            if start_column is not None and st.start_column != start_column:
-                continue
-            if st.name == r.name:
-                node.add(build_trees(st))
-                end_column = st.start_column
-                break
-    
-    return node
+    return list(foo(node, state, rules, state.end_column))
 
+def foo(node, state, rules, orig_end_column):
+    if not rules:
+        yield node
+        return
+    i, r = rules[0]
+    start_column = state.start_column if i == 0 else None
+    for sub_trees, new_end_column in iter_rule(state, r.name, start_column, orig_end_column):
+        for sub_tree in sub_trees:
+            sub_node = node.duplicate()
+            sub_node.add(sub_tree)
+            for options in foo(sub_node, state, rules[1:], new_end_column):
+                yield options
+
+q0 = parse(EXPR, "a + a")
+print len(build_trees(q0))
 
 q0 = parse(EXPR, "a + a + a")
+print len(build_trees(q0))
 
-print "-------------------------------"
-tree = build_trees(q0)
-tree.print_()
+q0 = parse(EXPR, "a + a + a + a")
+print len(build_trees(q0))
+
+q0 = parse(EXPR, "a + a + a + a + a")
+print len(build_trees(q0))
+
+q0 = parse(EXPR, "a + a + a + a + a + a")
+print len(build_trees(q0))
+
+
+
+
+
+
+
 
 
 
