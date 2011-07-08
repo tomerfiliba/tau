@@ -96,6 +96,13 @@ class Node(object):
         self.children.append(child)
         child.parent = self
         return child
+    
+    def width(self):
+        if not self.children:
+            return 1
+        else:
+            return sum(child.width() for child in self.children)
+
     def duplicate(self):
         root = self.root()
         return root._duplicate(self)
@@ -176,46 +183,46 @@ OP = Rule("OP", Production("+"), Production("*"))
 EXPR = Rule("EXPR", Production(SYM))
 EXPR.add(Production(EXPR, OP, EXPR))
 
-q0 = parse(EXPR, "a + a + a")
-
-
-def build_trees(state):
-    rules = list(enumerate(t for t in state.production if isinstance(t, Rule)))[::-1]
-    end_column = state.end_column
-    node = Node(state)
-    
-    for i, r in rules:
-        start_column = state.start_column if i == 0 else None
-        for st in end_column:
-            if st is state:
-                break
-            if not st.completed():
-                continue
-            if start_column is not None and st.start_column != start_column:
-                continue
-            if st.name == r.name:
-                node.add(build_trees(st))
-                end_column = st.start_column
-                break
-    
-    return node
-
-
-print "-------------------------------"
-tree = build_trees(q0)
-tree.print_()
-
-
-
-#def build_trees2(state, forest):
+#
+#def build_trees(state):
 #    rules = list(enumerate(t for t in state.production if isinstance(t, Rule)))[::-1]
-#    end_columns = [state.end_column]
+#    end_column = state.end_column
 #    node = Node(state)
 #    
 #    for i, r in rules:
 #        start_column = state.start_column if i == 0 else None
-#        for ec in end_columns:
-#            for st in ec:
+#        for st in end_column:
+#            if st is state:
+#                break
+#            if not st.completed():
+#                continue
+#            if start_column is not None and st.start_column != start_column:
+#                continue
+#            if st.name == r.name:
+#                node.add(build_trees(st))
+#                end_column = st.start_column
+#                break
+#    
+#    return node
+#
+#
+#print "-------------------------------"
+#tree = build_trees(q0)
+#tree.print_()
+
+
+
+#def build_trees(state, forest, node):
+#    rules = list(enumerate(t for t in state.production if isinstance(t, Rule)))[::-1]
+#    end_columns = [state.end_column]
+#    node2 = node.add(Node(state))
+#    
+#    for i, r in rules:
+#        start_column = state.start_column if i == 0 else None
+#        while end_columns:
+#            first_split = True
+#            end_column = end_columns.pop(0)
+#            for st in end_column:
 #                if st is state:
 #                    break
 #                if not st.completed():
@@ -223,21 +230,55 @@ tree.print_()
 #                if start_column is not None and st.start_column != start_column:
 #                    continue
 #                if st.name == r.name:
-#                    root2, node2 = x.duplicate()
-#                    print "!!", root2 is node2
-#                    forest.append(root2)
-#                    build_trees(st, forest, node2)
+#                    if first_split:
+#                        first_split = False
+#                        build_trees(st, forest, node2)
+#                    else:
+#                        root2, node3 = node2.duplicate()
+#                        forest.append(root2)
+#                        build_trees(st, forest, node3)
 #                    end_columns.append(st.start_column)
-#
-#
-#forest = []
-#build_trees(q0, forest, Node("X"))
-#for t in forest:
-#    t.print_()
+
+
+def foo(forest, node, state, rules, ruleindex, end_column):
+    if ruleindex < 0:
+        return True
+    succ = False
+    r = rules[ruleindex]
+    start_column = state.start_column if ruleindex == 0 else None
+    for st in end_column:
+        if st is state:
+            break
+        if not st.completed():
+            continue
+        if start_column is not None and st.start_column != start_column:
+            continue
+        if st.name == r.name:
+            if foo(forest, node, state, rules, ruleindex - 1, st.start_column):
+                succ |= bar(forest, node, st)
+    return succ
+
+def bar(forest, node, state):
+    node2 = node.add(Node(state))
+    root2, node3 = node2.duplicate()
+    forest.append(root2)
+    #node3 = node2.add(Node(state))
+    rules = [t for t in state.production if isinstance(t, Rule)]
+    return foo(forest, node3, state, rules, len(rules) - 1, state.end_column)
 
 
 
+q0 = parse(EXPR, "a + a + a")
+print "----------------------------------"
+forest = [Node("<root>")]
+bar(forest, forest[0], q0)
 
+widest = max(tree.width() for tree in forest)
+interesting = [tree for tree in forest if tree.width() == widest]
+
+for t in interesting:
+    t.print_()
+    print
 
 
 
