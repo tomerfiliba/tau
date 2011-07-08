@@ -38,7 +38,7 @@ class State(object):
         self.dot_index = dot_index
     def __repr__(self):
         terms = [str(p) for p in self.production]
-        terms.insert(self.dot_index, u"\u00B7")
+        terms.insert(self.dot_index, u"$")
         return "%-5s -> %-16s [%s-%s]" % (self.name, " ".join(terms), self.start_column, self.end_column)
     def __eq__(self, other):
         return (self.name, self.production, self.dot_index, self.start_column) == \
@@ -149,7 +149,7 @@ def complete(col, state):
         if term.name == state.name:
             col.add(State(st.name, st.production, st.dot_index + 1, st.start_column))
 
-GAMMA_RULE = u"\u0263"
+GAMMA_RULE = u"GAMMA"
 
 def parse(rule, text):
     table = [Column(i, tok) for i, tok in enumerate([None] + text.lower().split())]
@@ -183,114 +183,34 @@ OP = Rule("OP", Production("+"), Production("*"))
 EXPR = Rule("EXPR", Production(SYM))
 EXPR.add(Production(EXPR, OP, EXPR))
 
-#
-#def build_trees(state):
-#    rules = list(enumerate(t for t in state.production if isinstance(t, Rule)))[::-1]
-#    end_column = state.end_column
-#    node = Node(state)
-#    
-#    for i, r in rules:
-#        start_column = state.start_column if i == 0 else None
-#        for st in end_column:
-#            if st is state:
-#                break
-#            if not st.completed():
-#                continue
-#            if start_column is not None and st.start_column != start_column:
-#                continue
-#            if st.name == r.name:
-#                node.add(build_trees(st))
-#                end_column = st.start_column
-#                break
-#    
-#    return node
-#
-#
-#print "-------------------------------"
-#tree = build_trees(q0)
-#tree.print_()
 
-
-
-#def build_trees(state, forest, node):
-#    rules = list(enumerate(t for t in state.production if isinstance(t, Rule)))[::-1]
-#    end_columns = [state.end_column]
-#    node2 = node.add(Node(state))
-#    
-#    for i, r in rules:
-#        start_column = state.start_column if i == 0 else None
-#        while end_columns:
-#            first_split = True
-#            end_column = end_columns.pop(0)
-#            for st in end_column:
-#                if st is state:
-#                    break
-#                if not st.completed():
-#                    continue
-#                if start_column is not None and st.start_column != start_column:
-#                    continue
-#                if st.name == r.name:
-#                    if first_split:
-#                        first_split = False
-#                        build_trees(st, forest, node2)
-#                    else:
-#                        root2, node3 = node2.duplicate()
-#                        forest.append(root2)
-#                        build_trees(st, forest, node3)
-#                    end_columns.append(st.start_column)
-
-
-def foo(forest, node, state, rules, ruleindex, end_column):
-    if ruleindex < 0:
-        return True
-    succ = False
-    r = rules[ruleindex]
-    start_column = state.start_column if ruleindex == 0 else None
-    for st in end_column:
-        if st is state:
-            break
-        if not st.completed():
-            continue
-        if start_column is not None and st.start_column != start_column:
-            continue
-        if st.name == r.name:
-            if foo(forest, node, state, rules, ruleindex - 1, st.start_column):
-                succ |= bar(forest, node, st)
-    return succ
-
-def bar(forest, node, state):
-    node2 = node.add(Node(state))
-    root2, node3 = node2.duplicate()
-    forest.append(root2)
-    #node3 = node2.add(Node(state))
-    rules = [t for t in state.production if isinstance(t, Rule)]
-    return foo(forest, node3, state, rules, len(rules) - 1, state.end_column)
-
+def build_trees(state):
+    rules = list(enumerate(t for t in state.production if isinstance(t, Rule)))[::-1]
+    end_column = state.end_column
+    node = Node(state)
+    
+    for i, r in rules:
+        start_column = state.start_column if i == 0 else None
+        for st in end_column:
+            if st is state:
+                break
+            if not st.completed():
+                continue
+            if start_column is not None and st.start_column != start_column:
+                continue
+            if st.name == r.name:
+                node.add(build_trees(st))
+                end_column = st.start_column
+                break
+    
+    return node
 
 
 q0 = parse(EXPR, "a + a + a")
-print "----------------------------------"
-forest = [Node("<root>")]
-bar(forest, forest[0], q0)
 
-widest = max(tree.width() for tree in forest)
-interesting = [tree for tree in forest if tree.width() == widest]
-
-for t in interesting:
-    t.print_()
-    print
-
-
-
-
-
-
-
-
-
-
-
-
+print "-------------------------------"
+tree = build_trees(q0)
+tree.print_()
 
 
 
