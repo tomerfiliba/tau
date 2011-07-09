@@ -58,12 +58,6 @@ public class Earley
 			}
 			return false;
 		}
-
-		@Override
-		public int hashCode() 
-		{
-			return value.hashCode();
-		}
 	}
 	
 	/*
@@ -72,10 +66,12 @@ public class Earley
 	public static class Production implements Iterable<ProductionTerm>
 	{
 		public final List<ProductionTerm> terms;
+		public final List<Rule> rules;
 		
 		public Production(ProductionTerm... terms)
 		{
 			this.terms = Arrays.asList(terms);
+			this.rules = getRules();
 		}
 		public Production(Object... terms)
 		{
@@ -91,6 +87,7 @@ public class Earley
 					throw new IllegalArgumentException("Term must be ProductionTerm or String, not " + item);
 				}
 			}
+			this.rules = getRules();
 		}
 		
 		public int size() {
@@ -104,7 +101,7 @@ public class Earley
 			return terms.iterator();
 		}
 		
-		public List<Rule> getRules()
+		private List<Rule> getRules()
 		{
 			ArrayList<Rule> rules = new ArrayList<Rule>();
 			for (ProductionTerm term : terms) {
@@ -125,12 +122,6 @@ public class Earley
 				return false;
 			}
 			return terms.equals(((Production)other).terms);
-		}
-
-		@Override
-		public int hashCode() 
-		{
-			return terms.hashCode();
 		}
 
 		@Override
@@ -218,12 +209,6 @@ public class Earley
 		}
 
 		@Override
-		public int hashCode() 
-		{
-			return name.hashCode();
-		}
-		
-		@Override
 		public String toString() {
 			String s = this.name + " -> ";
 			if (!productions.isEmpty()) {
@@ -241,7 +226,7 @@ public class Earley
 	 * the rule's production, dot-location, and starting- and ending-column in the parsing
 	 * table.
 	 */
-	protected static class TableState
+	public static class TableState
 	{
 		public final String name;
 		public final Production production;
@@ -281,11 +266,6 @@ public class Earley
 			TableState other2 = (TableState)other;
 			return name.equals(other2.name) && production.equals(other2.production) && 
 					dotIndex == other2.dotIndex && startCol == other2.startCol;
-		}
-		@Override
-		public int hashCode()
-		{
-			return name.hashCode() * 31 + production.hashCode();
 		}
 		
 		@Override
@@ -354,9 +334,9 @@ public class Earley
 		 * since we may modify the list as we traverse it, the built-in list iterator is not
 		 * suitable. this iterator wouldn't mind the list being changed.
 		 */
-		protected class ModifiableIterator implements Iterator<TableState>
+		private class ModifiableIterator implements Iterator<TableState>
 		{
-			protected int i = 0;
+			private int i = 0;
 			@Override
 			public boolean hasNext() {
 				return i < states.size();
@@ -397,7 +377,7 @@ public class Earley
 	public static class Node<T> implements Iterable<Node<T>>
 	{
 		public final T value;
-		protected ArrayList<Node<T>> children;
+		private List<Node<T>> children;
 		
 		public Node(T value, List<Node<T>> children) {
 			this.value = value;
@@ -414,7 +394,7 @@ public class Earley
 			print(out, 0);
 		}
 		
-		protected void print(PrintStream out, int level) {
+		private void print(PrintStream out, int level) {
 			String indentation = "";
 			for (int i = 0; i < level; i++) {
 				indentation += "  ";
@@ -442,6 +422,7 @@ public class Earley
 	 * The Earley Parser.
 	 * 
 	 * Usage:
+	 * 
 	 *     Parser p = new Parser(StartRule, "my space-delimited statement");
 	 *     for (Node tree : p.getTrees()) {
 	 *         tree.print(System.out);
@@ -503,7 +484,7 @@ public class Earley
 				}
 				handleEpsilons(col);
 				
-				// DEBUG
+				// DEBUG -- uncomment to print the table during parsing, column after column
 				//col.print(System.out, false);
 			}
 			
@@ -519,7 +500,7 @@ public class Earley
 		/*
 		 * Earley scan
 		 */
-		protected void scan(TableColumn col, TableState state, String token) {
+		private void scan(TableColumn col, TableState state, String token) {
 		    if (token.equals(col.token)) {
 			    col.insert(new TableState(state.name, state.production, state.dotIndex + 1, state.startCol));
 		    }
@@ -528,7 +509,7 @@ public class Earley
 		/*
 		 * Earley predict. returns true if the table has been changed, false otherwise
 		 */
-		protected boolean predict(TableColumn col, Rule rule) {
+		private boolean predict(TableColumn col, Rule rule) {
 			boolean changed = false;
 		    for (Production prod : rule) {
 		    	TableState st = new TableState(rule.name, prod, 0, col);
@@ -541,7 +522,7 @@ public class Earley
 		/*
 		 * Earley complete. returns true if the table has been changed, false otherwise
 		 */
-		protected boolean complete(TableColumn col, TableState state) {
+		private boolean complete(TableColumn col, TableState state) {
 			boolean changed = false;
 		    for (TableState st : state.startCol) {
 		    	ProductionTerm term = st.getNextTerm();
@@ -558,7 +539,7 @@ public class Earley
 		 * call predict() and complete() for as long as the table keeps changing (may only happen 
 		 * if we've got epsilon transitions)
 		 */
-		protected void handleEpsilons(TableColumn col)
+		private void handleEpsilons(TableColumn col)
 		{
 			boolean changed = true;
 			
@@ -577,32 +558,158 @@ public class Earley
 		}
 		
 		/*
-		 * return all parse trees (forest)
+		 * return all parse trees (forest). the forest is simply a list of root nodes, each 
+		 * representing a possible parse tree. a node is contains a value and the node's children,
+		 * and supports pretty-printing
 		 */
-		public List<Node<TableState>> buildTrees(TableState state) {
-			return buildTreesHelper(Collections.emptyList(), state, 
-					state.productions.rules.size() - 1, state.endCol);
+		public List<Node<TableState>> getTrees() {
+			return buildTrees(finalState);
+		}
+
+		/*
+		 * this is a bit "magical" -- i wrote the code that extracts a single parse tree,
+		 * and with some help from a colleague (non-student) we managed to make it return all 
+		 * parse trees.
+		 * 
+		 * how it works: suppose we're trying to match [X -> Y Z W]. we go from finish-to-start, 
+		 * e.g., first we'll try to match W in X.endCol. let this matching state be M1. next we'll
+		 * try to match Z in M1.startCol. let this matching state be M2. and finally, we'll try to
+		 * match Y in M2.startCol, which must also start at X.startCol. let this matching state be
+		 * M3.
+		 * 
+		 * if we matched M1, M2 and M3, then we've found a parsing for X:
+		 * 
+		 * X ->
+		 *     Y -> M3
+		 *     Z -> M2
+		 *     W -> M1
+		 * 
+		 */
+		private List<Node<TableState>> buildTrees(TableState state) {
+			return buildTreesHelper(new ArrayList<Node<TableState>>(), state, 
+					state.production.rules.size() - 1, state.endCol);
 		}
 		
-		protected List<Node<TableState>> buildTreesHelper(List<Node<TableState>> children,
-				TableState state, TableColumn endCol)
-		
-
+		private List<Node<TableState>> buildTreesHelper(List<Node<TableState>> children,
+				TableState state, int ruleIndex, TableColumn endCol)
+		{
+			ArrayList<Node<TableState>> outputs = new ArrayList<Node<TableState>>();
+			TableColumn startCol = null;
+		    if (ruleIndex < 0) {
+		    	// this is the base-case for the recursion (we matched the entire rule)
+		    	outputs.add(new Node<TableState>(state, children));
+		    	return outputs;
+		    }
+		    else if (ruleIndex == 0) {
+		    	// if this is the first rule
+		    	startCol = state.startCol;
+		    }
+		    Rule rule = state.production.rules.get(ruleIndex);
+		    
+		    for (TableState st : endCol) {
+		        if (st == state) {
+		        	// this prevents an endless recursion: since the states are filled in order of
+		        	// completion, we know that X cannot depend on state Y that comes after it X 
+		        	// in chronological order
+		            break;
+		        }
+		        if (!st.isCompleted() || !st.name.equals(rule.name)) {
+		        	// this state is out of the question -- either not completed or does not match 
+		        	// the name
+		        	continue;
+		        }
+		        if (startCol != null && st.startCol != startCol) {
+		        	// if startCol isn't null, this state must span from startCol to endCol
+		            continue;
+		        }
+		        // okay, so `st` matches -- now we need to create a tree for every possible 
+		        // sub-match
+		        for (Node<TableState> subTree : buildTrees(st)) {
+		        	// in python: children2 = [subTree] + children
+		        	ArrayList<Node<TableState>> children2 = new ArrayList<Node<TableState>>();
+		        	children2.add(subTree);
+		        	children2.addAll(children);
+		        	// now try all options
+		            for (Node<TableState> node : buildTreesHelper(children2, state, ruleIndex - 1, st.startCol)) {
+		            	outputs.add(node);
+		            }
+		        }
+		    }
+		    return outputs;
+		}
 	}
 	
-	public static void main(String[] args) throws Exception {
+	public static void main(String[] args) throws Exception 
+	{
+		///////////////////////////////////////////////////////////////////////////////////////
+		// Simple mathematics expressions
+		///////////////////////////////////////////////////////////////////////////////////////
 		Rule SYM = new Rule("SYM", new Production("a"));
 		Rule OP = new Rule("OP", new Production("+"));
 		Rule EXPR = new Rule("EXPR", new Production(SYM));
 		EXPR.add(new Production(EXPR, OP, EXPR));
 
-		Parser p = new Parser(EXPR, "a + a + a");
-		
-		List<Node<TableState>> forest = p.getTrees();
-		for (Node<TableState> n : forest) {
-			System.out.println("- - - - - - - - - - - - - - - - - - -");
-			n.print(System.out);
+		// note that this yields the catalan numbers sequence (as expected) -- the number of ways
+		// to place parenthesis in the expression a + a + ... + a
+		// this serves as a "semi-proof of correctness" :)
+		System.out.println("catalan numbers:");
+		for (String text : new String[] {"a", "a + a", "a + a + a", "a + a + a + a", "a + a + a + a + a", 
+				"a + a + a + a + a + a", "a + a + a + a + a + a + a"}) {
+			Parser p = new Parser(EXPR, text);
+			System.out.printf("%d, ", p.getTrees().size());
 		}
+		System.out.println("\n");
+		
+		///////////////////////////////////////////////////////////////////////////////////////
+		// Simple rules for English
+		///////////////////////////////////////////////////////////////////////////////////////
+		Rule N = new Rule("N", new Production("time"), new Production("flight"), new Production("banana"), 
+				new Production("flies"), new Production("boy"), new Production("telescope"));
+		Rule D = new Rule("D", new Production("the"), new Production("a"), new Production("an"));
+		Rule V = new Rule("V", new Production("book"), new Production("ate"), new Production("sleep"), 
+				new Production("saw"), new Production("thinks"));
+		Rule P = new Rule("P", new Production("with"), new Production("in"), new Production("on"), 
+				new Production("at"), new Production("through"));
+		Rule C = new Rule("C", new Production("that"));
+
+		Rule PP = new Rule("PP");
+		Rule NP = new Rule("NP", new Production(D, N), new Production("john"), new Production("bill"),
+				new Production("houston"));
+		NP.add(new Production(NP, PP));
+		PP.add(new Production(P, NP));
+
+		Rule VP = new Rule("VP", new Production(V, NP));
+		VP.add(new Production(VP, PP));
+		Rule S = new Rule("S", new Production(NP, VP), new Production(VP));
+		Rule Sbar = new Rule("S'", new Production(C, S));
+		VP.add(new Production(V, Sbar));
+		
+		// let's parse some sentences!
+		for (String text : new String[] {"john ate a banana", "book the flight through houston", 
+				"john saw the boy with the telescope", "john thinks that bill ate a banana"}) {
+			Parser p = new Parser(S, text);
+			System.out.printf("Parse trees for '%s'\n", text);
+			System.out.println("===================================================");
+			for (Node<TableState> tree : p.getTrees()) {
+				tree.print(System.out);
+				System.out.println();
+			}
+		}
+		
+		// let's fail
+		boolean failed = false;
+		try {
+			Parser p = new Parser(S, "john ate");
+		}
+		catch (ParsingFailed ex) {
+			// okay
+			failed = true;
+			System.out.println("hurrah, this has failed (we don't allow VP without a complement)");
+		}
+		if (!failed) {
+			System.out.println("oops, this should have failed!");
+		}
+		
 	}
 
 }
