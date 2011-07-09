@@ -248,7 +248,6 @@ public class Earley
 		public final int dotIndex;
 		public final TableColumn startCol;
 		public TableColumn endCol;
-		public ArrayList<TableState> parents;
 		
 		public TableState(String name, Production production, int dotIndex, TableColumn startCol)
 		{
@@ -257,7 +256,6 @@ public class Earley
 			this.dotIndex = dotIndex;
 			this.startCol = startCol;
 			endCol = null;
-			parents = new ArrayList<TableState>();
 		}
 		
 		public boolean isCompleted() {
@@ -269,15 +267,6 @@ public class Earley
 				return null;
 			}
 			return production.get(dotIndex);
-		}
-		
-		public boolean addParent(TableState state)
-		{
-			if (!parents.contains(state)) {
-				parents.add(state);
-				return true;
-			}
-			return false;
 		}
 		
 		@Override
@@ -408,62 +397,18 @@ public class Earley
 	public static class Node<T> implements Iterable<Node<T>>
 	{
 		public final T value;
-		public Node<T> parent;
 		protected ArrayList<Node<T>> children;
 		
-		public Node(T value) {
+		public Node(T value, List<Node<T>> children) {
 			this.value = value;
-			children = new ArrayList<Node<T>>();
+			this.children = children;
 		}
 		
-		public Node<T> add(Node<T> child) {
-			children.add(child);
-			child.parent = this;
-			return child;
-		}
-		public Node<T> add(T value) {
-			return add(new Node<T>(value));
-		}
-		
-		public Node<T> getRoot() {
-			Node<T> n = this;
-			while (n.parent != null) {
-				n = n.parent;
-			}
-			return n;
-		}
-		
-		public int size() {
-			return children.size();
-		}
-		/*public int getWidth() {
-			if (hasChildren()) {
-				int width = 0;
-				for (Node<T> child : children) {
-					width += child.getWidth();
-				}
-				return width;
-			}
-			else {
-				return 1;
-			}
-		}*/
-		public boolean hasChildren() {
-			return children.size() > 0;
-		}
 		@Override
 		public Iterator<Node<T>> iterator() {
 			return children.iterator();
 		}
 		
-		/*protected Node duplicate() {
-			Node<T> n = new Node<T>(value);
-			for (Node<T> child : children) {
-				n.add(child.duplicate());
-			}
-			return n;
-		}*/
-
 		public void print(PrintStream out)
 		{
 			print(out, 0);
@@ -559,7 +504,7 @@ public class Earley
 				handleEpsilons(col);
 				
 				// DEBUG
-				col.print(System.out, false);
+				//col.print(System.out, false);
 			}
 			
 			// find end state (return null if not found)
@@ -603,10 +548,6 @@ public class Earley
 		    	if (term instanceof Rule && ((Rule)term).name.equals(state.name)) {
 		    		TableState st1 = new TableState(st.name, st.production, st.dotIndex + 1, st.startCol);
 		            TableState st2 = col.insert(st1);
-		            st2.addParent(state);
-		            for (TableState p : st.parents) {
-		            	st2.addParent(p);
-		            }
 		            changed |= (st1 == st2);
 		    	}
 		    }
@@ -638,102 +579,24 @@ public class Earley
 		/*
 		 * return all parse trees (forest)
 		 */
-		public List<Node<TableState>> getTrees() {
-			ArrayList<Node<TableState>> forest = new ArrayList<Node<TableState>>();
-			forest.add(buildTree1(finalState));
-			return forest;
-		}
-
-		protected Node<TableState> buildTree1(TableState state) {
-			Node<TableState> node = new Node<TableState>(state);
-			TableColumn endCol = state.endCol;
-			List<Rule> rules = state.production.getRules();
-			
-			// iterate over rules, from last to first
-			for (int i = rules.size() - 1; i >= 0; i--) {
-				Rule r = rules.get(i);
-				// if this is the first rule, it must span from startCol. if it's not the first,
-				// there's no restriction on that.
-				TableColumn startCol = (i == 0) ? state.startCol : null;
-				for (TableState st : endCol) {
-					if (st == state) {
-						break;
-					}
-					if (!st.isCompleted() || (startCol != null && st.startCol != startCol)) {
-						continue;
-					}
-					if (r.name.equals(st.name)) {
-						node.add(buildTree1(st));
-						endCol = st.startCol;
-						break;
-					}
-				}
-			}
-			
-			return node;
+		public List<Node<TableState>> buildTrees(TableState state) {
+			return buildTreesHelper(Collections.emptyList(), state, 
+					state.productions.rules.size() - 1, state.endCol);
 		}
 		
-		/*protected List<TableState> findMatches(TableState state, Rule rule, TableColumn startCol, TableColumn endCol)
-		{
-			ArrayList<TableState> matches = new ArrayList<TableState>();
-			
-			for (TableState st : endCol) {
-				if (st == state) {
-					break;
-				}
-				if (!st.isCompleted() || (startCol != null && st.startCol != startCol)) {
-					continue;
-				}
-				if (rule.name.equals(st.name)) {
-					matches.add(st);
-				}
-			}
-			return matches;
-		}
+		protected List<Node<TableState>> buildTreesHelper(List<Node<TableState>> children,
+				TableState state, TableColumn endCol)
 		
-		protected Node<TableState> buildTree2(TableState state) {
-			Node<TableState> node = new Node<TableState>(state);
-			TableColumn endCol = state.endCol;
-			List<Rule> rules = state.production.getRules();
-			
-			for (int i = rules.size() - 1; i >= 0; i--) {
-				TableColumn startCol = (i == 0) ? state.startCol : null;
-				List<TableState> matches = findMatches(state, rules.get(i), startCol, endCol);
-				if (!matches.isEmpty()) {
-					TableState st = matches.get(0);
-					node.add(buildTree2(st));
-					endCol = st.startCol;
-				}
-			}
-			
-			return node;
-		}*/
-	}
 
-	static void printParents(TableState st)
-	{
-		printParents(st, 0);
-	}
-
-	static void printParents(TableState st, int level)
-	{
-		for (int i = 0; i < level; i++) {
-			System.out.printf("    ");
-		}
-		System.out.println(st);
-		for (TableState parent : st.parents) {
-			printParents(parent, level + 1);
-		}
 	}
 	
 	public static void main(String[] args) throws Exception {
 		Rule SYM = new Rule("SYM", new Production("a"));
-		Rule OP = new Rule("OP", new Production("+"), new Production("-"));
+		Rule OP = new Rule("OP", new Production("+"));
 		Rule EXPR = new Rule("EXPR", new Production(SYM));
 		EXPR.add(new Production(EXPR, OP, EXPR));
 
 		Parser p = new Parser(EXPR, "a + a + a");
-		//printParents(p.finalState);
 		
 		List<Node<TableState>> forest = p.getTrees();
 		for (Node<TableState> n : forest) {
