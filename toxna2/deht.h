@@ -21,7 +21,8 @@
 /******************************************************************/
 struct DEHTpreferences
 {
-	char sHashName[10]; 				/*Name for identification, e.g. "MD5\0" */
+	char sHashName[10];				/*Name for identification, e.g. "MD5\0" */
+	int keySize;                    /*size of key in bytes (16 for MD5, 20 for SHA1) */
 	int numEntriesInHashTable; 		/*typically few millions*/
 	int nPairsPerBlock;				/*typically few hundreds*/
 	int nBytesPerValidationKey;		/*length of key to be compared into,

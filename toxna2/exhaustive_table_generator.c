@@ -4,14 +4,12 @@
 #include "deht.h"
 
 
-#define MAX_DIGEST_LENGTH  ((SHA1_OUTPUT_LENGTH_IN_BYTES > MD5_OUTPUT_LENGTH_IN_BYTES) ? SHA1_OUTPUT_LENGTH_IN_BYTES : MD5_OUTPUT_LENGTH_IN_BYTES)
-
 static int populate_deht(DEHT * deht, rule_info_t * rule)
 {
 	int res;
 	int pwlength;
 	const int max_password = rule_max_password_length(rule);
-	char * password = (char*)malloc(max_password);
+	char * password = (char*)malloc(max_password + 1);
 	unsigned char * digest = (unsigned char*)malloc(rule->digest_size);
 
 	if (password == NULL) {
@@ -21,7 +19,7 @@ static int populate_deht(DEHT * deht, rule_info_t * rule)
 		perror("allocating room for digest failed\n");
 	}
 
-	for (;;) {
+	while (1) {
 		res = rule_generate_next_password(rule, password, max_password);
 		if (res == RULE_STATUS_EXHAUSTED) {
 			/* exhausted all passwords */
@@ -43,7 +41,7 @@ static int populate_deht(DEHT * deht, rule_info_t * rule)
 	}
 }
 
-int main(int argc, const char** argv)
+int main2(int argc, const char** argv)
 {
 	int res = 0;
 	rule_info_t rule;
@@ -63,7 +61,7 @@ int main(int argc, const char** argv)
 	}
 
 	deht = create_empty_DEHT(argv[1], NULL, NULL,
-			1000, /* numEntriesInHashTable */
+			65536, /* numEntriesInHashTable */
 			10, /* nPairsPerBlock */
 			8, /* nBytesPerKey */
 			rule.hashname);

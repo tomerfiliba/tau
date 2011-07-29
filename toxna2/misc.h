@@ -38,6 +38,9 @@ int MD5BasicHash(const unsigned char *in, int len, unsigned char *outBuf);
 #define SHA1_OUTPUT_LENGTH_IN_BYTES   20
 int SHA1BasicHash(const unsigned char *in, int len, unsigned char *outBuf);
 
+#define MAX_DIGEST_LENGTH_IN_BYTES	  ((SHA1_OUTPUT_LENGTH_IN_BYTES > MD5_OUTPUT_LENGTH_IN_BYTES) ? SHA1_OUTPUT_LENGTH_IN_BYTES : MD5_OUTPUT_LENGTH_IN_BYTES)
+
+
 /*************************************************************************/
 /* Function cryptHash do it on an ascii string.                          */
 /* Inputs:                                                               */

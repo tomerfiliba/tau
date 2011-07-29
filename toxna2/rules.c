@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #ifdef _MSC_VER
 	#define strcasecmp _stricmp
 #else
@@ -197,7 +198,7 @@ static int rule_load_lexicon(rule_info_t * info, const char* filename)
 			allocated_indexes += 1000;
 			newbuf = realloc(info->words, sizeof(char**) * allocated_indexes);
 			if (newbuf == NULL) {
-				printf("memory allocation (1) failed\n");
+				fprintf(stderr, "memory allocation (1) failed\n");
 				goto error_cleanup;
 			}
 			info->words = (char**) newbuf;
@@ -205,7 +206,7 @@ static int rule_load_lexicon(rule_info_t * info, const char* filename)
 
 		info->words[info->num_of_words] = (char*) malloc(strlen(line) + 1);
 		if (info->words[info->num_of_words] == NULL) {
-			printf("memory allocation (2) failed\n");
+			fprintf(stderr, "memory allocation (2) failed\n");
 			goto error_cleanup;
 		}
 		strcpy(info->words[info->num_of_words], line);
@@ -391,7 +392,7 @@ static int rule_generate_incrementing(rule_info_t * info, char * output)
 				break;
 		}
 		if (succ != 0) {
-			printf("get next term failed\n");
+			fprintf(stderr, "get next term failed\n");
 			return RULE_STATUS_ERROR;
 		}
 		output += strlen(output);
@@ -430,7 +431,7 @@ static int rule_generate_random(rule_info_t * info, char * output)
 				break;
 		}
 		if (succ != 0) {
-			printf("get next term failed\n");
+			fprintf(stderr, "get next term failed\n");
 			return RULE_STATUS_ERROR;
 		}
 		output += strlen(output);
@@ -453,6 +454,21 @@ int rule_generate_next_password(rule_info_t * info, char * output, int output_le
 	}
 }
 
+static int is_comment_line(const char * text)
+{
+	const char *p = text;
+	for (; *p != '\0'; p++) {
+		if (isspace(*p)) {
+			continue;
+		}
+		if (*p == ';') {
+			return 1;
+		}
+		return 0;
+	}
+	return 1;
+}
+
 int rule_load_from_file(rule_info_t * info, const char * inifilename)
 {
 	FILE *f = fopen(inifilename, "r");
@@ -462,7 +478,7 @@ int rule_load_from_file(rule_info_t * info, const char * inifilename)
 	char flag[200];
 	char name[100];
 	char value[200];
-	int res;
+	char line[200];
 
 	if (f == NULL) {
 		perror("rule_load_from_file: fopen failed");
@@ -475,11 +491,21 @@ int rule_load_from_file(rule_info_t * info, const char * inifilename)
 	flag[0] = '\0';
 
 	while (1) {
-		res = fscanf(f, "%s = %s", name, value);
-		if (res == EOF) {
-			break;
-		} else if (res != 2) {
-			printf("Syntax error in INI file\n");
+		if (fgets(line, sizeof(line)-1, f) == NULL) {
+			if (feof(f)) {
+				break;
+			}
+			else {
+				perror("rule_load_from_file: fgets failed");
+				goto error_cleaup;
+			}
+		}
+		if (is_comment_line(line)) {
+			continue;
+		}
+
+		if (sscanf(line, "%s = %s", name, value) != 2) {
+			fprintf(stderr, "Syntax error in INI file\n");
 			goto error_cleaup;
 		}
 		if (strcasecmp(name, "rule") == 0) {
@@ -491,7 +517,7 @@ int rule_load_from_file(rule_info_t * info, const char * inifilename)
 		} else if (strcasecmp(name, "hash_name") == 0) {
 			strcpy(hashname, value);
 		} else {
-			printf("Invalid key '%s' in INI file\n", name);
+			fprintf(stderr, "Invalid key '%s' in INI file\n", name);
 			goto error_cleaup;
 		}
 	}

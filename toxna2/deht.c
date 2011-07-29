@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include "deht.h"
+#include "misc.h"
 
 
 static DEHT * _new_DEHT(const char *prefix, const char * data_filename,
@@ -97,39 +98,49 @@ DEHT *create_empty_DEHT(const char *prefix,
 	deht->header.nPairsPerBlock = nPairsPerBlock;
 	deht->header.nBytesPerValidationKey = nBytesPerKey;
 	strncpy(deht->header.sHashName, HashName, sizeof(deht->header.sHashName));
+	if (strcmp(HashName, "MD5") == 0) {
+		deht->header.keySize = MD5_OUTPUT_LENGTH_IN_BYTES;
+	}
+	else if (strcmp(HashName, "SHA1") == 0) {
+		deht->header.keySize = SHA1_OUTPUT_LENGTH_IN_BYTES;
+	}
+	else {
+		fprintf(stderr, "invalid hash name: %s", HashName);
+		goto cleanup;
+	}
 
 	/* write header and empty head table */
 	if (fwrite(&(deht->header), sizeof(deht->header), 1, deht->keyFP) != 1) {
 		perror("could not write header to keys file");
 		goto cleanup;
 	}
-	DEHT_DISK_PTR * empty = (DEHT_DISK_PTR*)malloc(sizeof(DEHT_DISK_PTR))
-		);
+	empty_head_table = (DEHT_DISK_PTR*)malloc(sizeof(DEHT_DISK_PTR));
 	if (empty_head_table == NULL) {
 		fprintf(stderr, "could not allocate empty head table with %d entries", 
 			numEntriesInHashTable);
 		goto cleanup;
 	}
-	size_t entries_written = fwrite(empty_head_table, sizeof(DEHT_DISK_PTR), numEntriesInHashTable, new_deht->keyFP);
+	entries_written = fwrite(empty_head_table, sizeof(DEHT_DISK_PTR), numEntriesInHashTable, deht->keyFP);
 	if (entries_written != numEntriesInHashTable) {
-		perror(prefix);
-		goto create_empty_DEHT_cleanup;
+		perror("could not write empty head table to keys file");
+		goto cleanup;
 	}
 	free(empty_head_table);
 
 	/* Initialize data file */
-	/* This initialization invalidates NULL as a data file offset */
-	//if ('\0' != putc('\0', new_deht->dataFP)) {
-	//	perror(prefix);
-	//	goto create_empty_DEHT_cleanup;
-	//}
+	if (fputc('\0', deht->dataFP) != '\0') {
+		perror("could not initialize data file");
+		goto cleanup;
+	}
 
 	/* Flush the files */
-	//fflush(new_deht->keyFP);
-	//fflush(new_deht->dataFP);
-
+	fflush(deht->keyFP);
+	fflush(deht->dataFP);
 
 	return deht;
+
+cleanup:
+	return NULL;
 }
 
 DEHT *load_DEHT_from_files(const char *prefix,
@@ -220,7 +231,8 @@ int query_DEHT(DEHT *ht, const unsigned char *key, int keyLength,
 int insert_uniquely_DEHT(DEHT *ht, const unsigned char *key, int keyLength,
         const unsigned char *data, int dataLength)
 {
-	/* the size is not important, just a few bytes -- we don't use the data itself */
+	/* the size is not important, we just need a few bytes -- we don't use 
+	   the data itself */
 	unsigned char tmp[30];
 	int succ = query_DEHT(ht, key, keyLength, tmp, sizeof(tmp));
 
