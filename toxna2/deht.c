@@ -4,9 +4,14 @@
 #include "misc.h"
 
 #define NULL_DISK_PTR  0
+#define DEHT_STATUS_FOUND  3
+#define DEHT_STATUS_NOT_FOUND  4
 
-
-static DEHT * _new_DEHT(const char *prefix, const char * data_filename,
+/*
+ * allocate (malloc) a new DEHT object and initialize all the fields to 
+ * default values. also open the key and data files.
+ */
+static DEHT * alloc_DEHT(const char *prefix, const char * data_filename,
 		const char * key_filename, hashKeyIntoTableFunctionPtr hashfun,
         hashKeyforEfficientComparisonFunctionPtr validfun)
 {
@@ -28,6 +33,7 @@ static DEHT * _new_DEHT(const char *prefix, const char * data_filename,
 	deht->comparisonHashFunc = validfun;
 	deht->hashTableOfPointersImageInMemory = NULL;
 	deht->hashPointersForLastBlockImageInMemory = NULL;
+	deht->validationKey = NULL;
 	deht->anLastBlockSize = NULL;
 
 	/* open the files */
@@ -53,7 +59,11 @@ cleanup1:
 	return NULL;
 }
 
-static int _init_deht_caches(DEHT * deht)
+/*
+ * initialize the DEHT's caches (malloc the necessary members in the
+ * DEHT struct) for future use
+ */
+static int init_deht_caches(DEHT * deht)
 {
 	int i;
 
@@ -90,7 +100,10 @@ cleanup1:
 	return -1;
 }
 
-static void _init_deht_files(const char * prefix, char * key_filename, char * data_filename)
+/*
+ * create the DEHT's key and data file names
+ */
+static void init_deht_files(const char * prefix, char * key_filename, char * data_filename)
 {
 	strcpy(key_filename, prefix);
 	strcat(key_filename, ".key");
@@ -99,6 +112,9 @@ static void _init_deht_files(const char * prefix, char * key_filename, char * da
 	strcat(data_filename, ".data");
 }
 
+/* 
+ * API 
+ */
 DEHT *create_empty_DEHT(const char *prefix,
 		hashKeyIntoTableFunctionPtr hashfun,
         hashKeyforEfficientComparisonFunctionPtr validfun,
@@ -112,7 +128,7 @@ DEHT *create_empty_DEHT(const char *prefix,
 	DEHT_DISK_PTR * empty_head_table = NULL;
 	size_t entries_written = 0;
 
-	_init_deht_files(prefix, key_filename, data_filename);
+	init_deht_files(prefix, key_filename, data_filename);
 
 	/* make sure the two files do not already exist */
 	if ((f = fopen(key_filename, "r")) != NULL) {
@@ -126,7 +142,7 @@ DEHT *create_empty_DEHT(const char *prefix,
 		return NULL;
 	}
 
-	deht = _new_DEHT(prefix, data_filename, key_filename, hashfun, validfun);
+	deht = alloc_DEHT(prefix, data_filename, key_filename, hashfun, validfun);
 	if (deht == NULL) {
 		return NULL;
 	}
@@ -147,7 +163,7 @@ DEHT *create_empty_DEHT(const char *prefix,
 		goto cleanup;
 	}
 
-	if (_init_deht_caches(deht) != 0) {
+	if (init_deht_caches(deht) != 0) {
 		goto cleanup;
 	}
 
@@ -199,6 +215,9 @@ cleanup:
 	return NULL;
 }
 
+/* 
+ * API 
+ */
 DEHT *load_DEHT_from_files(const char *prefix,
         hashKeyIntoTableFunctionPtr hashfun,
         hashKeyforEfficientComparisonFunctionPtr validfun)
@@ -208,7 +227,7 @@ DEHT *load_DEHT_from_files(const char *prefix,
 	FILE * f = NULL;
 	DEHT * deht = NULL;
 
-	_init_deht_files(prefix, key_filename, data_filename);
+	init_deht_files(prefix, key_filename, data_filename);
 
 	/* make sure the two files do exist */
 	f = fopen(key_filename, "r");
@@ -224,7 +243,7 @@ DEHT *load_DEHT_from_files(const char *prefix,
 	}
 	fclose(f);
 
-	deht = _new_DEHT(prefix, data_filename, key_filename, hashfun, validfun);
+	deht = alloc_DEHT(prefix, data_filename, key_filename, hashfun, validfun);
 	if (deht == NULL) {
 		return NULL;
 	}
@@ -235,7 +254,7 @@ DEHT *load_DEHT_from_files(const char *prefix,
 		goto cleanup;
 	}
 
-	if (_init_deht_caches(deht) != 0) {
+	if (init_deht_caches(deht) != 0) {
 		goto cleanup;
 	}
 
@@ -246,54 +265,72 @@ cleanup:
 	return NULL;
 }
 
-
-void close_DEHT_files(DEHT *ht)
+/* 
+ * API 
+ */
+void close_DEHT_files(DEHT * deht)
 {
-	if (ht == NULL) {
+	if (deht == NULL) {
 		return;
 	}
-	write_DEHT_pointers_table(ht);
+	write_DEHT_pointers_table(deht);
 
-	if (ht->hashTableOfPointersImageInMemory != NULL) {
-		free(ht->hashTableOfPointersImageInMemory);
-		ht->hashTableOfPointersImageInMemory = NULL;
+	if (deht->hashTableOfPointersImageInMemory != NULL) {
+		free(deht->hashTableOfPointersImageInMemory);
+		deht->hashTableOfPointersImageInMemory = NULL;
 	}
-	if (ht->hashPointersForLastBlockImageInMemory != NULL) {
-		free(ht->hashPointersForLastBlockImageInMemory);
-		ht->hashPointersForLastBlockImageInMemory = NULL;
+	if (deht->hashPointersForLastBlockImageInMemory != NULL) {
+		free(deht->hashPointersForLastBlockImageInMemory);
+		deht->hashPointersForLastBlockImageInMemory = NULL;
 	}
-	if (ht->anLastBlockSize != NULL) {
-		free(ht->anLastBlockSize);
-		ht->anLastBlockSize = NULL;
+	if (deht->anLastBlockSize != NULL) {
+		free(deht->anLastBlockSize);
+		deht->anLastBlockSize = NULL;
 	}
 
 	/* no point in checking return value of fclose -- this function is void
 	 * anyway and is not meant to report errors back */
-	fclose(ht->keyFP);
-	fclose(ht->dataFP);
+	fclose(deht->keyFP);
+	fclose(deht->dataFP);
 
 	/* since we malloc()'ed ht, it's time for us to free() it */
-	free(ht);
+	free(deht);
 }
 
-static int find_empty_pair(DEHT * deht, int bucket, DEHT_DISK_PTR * block, DEHT_DISK_PTR * pair)
+/*****************************************************************************/
+
+/*
+ *
+ */
+static int bucket_find_empty_slot(DEHT * deht, int bucket, DEHT_DISK_PTR * block, 
+								  DEHT_DISK_PTR * pair)
 {
 	return -1;
 }
 
-static int insert_pair(DEHT * deht, int bucket, DEHT_DISK_PTR pair, 
-					   unsigned char * validkey, const unsigned char * data, int dataLength)
+/*
+ *
+ */
+static int bucket_insert_pair(DEHT * deht, int bucket, DEHT_DISK_PTR pair, 
+							  unsigned char * validation, const unsigned char * data, int dataLength)
 {
 	return DEHT_STATUS_FAIL;
 }
 
-static int add_block(DEHT * deht, int bucket, DEHT_DISK_PTR block, DEHT_DISK_PTR * pair)
+/*
+ *
+ */
+static int bucket_add_block(DEHT * deht, int bucket, DEHT_DISK_PTR block, 
+							DEHT_DISK_PTR * pair)
 {
 	return DEHT_STATUS_FAIL;
 }
 
+/* 
+ * API 
+ */
 int add_DEHT(DEHT *deht, const unsigned char *key, int keyLength,
-        const unsigned char *data, int dataLength)
+			 const unsigned char *data, int dataLength)
 {
 	int bucket;
 	DEHT_DISK_PTR pair = NULL_DISK_PTR;
@@ -303,76 +340,125 @@ int add_DEHT(DEHT *deht, const unsigned char *key, int keyLength,
 	deht->comparisonHashFunc(key, keyLength, deht->validationKey);
 
 	/* Find the last block in the bucket */
-	if (find_empty_pair(deht, bucket, &block, &pair) != 0) {
-		perror(deht->sPrefixFileName);
-		goto cleanup;
+	if (bucket_find_empty_slot(deht, bucket, &block, &pair) != DEHT_STATUS_SUCCESS) {
+		return DEHT_STATUS_FAIL;
 	}
 
 	/* Find the correct place to insert the pair */
 	if (pair == NULL_DISK_PTR) {
-		/* Need to create a new block */
-		if (add_block(deht, bucket, block, &pair)) {
-			perror(deht->sPrefixFileName);
-			goto cleanup;
+		if (bucket_add_block(deht, bucket, block, &pair) != DEHT_STATUS_SUCCESS) {
+			return DEHT_STATUS_FAIL;
 		}
 	}
-	return insert_pair(deht, bucket, pair, deht->validationKey, data, dataLength);
 
-cleanup:
+	return bucket_insert_pair(deht, bucket, pair, deht->validationKey, 
+		data, dataLength);
+}
+
+/*****************************************************************************/
+
+/*
+ *
+ */
+static int bucket_find_key(DEHT * deht, int bucket, unsigned char * validation, 
+					   DEHT_DISK_PTR * pair, DEHT_DISK_PTR * block)
+{
 	return DEHT_STATUS_FAIL;
 }
 
-int query_DEHT(DEHT *ht, const unsigned char *key, int keyLength,
+/*
+ *
+ */
+static int read_pair_data(DEHT * deht, DEHT_DISK_PTR pair, const unsigned char * data, 
+						  int dataMaxAllowedLength)
+{
+	return DEHT_STATUS_FAIL;
+}
+
+/*
+ *
+ */
+static int find_pair_by_key(DEHT * deht, const unsigned char *key, int keyLength,
+					DEHT_DISK_PTR * pair, DEHT_DISK_PTR * block)
+{
+	int bucket;
+	bucket = deht->hashFunc(key, keyLength, deht->header.numEntriesInHashTable);
+	deht->comparisonHashFunc(key, keyLength, deht->validationKey);
+	return bucket_find_key(deht, bucket, deht->validationKey, pair, block);
+}
+
+/* 
+ * API 
+ */
+int query_DEHT(DEHT *deht, const unsigned char *key, int keyLength,
         unsigned char *data, int dataMaxAllowedLength)
 {
+	int res;
+	DEHT_DISK_PTR pair = NULL_DISK_PTR;
+	DEHT_DISK_PTR block = NULL_DISK_PTR;
 
+	res = find_pair_by_key(deht, key, keyLength, &pair, &block);
+	if (res == DEHT_STATUS_SUCCESS) {
+		return read_pair_data(deht, pair, data, dataMaxAllowedLength);
+	}
 
-	return DEHT_STATUS_FAIL;
+	/* some kind of error */
+	return res;
 }
 
-int insert_uniquely_DEHT(DEHT *ht, const unsigned char *key, int keyLength,
+/*****************************************************************************/
+
+/* 
+ * API 
+ */
+int insert_uniquely_DEHT(DEHT *deht, const unsigned char *key, int keyLength,
         const unsigned char *data, int dataLength)
 {
-	/* the size is not important, we just need a few bytes -- we don't use 
-	   the data itself */
-	unsigned char tmp[30];
-	int succ = query_DEHT(ht, key, keyLength, tmp, sizeof(tmp));
+	int res;
+	DEHT_DISK_PTR pair = NULL_DISK_PTR;
+	DEHT_DISK_PTR block = NULL_DISK_PTR;
 
-	if (succ == DEHT_STATUS_NOT_NEEDED) {
+	res = find_pair_by_key(deht, key, keyLength, &pair, &block);
+	if (res == DEHT_STATUS_SUCCESS) {
 		/* already exists */
 		return DEHT_STATUS_NOT_NEEDED;
 	}
-	if (succ != DEHT_STATUS_SUCCESS) {
-		/* query failed */
-		return DEHT_STATUS_FAIL;
+	else if (res == DEHT_STATUS_NOT_NEEDED) {
+		/* if key was not found, add it */
+		return add_DEHT(deht, key, keyLength, data, dataLength);
 	}
 
-	/* if key was not found, add it */
-	return add_DEHT(ht, key, keyLength, data, dataLength);
+	/* some kind of error */
+	return res;
 }
 
-int read_DEHT_pointers_table(DEHT *ht)
+/*****************************************************************************/
+
+/* 
+ * API 
+ */
+int read_DEHT_pointers_table(DEHT *deht)
 {
 	size_t readcount = 0;
 
-	if (ht->hashTableOfPointersImageInMemory != NULL) {
+	if (deht->hashTableOfPointersImageInMemory != NULL) {
 		return DEHT_STATUS_NOT_NEEDED;
 	}
 
-	ht->hashTableOfPointersImageInMemory = (DEHT_DISK_PTR*) malloc(
-		sizeof(DEHT_DISK_PTR) * ht->header.numEntriesInHashTable);
-	if (ht->hashTableOfPointersImageInMemory == NULL) {
+	deht->hashTableOfPointersImageInMemory = (DEHT_DISK_PTR*) malloc(
+		sizeof(DEHT_DISK_PTR) * deht->header.numEntriesInHashTable);
+	if (deht->hashTableOfPointersImageInMemory == NULL) {
 		fprintf(stderr, "allocating memory for DEHT pointers table failed\n");
 		return DEHT_STATUS_FAIL;
 	}
-	if (fseek(ht->keyFP, sizeof(ht->header), SEEK_SET) != 0) {
+	if (fseek(deht->keyFP, sizeof(deht->header), SEEK_SET) != 0) {
 		perror("fseek failed");
 		goto cleanup;
 	}
 
-	readcount = fread(ht->hashTableOfPointersImageInMemory, sizeof(DEHT_DISK_PTR), 
-		ht->header.numEntriesInHashTable, ht->keyFP);
-	if (readcount != ht->header.numEntriesInHashTable) {
+	readcount = fread(deht->hashTableOfPointersImageInMemory, sizeof(DEHT_DISK_PTR), 
+		deht->header.numEntriesInHashTable, deht->keyFP);
+	if (readcount != deht->header.numEntriesInHashTable) {
 		perror("failed to read DEHT pointers table");
 		goto cleanup;
 	}
@@ -380,34 +466,37 @@ int read_DEHT_pointers_table(DEHT *ht)
 	return DEHT_STATUS_SUCCESS;
 
 cleanup:
-	free(ht->hashTableOfPointersImageInMemory);
-	ht->hashTableOfPointersImageInMemory = NULL;
+	free(deht->hashTableOfPointersImageInMemory);
+	deht->hashTableOfPointersImageInMemory = NULL;
 	return DEHT_STATUS_FAIL;
 }
 
-int write_DEHT_pointers_table(DEHT *ht)
+/* 
+ * API 
+ */
+int write_DEHT_pointers_table(DEHT *deht)
 {
 	size_t written = 0;
 
-	if (ht->hashTableOfPointersImageInMemory == NULL) {
+	if (deht->hashTableOfPointersImageInMemory == NULL) {
 		return DEHT_STATUS_NOT_NEEDED;
 	}
 
-	if (fseek(ht->keyFP, sizeof(ht->header), SEEK_SET) != 0) {
+	if (fseek(deht->keyFP, sizeof(deht->header), SEEK_SET) != 0) {
 		perror("fseek failed");
 		return DEHT_STATUS_FAIL;
 	}
 
-	written = fwrite(ht->hashTableOfPointersImageInMemory, sizeof(DEHT_DISK_PTR), 
-		ht->header.numEntriesInHashTable, ht->keyFP);
-	if (written != ht->header.numEntriesInHashTable) {
+	written = fwrite(deht->hashTableOfPointersImageInMemory, sizeof(DEHT_DISK_PTR), 
+		deht->header.numEntriesInHashTable, deht->keyFP);
+	if (written != deht->header.numEntriesInHashTable) {
 		perror("failed to write everything");
 		return DEHT_STATUS_FAIL;
 	}
-	fflush(ht->keyFP);
+	fflush(deht->keyFP);
 
-	free(ht->hashTableOfPointersImageInMemory);
-	ht->hashTableOfPointersImageInMemory = NULL;
+	free(deht->hashTableOfPointersImageInMemory);
+	deht->hashTableOfPointersImageInMemory = NULL;
 	return DEHT_STATUS_SUCCESS;
 }
 
