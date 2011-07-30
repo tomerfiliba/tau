@@ -41,6 +41,42 @@ static int populate_deht(DEHT * deht, rule_info_t * rule)
 	}
 }
 
+/* const unsigned char *keyBuf, i.e. Binary buffer input*/
+/* int keySizeof , i.e. in this project this is crypt output size, */
+/*          but in real life this size may vary (e.g. string input)*/
+/* int nTableSize, i.e. Output is 0 to (nTableSize-1) to fit table of pointers*/
+/*                                                                          */
+/****************************************************************************/
+int hashfun(const unsigned char * keyBuf, int keySizeof, int tableSize)
+{
+	int n;
+	unsigned char digest[MD5_OUTPUT_LENGTH_IN_BYTES];
+	MD5BasicHash(keyBuf, keySizeof, digest);
+	n = *((int*)&digest);
+	return n % tableSize;
+}
+
+/*Arguments are: */
+/* const unsigned char *keyBuf, i.e. Binary buffer input*/
+/* int keySizeof , i.e. in this project this is crypt output size, */
+/*          but in real life this size may vary (e.g. string input)*/
+/* unsigned char *validationKeyBuf, i.e. Output buffer, assuming allocated with nBytesPerValidationKey bytes*/
+/*                                                                          */
+/****************************************************************************/
+int md5_validfunc(const unsigned char *keyBuf, int keySizeof, unsigned char * validationKeyBuf)
+{
+	int output_size = keySizeof - MD5_OUTPUT_LENGTH_IN_BYTES;
+	memcpy(validationKeyBuf, keyBuf + MD5_OUTPUT_LENGTH_IN_BYTES, output_size);
+	return output_size;
+}
+
+int sha1_validfunc(const unsigned char *keyBuf, int keySizeof, unsigned char * validationKeyBuf)
+{
+	return 0;
+}
+
+
+
 int main2(int argc, const char** argv)
 {
 	int res = 0;

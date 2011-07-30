@@ -97,6 +97,8 @@ typedef struct
 	DEHT_DISK_PTR *hashPointersForLastBlockImageInMemory;
 	/*null or some intermidiate to know whenever insert. It has no parallel on disk. Block size to enable quick insert*/
 	int *anLastBlockSize;
+	/* temp space for validation key */
+	unsigned char * validationKey;
 } DEHT;
 
 /********************************************************************************/
