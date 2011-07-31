@@ -3,6 +3,14 @@
 #include "misc.h"
 #include "rules.h"
 #include "deht.h"
+#ifdef _MSC_VER
+	#define strcasecmp _stricmp
+#else
+	#include <strings.h>
+#endif
+
+
+#define MAX_LINE_SIZE    256
 
 
 void find_password_for_digest(DEHT * deht, const unsigned char * digest, int digestLength)
@@ -11,40 +19,48 @@ void find_password_for_digest(DEHT * deht, const unsigned char * digest, int dig
 	unsigned char password[400];
 	
 	res = query_DEHT(deht, digest, digestLength, password, sizeof(password));
-	if (res > 0) {
+	if (res == DEHT_STATUS_NOT_NEEDED) {
+		printf("Sorry but this hash doesn't appear in pre-processing\n");
+	}
+	else if (res > 0) {
 		/* password is not NUL-terminated */
 		password[res] = '\0';
 		printf("Try to login with password \"%s\"\n", password);
 	}
 	else {
-		printf("Sorry but this hash doesn't appear in pre-processing\n");
+		printf("An error occured while querying the DEHT\n");
 	}
 }
 
-
-int main(int argc, const char** argv)
+int main3(int argc, const char** argv)
 {
 	DEHT * deht = NULL;
-	rule_info_t rule;
-	char line[257];
+	char line[MAX_LINE_SIZE + 1];
 	unsigned char digest[MAX_DIGEST_LENGTH_IN_BYTES];
-	char ini_file[200];
+	int res = 0;
+	char * cmd, * rcmd;
+	int digest_size;
 
 	if (argc != 2) {
 		fprintf(stderr, "Usage: %s <prefix>\n", argv[0]);
 		return 1;
 	}
 
-	strncpy(ini_file, argv[1], sizeof(ini_file) - 5);
-	strcat(ini_file, ".ini");
-	if (rule_load_from_file(&rule, ini_file) != 0) {
-		/* error message printed by rule_load_from_file */
+	deht = load_DEHT_from_files(argv[1], my_hash_func, my_valid_func);
+	if (deht == NULL) {
 		return 1;
 	}
 
-	deht = load_DEHT_from_files(argv[1], NULL /*hashfun*/, NULL /*validfun*/ );
-	if (deht == NULL) {
-		return 1;
+	if (strcmp(deht->header.sHashName, "MD5") == 0) {
+		digest_size = MD5_OUTPUT_LENGTH_IN_BYTES;
+	}
+	else if (strcmp(deht->header.sHashName, "SHA1") == 0) {
+		digest_size = SHA1_OUTPUT_LENGTH_IN_BYTES;
+	}
+	else {
+		fprintf(stderr, "invalid DEHT hash '%s'", deht->header.sHashName);
+		res = 1;
+		goto cleanup;
 	}
 
 	while (1) {
@@ -52,17 +68,32 @@ int main(int argc, const char** argv)
 		if (fgets(line, sizeof(line)-1, stdin) == NULL) {
 			break; /* EOF */
 		}
-		if (strcmp(line, "quit") == 0) {
+		cmd = line;
+		/* remove leading whitespace */
+		while (*cmd == ' ' || *cmd == '\t') {
+			cmd++;
+		}
+		/* remove trailing whitespace */
+		for (rcmd = cmd + strlen(cmd) - 1; *rcmd == ' ' || *rcmd == '\t' ||*rcmd == '\n'; rcmd--) {
+			*rcmd = '\0';
+		}
+		if (*cmd == '\0') {
+			continue; /* empty line */
+		}
+		if (strcasecmp(cmd, "quit") == 0) {
 			break; /* quit cleanly */
 		}
-		if (hexa2binary(line, digest, sizeof(digest)) < 0) {
+		if (hexa2binary(cmd, digest, digest_size) < 0) {
 			printf("Non hexa\n");
 			continue;
 		}
-		find_password_for_digest(deht, digest, rule.digest_size);
+		find_password_for_digest(deht, digest, digest_size);
 	}
 
-	close_DEHT_files(deht);
-	return 0;
+cleanup:
+	if (deht != NULL) {
+		close_DEHT_files(deht);
+	}
+	return res;
 }
 

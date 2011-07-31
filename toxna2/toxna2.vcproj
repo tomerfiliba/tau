@@ -231,11 +231,11 @@
 			UniqueIdentifier="{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}"
 			>
 			<File
-				RelativePath=".\Makefile"
+				RelativePath=".\complex_md5.ini"
 				>
 			</File>
 			<File
-				RelativePath=".\MD5_SimpleRun.data"
+				RelativePath=".\Makefile"
 				>
 			</File>
 			<File
@@ -244,10 +244,6 @@
 			</File>
 			<File
 				RelativePath=".\MyLexicon.txt"
-				>
-			</File>
-			<File
-				RelativePath=".\SHA_SimpleRun.data"
 				>
 			</File>
 			<File

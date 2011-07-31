@@ -19,6 +19,7 @@ typedef struct
 	int count;
 	int k;
 	int limit;
+	int max_size;
 } term_info_t;
 
 typedef struct
@@ -26,6 +27,7 @@ typedef struct
 	int num_of_terms;
 	term_info_t * terms;
 	int num_of_words;
+	int longest_word;
 	char ** words;
 	BasicHashFunctionPtr hashfunc;
 	int digest_size;
@@ -37,6 +39,8 @@ typedef struct
 int rule_load_from_file(rule_info_t * info, const char * inifilename);
 int rule_load(rule_info_t * info, const char * pattern,
         const char * lexfilename, const char * hashname, const char * flag);
+void rule_finalize(rule_info_t * info);
+
 unsigned long rule_num_of_passwords(rule_info_t * info);
 int rule_max_password_length(rule_info_t * info);
 int rule_generate_next_password(rule_info_t * info, char * output, int output_length);

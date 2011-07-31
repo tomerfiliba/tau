@@ -113,6 +113,11 @@ long longpow(int base, int exp);
 
 int randint(int bound);
 
+int my_hash_func(const unsigned char * keyBuf, int keySize, int tableSize);
+
+int my_valid_func(const unsigned char *keyBuf, int keySize, unsigned char * validationKeyBuf);
+
+
 
 #endif
 

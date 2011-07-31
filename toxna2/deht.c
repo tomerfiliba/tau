@@ -12,7 +12,7 @@
  */
 static DEHT * alloc_DEHT(const char *prefix, const char * data_filename,
 		const char * key_filename, hashKeyIntoTableFunctionPtr hashfun,
-        hashKeyforEfficientComparisonFunctionPtr validfun)
+        hashKeyforEfficientComparisonFunctionPtr validfun, const char * mode)
 {
 	DEHT * deht = NULL;
 
@@ -38,13 +38,13 @@ static DEHT * alloc_DEHT(const char *prefix, const char * data_filename,
 	deht->pairSize = 0;
 
 	/* open the files */
-	deht->keyFP = fopen(key_filename, "w+");
+	deht->keyFP = fopen(key_filename, mode);
 	if (deht->keyFP == NULL) {
 		perror("fopen of key file");
 		goto cleanup1;
 	}
 
-	deht->dataFP = fopen(data_filename, "w+");
+	deht->dataFP = fopen(data_filename, mode);
 	if (deht->dataFP == NULL) {
 		perror("fopen of data file");
 		goto cleanup2;
@@ -154,7 +154,7 @@ DEHT *create_empty_DEHT(const char *prefix,
 		return NULL;
 	}
 
-	deht = alloc_DEHT(prefix, data_filename, key_filename, hashfun, validfun);
+	deht = alloc_DEHT(prefix, data_filename, key_filename, hashfun, validfun, "w+");
 	if (deht == NULL) {
 		return NULL;
 	}
@@ -164,16 +164,6 @@ DEHT *create_empty_DEHT(const char *prefix,
 	deht->header.nPairsPerBlock = nPairsPerBlock;
 	deht->header.nBytesPerValidationKey = nBytesPerKey;
 	strncpy(deht->header.sHashName, HashName, sizeof(deht->header.sHashName));
-	/*if (strcmp(HashName, "MD5") == 0) {
-		deht->header.keySize = MD5_OUTPUT_LENGTH_IN_BYTES;
-	}
-	else if (strcmp(HashName, "SHA1") == 0) {
-		deht->header.keySize = SHA1_OUTPUT_LENGTH_IN_BYTES;
-	}
-	else {
-		fprintf(stderr, "invalid hash name: %s", HashName);
-		goto cleanup;
-	}*/
 
 	if (init_deht_caches(deht) != 0) {
 		goto cleanup;
@@ -247,25 +237,25 @@ DEHT *load_DEHT_from_files(const char *prefix,
 	/* make sure the two files do exist */
 	f = fopen(key_filename, "r");
 	if (f == NULL) {
-		perror("key file does not exist\n");
+		perror("key file does not exist");
 		return NULL;
 	}
 	fclose(f);
 	f = fopen(data_filename, "r");
 	if (f == NULL) {
-		perror("data file does not exist\n");
+		perror("data file does not exist");
 		return NULL;
 	}
 	fclose(f);
 
-	deht = alloc_DEHT(prefix, data_filename, key_filename, hashfun, validfun);
+	deht = alloc_DEHT(prefix, data_filename, key_filename, hashfun, validfun, "r+");
 	if (deht == NULL) {
 		return NULL;
 	}
 
 	/* read header from file */
 	if (fread(&deht->header, sizeof(deht->header), 1, deht->keyFP) != 1) {
-		fprintf(stderr, "failed to read header from key file\n");
+		perror("failed to read header from key file");
 		goto cleanup;
 	}
 
@@ -359,7 +349,7 @@ static int bucket_find_empty_slot(DEHT * deht, int bucket, DEHT_DISK_PTR * block
 	DEHT_DISK_PTR * pair_ptr = NULL_DISK_PTR;
 	
 	/* try to serve request from cache */
-	if (deht->anLastBlockSize[bucket] != -1) {
+	if (deht->anLastBlockSize[bucket] != -1 && deht->hashTableOfPointersImageInMemory != NULL) {
 		*block = deht->hashTableOfPointersImageInMemory[bucket];
 		*pair = *block + deht->anLastBlockSize[bucket] * deht->pairSize;
 		return DEHT_STATUS_SUCCESS;
@@ -432,7 +422,6 @@ static int bucket_find_empty_slot(DEHT * deht, int bucket, DEHT_DISK_PTR * block
 static int add_block_to_bucket(DEHT * deht, int bucket, DEHT_DISK_PTR block, 
 							DEHT_DISK_PTR * pair)
 {
-	void * empty_block = NULL;
 	DEHT_DISK_PTR next = NULL_DISK_PTR;
 	
 	memset(deht->tmpBlockPairs, 0, deht->blockSize);
@@ -459,7 +448,7 @@ static int add_block_to_bucket(DEHT * deht, int bucket, DEHT_DISK_PTR block,
 				return DEHT_STATUS_FAIL;
 			}
 		} else {
-			/* Update head table in memory */
+			/* update head table in memory */
 			deht->hashTableOfPointersImageInMemory[bucket] = next;
 		}
 	} else {
@@ -613,24 +602,23 @@ static int bucket_find_key(DEHT * deht, int bucket, unsigned char * validation,
 		 * to the next block in the linked list */
 		res = scan_pairs_for_validation(deht, validation, &next_block_disk_ptr);
 		
-		switch (res) {
-			case DEHT_STATUS_SUCCESS:
-				/* key found */
-				*block = current_block_disk_ptr;
-				*pair = current_block_disk_ptr + pair_count * deht->pairSize;
-				return DEHT_STATUS_SUCCESS;
-
-			case DEHT_STATUS_DEADEND:
-				/* we've reached the end of the linked list without finding the key */
-				break;
-
-			case DEHT_STATUS_NOT_NEEDED:
-				/* didn't find key yet, but we can keep on going */
-				continue;
-
-			default:
-				/* some kind of error */
-				return res;
+		if (res == DEHT_STATUS_SUCCESS) {
+			/* key found */
+			*block = current_block_disk_ptr;
+			*pair = current_block_disk_ptr + pair_count * deht->pairSize;
+			return DEHT_STATUS_SUCCESS;
+		}
+		else if (res == DEHT_STATUS_DEADEND) {
+			/* we've reached the end of the linked list without finding the key */
+			break;
+		}
+		else if (res == DEHT_STATUS_NOT_NEEDED) {
+			/* didn't find key yet, but we can keep on going */
+			continue;
+		}
+		else {
+			/* some kind of error */
+			return res;
 		}
 	}
 
@@ -753,7 +741,7 @@ int read_DEHT_pointers_table(DEHT *deht)
 	readcount = fread(deht->hashTableOfPointersImageInMemory, sizeof(DEHT_DISK_PTR), 
 		deht->header.numEntriesInHashTable, deht->keyFP);
 	if (readcount != deht->header.numEntriesInHashTable) {
-		perror("failed to read DEHT pointers table");
+		fprintf(stderr, "failed to read DEHT pointers table");
 		goto cleanup;
 	}
 

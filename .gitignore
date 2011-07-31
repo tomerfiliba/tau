@@ -8,3 +8,5 @@ Debug/
 .settings
 .cproject
 *.*~
+*.key
+*.data

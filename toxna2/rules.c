@@ -172,10 +172,12 @@ static int rule_load_lexicon(rule_info_t * info, const char* filename)
 	int allocated_indexes = 0;
 	char ** newbuf = NULL;
 	char * ch;
+	int length;
 	FILE * f = fopen(filename, "r");
 
 	info->num_of_words = 0;
 	info->words = NULL;
+	info->longest_word = 0;
 
 	if (f == NULL) {
 		/* fopen failed; */
@@ -204,12 +206,16 @@ static int rule_load_lexicon(rule_info_t * info, const char* filename)
 			info->words = (char**) newbuf;
 		}
 
-		info->words[info->num_of_words] = (char*) malloc(strlen(line) + 1);
+		length = strlen(line);
+		info->words[info->num_of_words] = (char*) malloc(length + 1);
 		if (info->words[info->num_of_words] == NULL) {
 			fprintf(stderr, "memory allocation (2) failed\n");
 			goto error_cleanup;
 		}
 		strcpy(info->words[info->num_of_words], line);
+		if (length > info->longest_word) {
+			info->longest_word = length;
+		}
 		info->num_of_words++;
 	}
 
@@ -260,21 +266,25 @@ static int rule_load_pattern(rule_info_t * info, const char* pattern)
 				info->terms[j].type = TERM_DIGIT;
 				info->terms[j].limit = digit_term_get_limit(
 				        info->terms[j].count);
+				info->terms[j].max_size = info->terms[j].count;
 				break;
 			case '.':
 				info->terms[j].type = TERM_LATIN;
 				info->terms[j].limit = latin_term_get_limit(
 				        info->terms[j].count);
+				info->terms[j].max_size = info->terms[j].count;
 				break;
 			case '$':
 				info->terms[j].type = TERM_ASCII;
 				info->terms[j].limit = ascii_term_get_limit(
 				        info->terms[j].count);
+				info->terms[j].max_size = info->terms[j].count;
 				break;
 			case '@':
 				info->terms[j].type = TERM_LEXICON;
 				info->terms[j].limit = lexicon_term_get_limit(
 				        info->num_of_words, info->terms[j].count);
+				info->terms[j].max_size = info->terms[j].count * info->longest_word;
 				break;
 			default:
 				/* invalid syntax */
@@ -351,7 +361,7 @@ int rule_max_password_length(rule_info_t * info)
 	int max_length = 0;
 
 	for (i = 0; i < info->num_of_terms; i++) {
-		max_length += info->terms[i].count;
+		max_length += info->terms[i].max_size;
 	}
 
 	return max_length;
@@ -546,4 +556,23 @@ error_cleaup:
 	fclose(f);
 	return RULE_STATUS_ERROR;
 }
+
+void rule_finalize(rule_info_t * info)
+{
+	int i;
+
+	if (info->words != NULL) {
+		for (i = 0; i < info->num_of_words; i++) {
+			free(info->words[i]);
+		}
+		free(info->words);
+		info->words = NULL;
+	}
+
+	if (info->terms != NULL) {
+		free(info->terms);
+		info->terms = NULL;
+	}
+}
+
 

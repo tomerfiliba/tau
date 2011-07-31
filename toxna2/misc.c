@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <ctype.h>
 #include <stdlib.h>
+#include <assert.h>
 #include <time.h>
 #include "misc.h"
 #include "md5.h"
@@ -54,6 +55,8 @@ int MD5BasicHash(const unsigned char *in, int len, unsigned char *outBuf)
 int SHA1BasicHash(const unsigned char * data, int size, unsigned char *digest)
 {
 	int res;
+	int i, j;
+	unsigned tmp;
 	SHA1Context ctx;
 	SHA1Reset(&ctx);
 	SHA1Input(&ctx, data, size);
@@ -61,7 +64,14 @@ int SHA1BasicHash(const unsigned char * data, int size, unsigned char *digest)
 	if (!res) {
 		return -1;
 	}
-	memcpy(digest, ctx.Message_Digest, SHA1_OUTPUT_LENGTH_IN_BYTES);
+	/* convert low-endian unsigned ints to bytes */
+	for (i = j = 0; i < 5; i++) {
+		tmp = ctx.Message_Digest[i];
+		digest[j++] = (tmp >> 24) & 0xFF;
+		digest[j++] = (tmp >> 16) & 0xFF;
+		digest[j++] = (tmp >> 8) & 0xFF;
+		digest[j++] = tmp & 0xFF;
+	}
 	return SHA1_OUTPUT_LENGTH_IN_BYTES;
 }
 
@@ -94,11 +104,11 @@ static int hexdigit_to_number(char ch)
 	else if (ch < 'A')
 		return -1;
 	else if (ch <= 'F')
-		return ch - 'A';
+		return ch - 'A' + 10;
 	else if (ch < 'a')
 		return -1;
 	else if (ch <= 'f')
-		return ch - 'a';
+		return ch - 'a' + 10;
 	else
 		return -1;
 }
@@ -109,8 +119,8 @@ int hexa2binary(const char *strIn, unsigned char *outBuf, int outMaxLen)
 	int i, digit;
 	int len = strlen(strIn);
 	unsigned char prev_digit;
-	unsigned char * out_ch = outBuf;
 	const int bin_len = (len / 2) + (len % 2);
+	int outindex = outMaxLen - bin_len;
 
 	if (bin_len > outMaxLen) {
 		/* out buffer too small */
@@ -119,21 +129,26 @@ int hexa2binary(const char *strIn, unsigned char *outBuf, int outMaxLen)
 	memset(outBuf, 0, outMaxLen);
 	if (len % 2 != 0) {
 		/* consume first uneven hexdigit */
-		*out_ch = hexdigit_to_number(strIn[0]);
-		out_ch++;
-		i = 1;
-		len -= 1;
+		digit = hexdigit_to_number(strIn[0]);
+		if (digit < 0) {
+			/* invalid hex digit */
+			return -1;
+		}
+		outBuf[outindex] = digit;
+		outindex++;
+		strIn++;
+		len--;
 	}
 	
-	for (; i < len; i++) {
+	for (i = 0; i < len; i++) {
 		digit = hexdigit_to_number(strIn[i]);
 		if (digit < 0) {
 			/* invalid hex digit */
 			return -1;
 		}
 		if (i % 2 == 1) {
-			*out_ch = (prev_digit << 4) | digit;
-			out_ch++;
+			outBuf[outindex] = (prev_digit << 4) | digit;
+			outindex++;
 		} else {
 			prev_digit = digit;
 		}
@@ -157,5 +172,45 @@ int randint(int bound)
 	LONG_INDEX_PROJ r = pseudo_random_function((unsigned char*) &t, sizeof(t),
 	        rand());
 	return r % bound;
+}
+
+/****************************************************************************/
+/* const unsigned char *keyBuf, i.e. Binary buffer input                    */
+/* int keySize , i.e. in this project this is crypt output size,            */
+/*          but in real life this size may vary (e.g. string input)         */
+/* int nTableSize, i.e. Output is 0 to (nTableSize-1) to fit table of       */
+/*          pointers                                                        */
+/*                                                                          */
+/****************************************************************************/
+int my_hash_func(const unsigned char * keyBuf, int keySize, int tableSize)
+{
+	unsigned char buf[MD5_OUTPUT_LENGTH_IN_BYTES];
+
+	MD5BasicHash(keyBuf, keySize, buf);
+	return (*((unsigned int*)buf)) % tableSize;
+
+	/* make sure the key is long enough */
+	/*assert(keySize >= 8 + sizeof(int));*/
+
+	/* use the 4 bytes following the first 8 bytes as the table index */
+	/*return (*((unsigned int*)(keyBuf+8))) % tableSize;*/
+}
+
+/****************************************************************************/
+/* const unsigned char *keyBuf, i.e. Binary buffer input                    */
+/* int keySize , i.e. in this project this is crypt output size,            */
+/*          but in real life this size may vary (e.g. string input)         */
+/* unsigned char *validationKeyBuf, i.e. Output buffer, assuming allocated  */
+/*            with nBytesPerValidationKey bytes                             */
+/*                                                                          */
+/****************************************************************************/
+int my_valid_func(const unsigned char *keyBuf, int keySize, unsigned char * validationKeyBuf)
+{
+	/* make sure the key is long enough */
+	assert(keySize >= 8);
+	/* use the 8 bytes lower bytes as the validation data for the key */
+	memcpy(validationKeyBuf, keyBuf, 8);
+	/* this is hardcoded because nBytesPerValidationKey == 8*/
+	return 8;
 }
 
