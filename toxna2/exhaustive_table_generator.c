@@ -75,9 +75,7 @@ int sha1_validfunc(const unsigned char *keyBuf, int keySizeof, unsigned char * v
 	return 0;
 }
 
-
-
-int main2(int argc, const char** argv)
+int main(int argc, const char** argv)
 {
 	int res = 0;
 	rule_info_t rule;

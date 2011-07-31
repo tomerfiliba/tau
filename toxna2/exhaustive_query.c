@@ -27,8 +27,7 @@ int main(int argc, const char** argv)
 	DEHT * deht = NULL;
 	rule_info_t rule;
 	char line[257];
-	unsigned char *digest = NULL;
-	int res = 0;
+	unsigned char digest[MAX_DIGEST_LENGTH_IN_BYTES];
 	char ini_file[200];
 
 	if (argc != 2) {
@@ -48,12 +47,6 @@ int main(int argc, const char** argv)
 		return 1;
 	}
 
-	digest = (unsigned char *)malloc(deht->header.keySize);
-	if (digest == NULL) {
-		res = 1;
-		goto cleanup;
-	}
-	
 	while (1) {
 		printf(">> ");
 		if (fgets(line, sizeof(line)-1, stdin) == NULL) {
@@ -66,12 +59,10 @@ int main(int argc, const char** argv)
 			printf("Non hexa\n");
 			continue;
 		}
-		find_password_for_digest(deht, digest, deht->header.keySize);
+		find_password_for_digest(deht, digest, rule.digest_size);
 	}
-	free(digest);
 
-cleanup:
 	close_DEHT_files(deht);
-	return res;
+	return 0;
 }
 

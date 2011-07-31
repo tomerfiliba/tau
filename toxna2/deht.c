@@ -3,9 +3,8 @@
 #include "deht.h"
 #include "misc.h"
 
-#define NULL_DISK_PTR  0
-#define DEHT_STATUS_FOUND  3
-#define DEHT_STATUS_NOT_FOUND  4
+#define NULL_DISK_PTR              0
+#define DEHT_STATUS_DEADEND        2
 
 /*
  * allocate (malloc) a new DEHT object and initialize all the fields to 
@@ -33,8 +32,10 @@ static DEHT * alloc_DEHT(const char *prefix, const char * data_filename,
 	deht->comparisonHashFunc = validfun;
 	deht->hashTableOfPointersImageInMemory = NULL;
 	deht->hashPointersForLastBlockImageInMemory = NULL;
-	deht->validationKey = NULL;
 	deht->anLastBlockSize = NULL;
+	deht->tmpValidationKey = NULL;
+	deht->tmpBlockPairs = NULL;
+	deht->pairSize = 0;
 
 	/* open the files */
 	deht->keyFP = fopen(key_filename, "w+");
@@ -67,6 +68,9 @@ static int init_deht_caches(DEHT * deht)
 {
 	int i;
 
+	deht->pairSize = deht->header.nBytesPerValidationKey + sizeof(DEHT_DISK_PTR);
+	deht->blockSize = deht->header.nPairsPerBlock * deht->pairSize + sizeof(DEHT_DISK_PTR);
+
 	deht->hashPointersForLastBlockImageInMemory = (DEHT_DISK_PTR*)calloc(
 		sizeof(DEHT_DISK_PTR), deht->header.numEntriesInHashTable);
 	if (deht->hashPointersForLastBlockImageInMemory == NULL) {
@@ -82,15 +86,23 @@ static int init_deht_caches(DEHT * deht)
 		deht->anLastBlockSize[i] = -1;
 	}
 
-	deht->validationKey = (unsigned char*)malloc(deht->header.nBytesPerValidationKey);
-	if (deht->validationKey == NULL) {
-		fprintf(stderr, "failed allocating validationKey");
+	deht->tmpValidationKey = (unsigned char*)malloc(deht->header.nBytesPerValidationKey);
+	if (deht->tmpValidationKey == NULL) {
+		fprintf(stderr, "failed allocating tmpValidationKey");
 		goto cleanup3;
+	}
+
+	deht->tmpBlockPairs = (unsigned char*)malloc(deht->blockSize);
+	if (deht->tmpBlockPairs == NULL) {
+		fprintf(stderr, "failed allocating tmpBlockPairs");
+		goto cleanup4;
 	}
 
 	/* success */
 	return 0;
 
+cleanup4:
+	free(deht->tmpValidationKey);
 cleanup3:
 	free(deht->anLastBlockSize);
 cleanup2:
@@ -152,7 +164,7 @@ DEHT *create_empty_DEHT(const char *prefix,
 	deht->header.nPairsPerBlock = nPairsPerBlock;
 	deht->header.nBytesPerValidationKey = nBytesPerKey;
 	strncpy(deht->header.sHashName, HashName, sizeof(deht->header.sHashName));
-	if (strcmp(HashName, "MD5") == 0) {
+	/*if (strcmp(HashName, "MD5") == 0) {
 		deht->header.keySize = MD5_OUTPUT_LENGTH_IN_BYTES;
 	}
 	else if (strcmp(HashName, "SHA1") == 0) {
@@ -161,7 +173,7 @@ DEHT *create_empty_DEHT(const char *prefix,
 	else {
 		fprintf(stderr, "invalid hash name: %s", HashName);
 		goto cleanup;
-	}
+	}*/
 
 	if (init_deht_caches(deht) != 0) {
 		goto cleanup;
@@ -207,8 +219,11 @@ cleanup:
 		if (deht->dataFP != NULL) {
 			fclose(deht->dataFP);
 		}
-		if (deht->validationKey != NULL) {
-			free(deht->validationKey);
+		if (deht->tmpValidationKey != NULL) {
+			free(deht->tmpValidationKey);
+		}
+		if (deht->tmpBlockPairs != NULL) {
+			free(deht->tmpBlockPairs);
 		}
 		free(deht);
 	}
@@ -293,37 +308,215 @@ void close_DEHT_files(DEHT * deht)
 	fclose(deht->keyFP);
 	fclose(deht->dataFP);
 
-	/* since we malloc()'ed ht, it's time for us to free() it */
+	/* since we malloc()'ed the deht, it's time for us to free() it */
 	free(deht);
 }
 
 /*****************************************************************************/
 
+static int fread_from(FILE * file, long offset, void * data, size_t size)
+{
+	if (fseek(file, offset, SEEK_SET) != 0) {
+		perror("fseek");
+		return -1;
+	}
+	if (fread(data, size, 1, file) != 1) {
+		perror("fread");
+		return -1;
+	}
+	return 0;
+}
+
+static int fwrite_at(FILE * file, long offset, const void * data, size_t size)
+{
+	if (fseek(file, offset, SEEK_SET) != 0) {
+		perror("fseek");
+		return -1;
+	}
+	if (fwrite(data, size, 1, file) != 1) {
+		perror("fwrite");
+		return -1;
+	}
+	return 0;
+}
+
 /*
- *
+ * Parameters:
+ *    * deht - the deht object
+ *    * bucket - the bucket index in the deht
+ * Output Parameters:
+ *    * the block PTR
+ *    * the pair PTR
+ * Returns:
+ *    DEHT_STATUS_SUCCESS
  */
 static int bucket_find_empty_slot(DEHT * deht, int bucket, DEHT_DISK_PTR * block, 
 								  DEHT_DISK_PTR * pair)
 {
-	return -1;
+	int pair_count = 0;
+	DEHT_DISK_PTR current_block_disk_ptr = NULL_DISK_PTR;
+	DEHT_DISK_PTR next_block_disk_ptr = NULL_DISK_PTR;
+	DEHT_DISK_PTR * pair_ptr = NULL_DISK_PTR;
+	
+	/* try to serve request from cache */
+	if (deht->anLastBlockSize[bucket] != -1) {
+		*block = deht->hashTableOfPointersImageInMemory[bucket];
+		*pair = *block + deht->anLastBlockSize[bucket] * deht->pairSize;
+		return DEHT_STATUS_SUCCESS;
+	}
+
+	/* find the first block */
+	if (deht->hashTableOfPointersImageInMemory != NULL) {
+		/* use cached head table if possible */
+		current_block_disk_ptr = deht->hashTableOfPointersImageInMemory[bucket];
+	} else {
+		if (fread_from(deht->keyFP, sizeof(deht->header) + bucket * sizeof(DEHT_DISK_PTR),
+				&current_block_disk_ptr, sizeof(DEHT_DISK_PTR)) != 0) {
+			return DEHT_STATUS_FAIL;
+		}
+	}
+
+	if (current_block_disk_ptr == NULL_DISK_PTR) {
+		/* bucket is empty */
+		*block = NULL_DISK_PTR;
+		*pair = NULL_DISK_PTR;
+		deht->anLastBlockSize[bucket] = 0;
+		return DEHT_STATUS_SUCCESS;
+	}
+
+	/* find the last block */
+	next_block_disk_ptr = current_block_disk_ptr;
+	while (next_block_disk_ptr != NULL_DISK_PTR) {
+		current_block_disk_ptr = next_block_disk_ptr;
+
+		if (fread_from(deht->keyFP, current_block_disk_ptr + deht->blockSize - sizeof(DEHT_DISK_PTR),
+				&next_block_disk_ptr, sizeof(DEHT_DISK_PTR)) != 0) {
+			return DEHT_STATUS_FAIL;
+		}
+	}
+	*block = current_block_disk_ptr;
+
+	/* read last block's pairs */
+	if (fread_from(deht->keyFP, current_block_disk_ptr, deht->tmpBlockPairs, 
+			deht->pairSize * deht->header.nPairsPerBlock) != 0) {
+		return DEHT_STATUS_FAIL;
+	}
+
+	/* find last pair */
+	for (pair_count = 0; pair_count < deht->header.nPairsPerBlock; pair_count++) {
+		/* if data pointer is not initialized, got to end of block, stop scanning*/
+		pair_ptr = (DEHT_DISK_PTR*)(deht->tmpBlockPairs + (pair_count * deht->pairSize + deht->header.nBytesPerValidationKey));
+		if (*pair_ptr == NULL_DISK_PTR) {
+			break;
+		}
+	}
+
+	if (pair_count == deht->header.nPairsPerBlock) {
+		/* block is full */
+		*pair = NULL_DISK_PTR;
+	} 
+	else {
+		*pair = current_block_disk_ptr + pair_count * deht->pairSize;
+	}
+
+	/* update cache */
+	deht->hashPointersForLastBlockImageInMemory[bucket] = current_block_disk_ptr;
+	deht->anLastBlockSize[bucket] = pair_count;
+	
+	return DEHT_STATUS_SUCCESS;
+}
+
+/*
+ *
+ */
+static int add_block_to_bucket(DEHT * deht, int bucket, DEHT_DISK_PTR block, 
+							DEHT_DISK_PTR * pair)
+{
+	void * empty_block = NULL;
+	DEHT_DISK_PTR next = NULL_DISK_PTR;
+	
+	memset(deht->tmpBlockPairs, 0, deht->blockSize);
+
+	/* grow file */
+	if (fseek(deht->keyFP, 0, SEEK_END) != 0) {
+		return DEHT_STATUS_FAIL;
+	}
+	next = ftell(deht->keyFP);
+	if (next < 0) {
+		return DEHT_STATUS_FAIL;
+	}
+	*pair = next;
+	if (fwrite(deht->tmpBlockPairs, deht->blockSize, 1, deht->keyFP) != 1) {
+		return DEHT_STATUS_FAIL;
+	}
+
+	if (block == NULL_DISK_PTR) {
+		/*first block in the bucket, need to update head table of pointers*/
+		if (deht->hashTableOfPointersImageInMemory == NULL) {
+			/* Update head table in disk */
+			if (fwrite_at(deht->keyFP, sizeof(deht->header) + sizeof(DEHT_DISK_PTR) * bucket, 
+					&next, sizeof(DEHT_DISK_PTR)) != 0) {
+				return DEHT_STATUS_FAIL;
+			}
+		} else {
+			/* Update head table in memory */
+			deht->hashTableOfPointersImageInMemory[bucket] = next;
+		}
+	} else {
+		/* bucket already exists, update pointer "next" in last block */
+		if (fwrite_at(deht->keyFP, block + deht->header.nPairsPerBlock * 
+				(deht->header.nBytesPerValidationKey + sizeof(DEHT_DISK_PTR)), 
+				&next, sizeof(DEHT_DISK_PTR)) != 0) {
+			return DEHT_STATUS_FAIL;
+		}
+	}
+	
+	/* update cache */
+	deht->hashPointersForLastBlockImageInMemory[bucket] = next;
+	deht->anLastBlockSize[bucket] = 0;
+
+	return DEHT_STATUS_SUCCESS;
 }
 
 /*
  *
  */
 static int bucket_insert_pair(DEHT * deht, int bucket, DEHT_DISK_PTR pair, 
-							  unsigned char * validation, const unsigned char * data, int dataLength)
+							  unsigned char * validation, const unsigned char * data, 
+							  int dataLength)
 {
-	return DEHT_STATUS_FAIL;
-}
+	long eofpos = 0;
+	DEHT_DISK_PTR encoded_pos_and_length = NULL_DISK_PTR;
+	
+	/* write validation at offset `pair` */
+	if (fwrite_at(deht->keyFP, pair, validation, deht->header.nBytesPerValidationKey) != 0) {
+		return DEHT_STATUS_FAIL;
+	}
 
-/*
- *
- */
-static int bucket_add_block(DEHT * deht, int bucket, DEHT_DISK_PTR block, 
-							DEHT_DISK_PTR * pair)
-{
-	return DEHT_STATUS_FAIL;
+	/* seek dataFP to end of file */
+	if (fseek(deht->dataFP, 0, SEEK_END) != 0) {
+		return DEHT_STATUS_FAIL;
+	}
+	/* encode position and length into a DEHT_DISK_PTR bytes */
+	eofpos = ftell(deht->dataFP);
+	encoded_pos_and_length = (eofpos << 8) | (dataLength & 0xFF);
+
+	/* write data pointer to offset `pair` */
+	if (fwrite(&encoded_pos_and_length, sizeof(encoded_pos_and_length), 1, deht->keyFP) != 1) {
+		return DEHT_STATUS_FAIL;
+	}
+	
+	/* write data to dataFP (at end of file) */
+	if (fwrite(data, dataLength, 1, deht->dataFP) != 1) {
+		return DEHT_STATUS_FAIL;
+	}
+
+	/* update cache */
+	if (deht->anLastBlockSize[bucket] != -1) {
+		deht->anLastBlockSize[bucket] += 1;
+	}
+
+	return DEHT_STATUS_SUCCESS;
 }
 
 /* 
@@ -337,25 +530,60 @@ int add_DEHT(DEHT *deht, const unsigned char *key, int keyLength,
 	DEHT_DISK_PTR block = NULL_DISK_PTR;
 
 	bucket = deht->hashFunc(key, keyLength, deht->header.numEntriesInHashTable);
-	deht->comparisonHashFunc(key, keyLength, deht->validationKey);
+	deht->comparisonHashFunc(key, keyLength, deht->tmpValidationKey);
 
-	/* Find the last block in the bucket */
+	/* find the last block in the bucket */
 	if (bucket_find_empty_slot(deht, bucket, &block, &pair) != DEHT_STATUS_SUCCESS) {
 		return DEHT_STATUS_FAIL;
 	}
 
-	/* Find the correct place to insert the pair */
+	/* find the correct place to insert the pair */
 	if (pair == NULL_DISK_PTR) {
-		if (bucket_add_block(deht, bucket, block, &pair) != DEHT_STATUS_SUCCESS) {
+		/* need to create a new block */
+		if (add_block_to_bucket(deht, bucket, block, &pair) != DEHT_STATUS_SUCCESS) {
 			return DEHT_STATUS_FAIL;
 		}
 	}
 
-	return bucket_insert_pair(deht, bucket, pair, deht->validationKey, 
+	return bucket_insert_pair(deht, bucket, pair, deht->tmpValidationKey, 
 		data, dataLength);
 }
 
 /*****************************************************************************/
+
+static int scan_pairs_for_validation(DEHT * deht, const unsigned char * validation, 
+									 DEHT_DISK_PTR * current_block_disk_ptr)
+{
+	int pair_count = 0;
+	DEHT_DISK_PTR * pair_ptr = NULL_DISK_PTR;
+
+	/* read block */
+	if (fread_from(deht->keyFP, *current_block_disk_ptr, deht->tmpBlockPairs, deht->blockSize) != 0) {
+		return DEHT_STATUS_FAIL;
+	}
+
+	/* scan all pairs */
+	for (pair_count = 0; pair_count < deht->header.nPairsPerBlock; pair_count++) {
+		pair_ptr = (DEHT_DISK_PTR*)(deht->tmpBlockPairs + (pair_count * deht->pairSize + 
+			deht->header.nBytesPerValidationKey));
+		if (*pair_ptr == NULL_DISK_PTR) {
+			/* end of block */
+			break;
+		}
+		if (memcmp(validation, deht->tmpBlockPairs + pair_count * deht->pairSize, 
+				deht->header.nBytesPerValidationKey) == 0) {
+			return DEHT_STATUS_SUCCESS;
+		}
+	}
+
+	if (pair_count < deht->header.nPairsPerBlock) {
+		/* we reached the end of blocks linked-list without finding the key */
+		return DEHT_STATUS_DEADEND;
+	}
+
+	*current_block_disk_ptr = *(DEHT_DISK_PTR*)(deht->tmpBlockPairs + deht->blockSize - sizeof(DEHT_DISK_PTR));
+	return DEHT_STATUS_NOT_NEEDED;
+}
 
 /*
  *
@@ -363,16 +591,82 @@ int add_DEHT(DEHT *deht, const unsigned char *key, int keyLength,
 static int bucket_find_key(DEHT * deht, int bucket, unsigned char * validation, 
 					   DEHT_DISK_PTR * pair, DEHT_DISK_PTR * block)
 {
-	return DEHT_STATUS_FAIL;
+	int pair_count = 0;
+	int res = 0;
+	DEHT_DISK_PTR current_block_disk_ptr = NULL_DISK_PTR;
+	DEHT_DISK_PTR next_block_disk_ptr = NULL_DISK_PTR;
+
+	/* find the first block */
+	if (deht->hashTableOfPointersImageInMemory != NULL) {
+		/* use cached head table if possible */
+		current_block_disk_ptr = deht->hashTableOfPointersImageInMemory[bucket];
+	} else {
+		if (fread_from(deht->keyFP, sizeof(deht->header) + bucket * sizeof(DEHT_DISK_PTR), 
+				&current_block_disk_ptr, sizeof(DEHT_DISK_PTR)) != 0) {
+			return DEHT_STATUS_FAIL;
+		}
+	}
+	
+	next_block_disk_ptr = current_block_disk_ptr;
+	while (next_block_disk_ptr != NULL_DISK_PTR) {
+		/* scan all the pairs of the current block and update next_block_disk_ptr
+		 * to the next block in the linked list */
+		res = scan_pairs_for_validation(deht, validation, &next_block_disk_ptr);
+		
+		switch (res) {
+			case DEHT_STATUS_SUCCESS:
+				/* key found */
+				*block = current_block_disk_ptr;
+				*pair = current_block_disk_ptr + pair_count * deht->pairSize;
+				return DEHT_STATUS_SUCCESS;
+
+			case DEHT_STATUS_DEADEND:
+				/* we've reached the end of the linked list without finding the key */
+				break;
+
+			case DEHT_STATUS_NOT_NEEDED:
+				/* didn't find key yet, but we can keep on going */
+				continue;
+
+			default:
+				/* some kind of error */
+				return res;
+		}
+	}
+
+	/* key not found (but let's update the cache anyway) */
+	deht->hashPointersForLastBlockImageInMemory[bucket] = current_block_disk_ptr;
+	deht->anLastBlockSize[bucket] = pair_count;
+	return DEHT_STATUS_NOT_NEEDED;
 }
 
 /*
  *
  */
-static int read_pair_data(DEHT * deht, DEHT_DISK_PTR pair, const unsigned char * data, 
+static int read_pair_data(DEHT * deht, DEHT_DISK_PTR pair, unsigned char * data, 
 						  int dataMaxAllowedLength)
 {
-	return DEHT_STATUS_FAIL;
+	DEHT_DISK_PTR data_ptr = NULL_DISK_PTR;
+	int data_len;
+	DEHT_DISK_PTR offset;
+
+	if (fread_from(deht->keyFP, pair + deht->header.nBytesPerValidationKey, &data_ptr, 
+			sizeof(DEHT_DISK_PTR)) != 0) {
+		return DEHT_STATUS_FAIL;
+	}
+
+	data_len = data_ptr & 0xFF;
+	offset = data_ptr >> 8;
+
+	if (data_len > dataMaxAllowedLength) {
+		fprintf(stderr, "query_DEHT: given buffer too short");
+		return DEHT_STATUS_FAIL;
+	}
+	if (fread_from(deht->dataFP, offset, data, data_len) != 0) {
+		return DEHT_STATUS_FAIL;
+	}
+	
+	return data_len;
 }
 
 /*
@@ -383,8 +677,8 @@ static int find_pair_by_key(DEHT * deht, const unsigned char *key, int keyLength
 {
 	int bucket;
 	bucket = deht->hashFunc(key, keyLength, deht->header.numEntriesInHashTable);
-	deht->comparisonHashFunc(key, keyLength, deht->validationKey);
-	return bucket_find_key(deht, bucket, deht->validationKey, pair, block);
+	deht->comparisonHashFunc(key, keyLength, deht->tmpValidationKey);
+	return bucket_find_key(deht, bucket, deht->tmpValidationKey, pair, block);
 }
 
 /* 
