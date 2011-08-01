@@ -189,7 +189,7 @@ int my_hash_func(const unsigned char * keyBuf, int keySize, int tableSize)
 	assert(keySize > sizeof(unsigned int));
 
 	/* xor the key, DWORD at a time, to generate a "unique value" */
-	for (i = 0; i < (int)(keySize - sizeof(unsigned int)); i ++) {
+	for (i = 0; i < (int)(keySize - sizeof(unsigned int)); i += sizeof(unsigned int)) {
 		xorsum ^= *((unsigned int*)(keyBuf+i));
 	}
 	return xorsum % tableSize;

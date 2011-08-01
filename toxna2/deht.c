@@ -499,7 +499,10 @@ static int bucket_insert_pair(DEHT * deht, int bucket, DEHT_DISK_PTR pair,
 	}
 	
 	/* write data to dataFP (at end of file) */
-	if (fwrite(data, dataLength, 1, deht->dataFP) != 1) {
+	if (dataLength == 0) {
+		/* the empty password -- nothing to write to dataFP */
+	}
+	else if (fwrite(data, dataLength, 1, deht->dataFP) != 1) {
 		return DEHT_STATUS_FAIL;
 	}
 
