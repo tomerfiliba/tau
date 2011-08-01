@@ -32,7 +32,7 @@ void find_password_for_digest(DEHT * deht, const unsigned char * digest, int dig
 	}
 }
 
-int main3(int argc, const char** argv)
+int main(int argc, const char** argv)
 {
 	DEHT * deht = NULL;
 	char line[MAX_LINE_SIZE + 1];

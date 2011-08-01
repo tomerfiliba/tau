@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <malloc.h>
+#include <stdlib.h>
 #include "rules.h"
 #include "deht.h"
 
@@ -27,7 +28,7 @@ static int populate_deht(DEHT * deht, rule_info_t * rule)
 		res = rule_generate_next_password(rule, password, max_password);
 		if (res == RULE_STATUS_EXHAUSTED) {
 			/* exhausted all passwords */
-			/*printf("Added %d passwords\n", added_passwords);*/
+			printf("Added %d passwords\n", added_passwords);
 			return 0;
 		} else if (res != RULE_STATUS_OK) {
 			/* error message is printed by rule_generate_password */
@@ -42,8 +43,6 @@ static int populate_deht(DEHT * deht, rule_info_t * rule)
 			fprintf(stderr, "%s of generated password failed\n", rule->hashname);
 			return -1;
 		}
-		binary2hexa(digest, rule->digest_size, buf, sizeof(buf));
-		printf("%s : %s\n", buf, password);
 
 		/*if (strcmp(password, "S3") == 0) {
 			res = 7;
@@ -62,8 +61,10 @@ static int populate_deht(DEHT * deht, rule_info_t * rule)
 			return -1;
 		}
 		added_passwords++;
-		if (added_passwords % 1000 == 0) {
+		if (added_passwords % 500 == 0) {
 			printf("%d\n", added_passwords);
+			binary2hexa(digest, rule->digest_size, buf, sizeof(buf));
+			printf("%s : %s\n", buf, password);
 		}
 	}
 }
@@ -81,8 +82,8 @@ int main(int argc, const char** argv)
 		return 1;
 	}
 
-	system("del complex_md5.data");
-	system("del complex_md5.key");
+	system("rm complex_md5.data");
+	system("rm complex_md5.key");
 
 	/* load rule */
 	strncpy(ini_file, argv[1], sizeof(ini_file) - 5);

@@ -550,7 +550,6 @@ static int bucket_find_key(DEHT * deht, int bucket, unsigned char * validation,
 					   DEHT_DISK_PTR * pair, DEHT_DISK_PTR * block)
 {
 	int pair_count = 0;
-	int res = 0;
 	DEHT_DISK_PTR current_block_disk_ptr = NULL_DISK_PTR;
 	DEHT_DISK_PTR next_block_disk_ptr = NULL_DISK_PTR;
 	DEHT_DISK_PTR * pair_ptr = NULL_DISK_PTR;
