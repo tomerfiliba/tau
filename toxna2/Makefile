@@ -30,5 +30,7 @@ exhaustive_table_generator: exhaustive_table_generator.o
 	gcc -pedantic-errors -Wall -Werror -g -lm -o exhaustive_table_generator exhaustive_table_generator.o deht.o misc.o md5.o sha1.o rules.o
 
 exhaustive_query: exhaustive_query.o 
-	gcc -pedantic-errors -Wall -Werror -g -lm -o exhaustive_query exhaustive_query.o deht.o misc.o md5.o sha1.o rules.o
+	gcc -pedantic-errors -Wall -Werror -g -lm -o exhaustive_query exhaustive_query.o deht.o misc.o md5.o sha1.o
 
+make all: exhaustive_query exhaustive_table_generator
+	

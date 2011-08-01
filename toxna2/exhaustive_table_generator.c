@@ -82,8 +82,8 @@ int main(int argc, const char** argv)
 		return 1;
 	}
 
-	system("rm complex_md5.data");
-	system("rm complex_md5.key");
+	/*system("rm complex_md5.data");
+	system("rm complex_md5.key");*/
 
 	/* load rule */
 	strncpy(ini_file, argv[1], sizeof(ini_file) - 5);
