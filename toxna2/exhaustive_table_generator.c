@@ -35,27 +35,24 @@ static int populate_deht(DEHT * deht, rule_info_t * rule)
 			return -1;
 		}
 		pwlength = strlen(password);
-		if (pwlength == 0) {
-			/* ignore the empty password */
+		/*if (pwlength == 0) {
+			/-* ignore the empty password *-/
 			continue;
-		}
+		}*/
 		if (rule->hashfunc((unsigned char*)password, pwlength, digest) < 0) {
 			fprintf(stderr, "%s of generated password failed\n", rule->hashname);
 			return -1;
 		}
 
-		/*if (strcmp(password, "S3") == 0) {
-			res = 7;
-		}*/
-
 		/* When receiving parameter “flag = ‘n’” in .ini file, you must create n random passwords 
 		 * (even if n is bigger than password space). In such a case you should use insert_uniquely_DEHT
 		 * to avoid inserting same password many times. When “flag = ‘all’” you should use add_DEHT. */
-		/*if (rule->limit < 0) {
+		if (rule->limit < 0) {
 			res = add_DEHT(deht, digest, rule->digest_size, (unsigned char*)password, pwlength);
 		}
-		else {*/
-		res = insert_uniquely_DEHT(deht, digest, rule->digest_size, (unsigned char*)password, pwlength);
+		else {
+			res = insert_uniquely_DEHT(deht, digest, rule->digest_size, (unsigned char*)password, pwlength);
+		}
 		if (res == DEHT_STATUS_FAIL) {
 			/* error message is printed by insert_uniquely_DEHT */
 			return -1;

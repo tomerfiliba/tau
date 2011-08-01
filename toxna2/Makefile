@@ -1,5 +1,3 @@
-all: exhaustive_table_generator exhaustive_query 
-
 clean:
 	-rm deht.o md5.o sha1.o misc.o \
 	exhaustive_table_generator.o exhaustive_table_generator exhaustive_query \
@@ -32,5 +30,5 @@ exhaustive_table_generator: exhaustive_table_generator.o
 exhaustive_query: exhaustive_query.o 
 	gcc -pedantic-errors -Wall -Werror -g -lm -o exhaustive_query exhaustive_query.o deht.o misc.o md5.o sha1.o
 
-make all: exhaustive_query exhaustive_table_generator
-	
+all: clean exhaustive_query exhaustive_table_generator
+	-rm *.key *.data

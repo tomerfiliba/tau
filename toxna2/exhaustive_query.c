@@ -84,7 +84,12 @@ int main(int argc, const char** argv)
 			break; /* quit cleanly */
 		}
 		if (hexa2binary(cmd, digest, digest_size) < 0) {
-			printf("Non hexa\n");
+			if (strlen(cmd) > digest_size) {
+				printf("Too long\n");
+			}
+			else {
+				printf("Non hexa\n");
+			}
 			continue;
 		}
 		find_password_for_digest(deht, digest, digest_size);
