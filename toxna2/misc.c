@@ -184,14 +184,15 @@ int randint(int bound)
 /****************************************************************************/
 int my_hash_func(const unsigned char * keyBuf, int keySize, int tableSize)
 {
-	/*unsigned char buf[MD5_OUTPUT_LENGTH_IN_BYTES];
-	MD5BasicHash(keyBuf, keySize, buf);
-	return (*((unsigned int*)buf)) % tableSize;*/
+	int i;
+	unsigned int xorsum = 0x8BADF00D;
+	assert(keySize > sizeof(unsigned int));
 
-	/* make sure the key is long enough and use the 4 bytes following the 
-	   first 8 bytes as the table index */
-	assert(keySize >= 8 + sizeof(int));
-	return (*((unsigned int*)(keyBuf+8))) % tableSize;
+	/* xor the key, DWORD at a time, to generate a "unique value" */
+	for (i = 0; i < (int)(keySize - sizeof(unsigned int)); i ++) {
+		xorsum ^= *((unsigned int*)(keyBuf+i));
+	}
+	return xorsum % tableSize;
 }
 
 /****************************************************************************/
