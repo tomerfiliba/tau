@@ -72,7 +72,7 @@ static int populate_deht(DEHT * deht, rule_info_t * rule)
 
 int main(int argc, const char** argv)
 {
-	int res = 0;
+	int res = 1;
 	rule_info_t rule;
 	DEHT * deht = NULL;
 	char ini_file[200];
@@ -104,11 +104,20 @@ int main(int argc, const char** argv)
 		goto cleanup;
 	}
 
+	/* enable caching to speed up insertion */
+	if (read_DEHT_pointers_table(deht) == DEHT_STATUS_FAIL) {
+		/* error message printed by read_DEHT_pointers_table */
+		goto cleanup;
+	}
+
 	/* populate the table */
 	if (populate_deht(deht, &rule) != 0) {
 		/* error message printed by create_empty_DEHT */
-		res = 1;
+		goto cleanup;
 	}
+
+	/* success */
+	res = 0;
 
 cleanup:
 	if (deht != NULL) {
