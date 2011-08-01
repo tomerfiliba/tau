@@ -304,20 +304,23 @@ void close_DEHT_files(DEHT * deht)
 
 /*****************************************************************************/
 
-static int fread_from(FILE * file, long offset, void * data, size_t size)
+static int fread_from(FILE * file, DEHT_DISK_PTR offset, void * data, size_t size)
 {
 	if (fseek(file, offset, SEEK_SET) != 0) {
 		perror("fseek");
 		return -1;
 	}
+	/*errno = 0;*/
+	/*printf("eof = %d\n", feof(file));*/
 	if (fread(data, size, 1, file) != 1) {
+		/*printf("eof = %d\n", feof(file));*/
 		perror("fread");
 		return -1;
 	}
 	return 0;
 }
 
-static int fwrite_at(FILE * file, long offset, const void * data, size_t size)
+static int fwrite_at(FILE * file, DEHT_DISK_PTR offset, const void * data, size_t size)
 {
 	if (fseek(file, offset, SEEK_SET) != 0) {
 		perror("fseek");
@@ -540,40 +543,6 @@ int add_DEHT(DEHT *deht, const unsigned char *key, int keyLength,
 
 /*****************************************************************************/
 
-static int scan_pairs_for_validation(DEHT * deht, const unsigned char * validation, 
-									 DEHT_DISK_PTR * current_block_disk_ptr)
-{
-	int pair_count = 0;
-	DEHT_DISK_PTR * pair_ptr = NULL_DISK_PTR;
-
-	/* read block */
-	if (fread_from(deht->keyFP, *current_block_disk_ptr, deht->tmpBlockPairs, deht->blockSize) != 0) {
-		return DEHT_STATUS_FAIL;
-	}
-
-	/* scan all pairs */
-	for (pair_count = 0; pair_count < deht->header.nPairsPerBlock; pair_count++) {
-		pair_ptr = (DEHT_DISK_PTR*)(deht->tmpBlockPairs + (pair_count * deht->pairSize + 
-			deht->header.nBytesPerValidationKey));
-		if (*pair_ptr == NULL_DISK_PTR) {
-			/* end of block */
-			break;
-		}
-		if (memcmp(validation, deht->tmpBlockPairs + pair_count * deht->pairSize, 
-				deht->header.nBytesPerValidationKey) == 0) {
-			return DEHT_STATUS_SUCCESS;
-		}
-	}
-
-	if (pair_count < deht->header.nPairsPerBlock) {
-		/* we reached the end of blocks linked-list without finding the key */
-		return DEHT_STATUS_DEADEND;
-	}
-
-	*current_block_disk_ptr = *(DEHT_DISK_PTR*)(deht->tmpBlockPairs + deht->blockSize - sizeof(DEHT_DISK_PTR));
-	return DEHT_STATUS_NOT_NEEDED;
-}
-
 /*
  *
  */
@@ -584,6 +553,7 @@ static int bucket_find_key(DEHT * deht, int bucket, unsigned char * validation,
 	int res = 0;
 	DEHT_DISK_PTR current_block_disk_ptr = NULL_DISK_PTR;
 	DEHT_DISK_PTR next_block_disk_ptr = NULL_DISK_PTR;
+	DEHT_DISK_PTR * pair_ptr = NULL_DISK_PTR;
 
 	/* find the first block */
 	if (deht->hashTableOfPointersImageInMemory != NULL) {
@@ -598,28 +568,35 @@ static int bucket_find_key(DEHT * deht, int bucket, unsigned char * validation,
 	
 	next_block_disk_ptr = current_block_disk_ptr;
 	while (next_block_disk_ptr != NULL_DISK_PTR) {
-		/* scan all the pairs of the current block and update next_block_disk_ptr
-		 * to the next block in the linked list */
-		res = scan_pairs_for_validation(deht, validation, &next_block_disk_ptr);
-		
-		if (res == DEHT_STATUS_SUCCESS) {
-			/* key found */
-			*block = current_block_disk_ptr;
-			*pair = current_block_disk_ptr + pair_count * deht->pairSize;
-			return DEHT_STATUS_SUCCESS;
+		current_block_disk_ptr = next_block_disk_ptr;
+
+		/* read block */
+		if (fread_from(deht->keyFP, current_block_disk_ptr, deht->tmpBlockPairs, deht->blockSize) != 0) {
+			return DEHT_STATUS_FAIL;
 		}
-		else if (res == DEHT_STATUS_DEADEND) {
-			/* we've reached the end of the linked list without finding the key */
+
+		/* scan all pairs */
+		for (pair_count = 0; pair_count < deht->header.nPairsPerBlock; pair_count++) {
+			pair_ptr = (DEHT_DISK_PTR*)(deht->tmpBlockPairs + pair_count * deht->pairSize + 
+				deht->header.nBytesPerValidationKey);
+			if (*pair_ptr == NULL_DISK_PTR) {
+				/* end of block */
+				break;
+			}
+			if (memcmp(validation, deht->tmpBlockPairs + pair_count * deht->pairSize, 
+					deht->header.nBytesPerValidationKey) == 0) {
+				/* key found */
+				*block = current_block_disk_ptr;
+				*pair = current_block_disk_ptr + pair_count * deht->pairSize;
+				return DEHT_STATUS_SUCCESS;
+			}
+		}
+		if (pair_count < deht->header.nPairsPerBlock) {
+			/* reached an empty slot */
 			break;
 		}
-		else if (res == DEHT_STATUS_NOT_NEEDED) {
-			/* didn't find key yet, but we can keep on going */
-			continue;
-		}
-		else {
-			/* some kind of error */
-			return res;
-		}
+
+		next_block_disk_ptr = *(DEHT_DISK_PTR*)(deht->tmpBlockPairs + deht->blockSize - sizeof(DEHT_DISK_PTR));
 	}
 
 	/* key not found (but let's update the cache anyway) */

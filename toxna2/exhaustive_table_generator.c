@@ -45,9 +45,9 @@ static int populate_deht(DEHT * deht, rule_info_t * rule)
 		binary2hexa(digest, rule->digest_size, buf, sizeof(buf));
 		printf("%s : %s\n", buf, password);
 
-		if (strcmp(password, "S3") == 0) {
+		/*if (strcmp(password, "S3") == 0) {
 			res = 7;
-		}
+		}*/
 
 		/* When receiving parameter “flag = ‘n’” in .ini file, you must create n random passwords 
 		 * (even if n is bigger than password space). In such a case you should use insert_uniquely_DEHT
@@ -62,7 +62,7 @@ static int populate_deht(DEHT * deht, rule_info_t * rule)
 			return -1;
 		}
 		added_passwords++;
-		if (added_passwords % 100000 == 0) {
+		if (added_passwords % 1000 == 0) {
 			printf("%d\n", added_passwords);
 		}
 	}
@@ -80,6 +80,9 @@ int main(int argc, const char** argv)
 		fprintf(stderr, "Usage: %s <prefix>\n", argv[0]);
 		return 1;
 	}
+
+	system("del complex_md5.data");
+	system("del complex_md5.key");
 
 	/* load rule */
 	strncpy(ini_file, argv[1], sizeof(ini_file) - 5);
