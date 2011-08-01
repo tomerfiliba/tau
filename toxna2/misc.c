@@ -184,16 +184,14 @@ int randint(int bound)
 /****************************************************************************/
 int my_hash_func(const unsigned char * keyBuf, int keySize, int tableSize)
 {
-	unsigned char buf[MD5_OUTPUT_LENGTH_IN_BYTES];
-
+	/*unsigned char buf[MD5_OUTPUT_LENGTH_IN_BYTES];
 	MD5BasicHash(keyBuf, keySize, buf);
-	return (*((unsigned int*)buf)) % tableSize;
+	return (*((unsigned int*)buf)) % tableSize;*/
 
-	/* make sure the key is long enough */
-	/*assert(keySize >= 8 + sizeof(int));*/
-
-	/* use the 4 bytes following the first 8 bytes as the table index */
-	/*return (*((unsigned int*)(keyBuf+8))) % tableSize;*/
+	/* make sure the key is long enough and use the 4 bytes following the 
+	   first 8 bytes as the table index */
+	assert(keySize >= 8 + sizeof(int));
+	return (*((unsigned int*)(keyBuf+8))) % tableSize;
 }
 
 /****************************************************************************/
