@@ -8,7 +8,7 @@
 #define DEHT_STATUS_DEADEND        2
 
 /*
- * allocate (malloc) a new DEHT object and initialize all the fields to 
+ * allocate (malloc) a new DEHT object and initialize all the fields to
  * default values. also open the key and data files.
  */
 static DEHT * alloc_DEHT(const char *prefix, const char * data_filename,
@@ -127,8 +127,8 @@ static void init_deht_files(const char * prefix, char * key_filename, char * dat
 	strcat(data_filename, ".data");
 }
 
-/* 
- * API 
+/*
+ * API
  */
 DEHT *create_empty_DEHT(const char *prefix,
 		hashKeyIntoTableFunctionPtr hashfun,
@@ -180,11 +180,11 @@ DEHT *create_empty_DEHT(const char *prefix,
 	}
 	empty_head_table = (DEHT_DISK_PTR*)calloc(numEntriesInHashTable, sizeof(DEHT_DISK_PTR));
 	if (empty_head_table == NULL) {
-		fprintf(stderr, "could not allocate empty head table with %d entries", 
+		fprintf(stderr, "could not allocate empty head table with %d entries",
 			numEntriesInHashTable);
 		goto cleanup;
 	}
-	entries_written = fwrite(empty_head_table, sizeof(DEHT_DISK_PTR), 
+	entries_written = fwrite(empty_head_table, sizeof(DEHT_DISK_PTR),
 		numEntriesInHashTable, deht->keyFP);
 	if (entries_written != numEntriesInHashTable) {
 		/*perror("could not write empty head table to keys file");*/
@@ -228,8 +228,8 @@ cleanup:
 	return NULL;
 }
 
-/* 
- * API 
+/*
+ * API
  */
 DEHT *load_DEHT_from_files(const char *prefix,
         hashKeyIntoTableFunctionPtr hashfun,
@@ -281,8 +281,8 @@ cleanup:
 	return NULL;
 }
 
-/* 
- * API 
+/*
+ * API
  */
 void close_DEHT_files(DEHT * deht)
 {
@@ -318,7 +318,7 @@ void close_DEHT_files(DEHT * deht)
 /*
  * fseek+fread in a single function
  */
-static int fread_from(const char * prefix, FILE * file, DEHT_DISK_PTR offset, 
+static int fread_from(const char * prefix, FILE * file, DEHT_DISK_PTR offset,
 					  void * data, size_t size)
 {
 	if (fseek(file, offset, SEEK_SET) != 0) {
@@ -337,7 +337,7 @@ static int fread_from(const char * prefix, FILE * file, DEHT_DISK_PTR offset,
 /*
  * fseek+fwrite in a single function
  */
-static int fwrite_at(const char * prefix, FILE * file, DEHT_DISK_PTR offset, 
+static int fwrite_at(const char * prefix, FILE * file, DEHT_DISK_PTR offset,
 					 const void * data, size_t size)
 {
 	if (fseek(file, offset, SEEK_SET) != 0) {
@@ -355,7 +355,7 @@ static int fwrite_at(const char * prefix, FILE * file, DEHT_DISK_PTR offset,
 
 /*
  * finds the first empty slot in the block (the first place where we can insert).
- * if the bucket is all full, this function will succeed but set the output 
+ * if the bucket is all full, this function will succeed but set the output
  * parameters to NULL_DISK_PTR, in which case you need to call add_block_to_bucket.
  *
  * Parameters:
@@ -364,17 +364,17 @@ static int fwrite_at(const char * prefix, FILE * file, DEHT_DISK_PTR offset,
  * Output Parameters:
  *    * block - disk pointer to the block. will be set to NULL if bucket is full
  *    * pair - disk pointer to the pair. will be set to NULL if bucket is full
- * Returns: DEHT_STATUS_SUCCESS if successfully located a slot or all blocks in 
+ * Returns: DEHT_STATUS_SUCCESS if successfully located a slot or all blocks in
  * the bucket are full (in this case, block and pair will be set to NULL_DISK_PTR).
  */
-static int bucket_find_empty_slot(DEHT * deht, int bucket, DEHT_DISK_PTR * block, 
+static int bucket_find_empty_slot(DEHT * deht, int bucket, DEHT_DISK_PTR * block,
 								  DEHT_DISK_PTR * pair)
 {
 	int pair_count = 0;
 	DEHT_DISK_PTR current_block_disk_ptr = NULL_DISK_PTR;
 	DEHT_DISK_PTR next_block_disk_ptr = NULL_DISK_PTR;
 	DEHT_DISK_PTR * pair_ptr = NULL_DISK_PTR;
-	
+
 	/* try to serve request from cache */
 	if (deht->anLastBlockSize[bucket] != -1 && deht->hashTableOfPointersImageInMemory != NULL) {
 		*block = deht->hashTableOfPointersImageInMemory[bucket];
@@ -387,8 +387,8 @@ static int bucket_find_empty_slot(DEHT * deht, int bucket, DEHT_DISK_PTR * block
 		/* use cached head table if possible */
 		current_block_disk_ptr = deht->hashTableOfPointersImageInMemory[bucket];
 	} else {
-		if (fread_from(deht->sPrefixFileName, deht->keyFP, sizeof(deht->header) + 
-				bucket * sizeof(DEHT_DISK_PTR), &current_block_disk_ptr, 
+		if (fread_from(deht->sPrefixFileName, deht->keyFP, sizeof(deht->header) +
+				bucket * sizeof(DEHT_DISK_PTR), &current_block_disk_ptr,
 				sizeof(DEHT_DISK_PTR)) != 0) {
 			return DEHT_STATUS_FAIL;
 		}
@@ -407,8 +407,8 @@ static int bucket_find_empty_slot(DEHT * deht, int bucket, DEHT_DISK_PTR * block
 	while (next_block_disk_ptr != NULL_DISK_PTR) {
 		current_block_disk_ptr = next_block_disk_ptr;
 
-		if (fread_from(deht->sPrefixFileName, deht->keyFP, current_block_disk_ptr + 
-				deht->blockSize - sizeof(DEHT_DISK_PTR), &next_block_disk_ptr, 
+		if (fread_from(deht->sPrefixFileName, deht->keyFP, current_block_disk_ptr +
+				deht->blockSize - sizeof(DEHT_DISK_PTR), &next_block_disk_ptr,
 				sizeof(DEHT_DISK_PTR)) != 0) {
 			return DEHT_STATUS_FAIL;
 		}
@@ -416,7 +416,7 @@ static int bucket_find_empty_slot(DEHT * deht, int bucket, DEHT_DISK_PTR * block
 	*block = current_block_disk_ptr;
 
 	/* read last block's pairs */
-	if (fread_from(deht->sPrefixFileName, deht->keyFP, current_block_disk_ptr, deht->tmpBlockPairs, 
+	if (fread_from(deht->sPrefixFileName, deht->keyFP, current_block_disk_ptr, deht->tmpBlockPairs,
 			deht->pairSize * deht->header.nPairsPerBlock) != 0) {
 		return DEHT_STATUS_FAIL;
 	}
@@ -424,7 +424,7 @@ static int bucket_find_empty_slot(DEHT * deht, int bucket, DEHT_DISK_PTR * block
 	/* find last pair */
 	for (pair_count = 0; pair_count < deht->header.nPairsPerBlock; pair_count++) {
 		/* if data pointer is not initialized, got to end of block, stop scanning*/
-		pair_ptr = (DEHT_DISK_PTR*)(deht->tmpBlockPairs + (pair_count * deht->pairSize + 
+		pair_ptr = (DEHT_DISK_PTR*)(deht->tmpBlockPairs + (pair_count * deht->pairSize +
 			deht->header.nBytesPerValidationKey));
 		if (*pair_ptr == NULL_DISK_PTR) {
 			break;
@@ -434,7 +434,7 @@ static int bucket_find_empty_slot(DEHT * deht, int bucket, DEHT_DISK_PTR * block
 	if (pair_count == deht->header.nPairsPerBlock) {
 		/* block is full */
 		*pair = NULL_DISK_PTR;
-	} 
+	}
 	else {
 		*pair = current_block_disk_ptr + pair_count * deht->pairSize;
 	}
@@ -442,7 +442,7 @@ static int bucket_find_empty_slot(DEHT * deht, int bucket, DEHT_DISK_PTR * block
 	/* update cache */
 	deht->hashPointersForLastBlockImageInMemory[bucket] = current_block_disk_ptr;
 	deht->anLastBlockSize[bucket] = pair_count;
-	
+
 	return DEHT_STATUS_SUCCESS;
 }
 
@@ -454,16 +454,16 @@ static int bucket_find_empty_slot(DEHT * deht, int bucket, DEHT_DISK_PTR * block
  *    * bucket - the bucket's index
  *    * block - disk pointer to block
  * Output Parameters:
- *    * pair - disk pointer to pair (will point to the first pair in the 
+ *    * pair - disk pointer to pair (will point to the first pair in the
  *      newly-added block)
  * Returns: DEHT_STATUS_SUCCESS if successfully added a new block to bucket,
  * DEHT_STATUS_FAIL otherwise
  */
-static int add_block_to_bucket(DEHT * deht, int bucket, DEHT_DISK_PTR block, 
+static int add_block_to_bucket(DEHT * deht, int bucket, DEHT_DISK_PTR block,
 							DEHT_DISK_PTR * pair)
 {
 	DEHT_DISK_PTR next = NULL_DISK_PTR;
-	
+
 	memset(deht->tmpBlockPairs, 0, deht->blockSize);
 
 	/* grow key file */
@@ -483,7 +483,7 @@ static int add_block_to_bucket(DEHT * deht, int bucket, DEHT_DISK_PTR block,
 		/* first block in the bucket, need to update head table of pointers */
 		if (deht->hashTableOfPointersImageInMemory == NULL) {
 			/* update head table in disk */
-			if (fwrite_at(deht->sPrefixFileName, deht->keyFP, sizeof(deht->header) + 
+			if (fwrite_at(deht->sPrefixFileName, deht->keyFP, sizeof(deht->header) +
 					sizeof(DEHT_DISK_PTR) * bucket, &next, sizeof(DEHT_DISK_PTR)) != 0) {
 				return DEHT_STATUS_FAIL;
 			}
@@ -493,13 +493,13 @@ static int add_block_to_bucket(DEHT * deht, int bucket, DEHT_DISK_PTR block,
 		}
 	} else {
 		/* bucket already exists, update pointer "next" in last block */
-		if (fwrite_at(deht->sPrefixFileName, deht->keyFP, block + deht->header.nPairsPerBlock * 
-				(deht->header.nBytesPerValidationKey + sizeof(DEHT_DISK_PTR)), 
+		if (fwrite_at(deht->sPrefixFileName, deht->keyFP, block + deht->header.nPairsPerBlock *
+				(deht->header.nBytesPerValidationKey + sizeof(DEHT_DISK_PTR)),
 				&next, sizeof(DEHT_DISK_PTR)) != 0) {
 			return DEHT_STATUS_FAIL;
 		}
 	}
-	
+
 	/* update cache */
 	deht->hashPointersForLastBlockImageInMemory[bucket] = next;
 	deht->anLastBlockSize[bucket] = 0;
@@ -520,19 +520,19 @@ static int add_block_to_bucket(DEHT * deht, int bucket, DEHT_DISK_PTR block,
  * Returns: DEHT_STATUS_SUCCESS if successfully inserted key and data,
  * DEHT_STATUS_FAIL otherwise.
  */
-static int bucket_insert_pair(DEHT * deht, int bucket, DEHT_DISK_PTR pair, 
-							  unsigned char * validation, const unsigned char * data, 
+static int bucket_insert_pair(DEHT * deht, int bucket, DEHT_DISK_PTR pair,
+							  unsigned char * validation, const unsigned char * data,
 							  int dataLength)
 {
 	long eofpos = 0;
 	DEHT_DISK_PTR encoded_pos_and_length = NULL_DISK_PTR;
 
-	/* instructions say max password is 256 bytes, and we rely on this to 
+	/* instructions say max password is 256 bytes, and we rely on this to
 	 * converse disk space */
 	assert(dataLength < 256);
-	
+
 	/* write validation at offset `pair` */
-	if (fwrite_at(deht->sPrefixFileName, deht->keyFP, pair, validation, 
+	if (fwrite_at(deht->sPrefixFileName, deht->keyFP, pair, validation,
 			deht->header.nBytesPerValidationKey) != 0) {
 		return DEHT_STATUS_FAIL;
 	}
@@ -549,7 +549,7 @@ static int bucket_insert_pair(DEHT * deht, int bucket, DEHT_DISK_PTR pair,
 	if (fwrite(&encoded_pos_and_length, sizeof(encoded_pos_and_length), 1, deht->keyFP) != 1) {
 		return DEHT_STATUS_FAIL;
 	}
-	
+
 	/* write data to dataFP (at end of file) */
 	if (dataLength == 0) {
 		/* the empty password -- nothing to write to dataFP */
@@ -566,8 +566,8 @@ static int bucket_insert_pair(DEHT * deht, int bucket, DEHT_DISK_PTR pair,
 	return DEHT_STATUS_SUCCESS;
 }
 
-/* 
- * API 
+/*
+ * API
  */
 int add_DEHT(DEHT *deht, const unsigned char *key, int keyLength,
 			 const unsigned char *data, int dataLength)
@@ -592,14 +592,14 @@ int add_DEHT(DEHT *deht, const unsigned char *key, int keyLength,
 		}
 	}
 
-	return bucket_insert_pair(deht, bucket, pair, deht->tmpValidationKey, 
+	return bucket_insert_pair(deht, bucket, pair, deht->tmpValidationKey,
 		data, dataLength);
 }
 
 /*****************************************************************************/
 
 /*
- * locate a pair by the given key. it goes over all of the pairs in all of the 
+ * locate a pair by the given key. it goes over all of the pairs in all of the
  * blocks of the bucket, and attempts to match the validation data.
  *
  * Parameters:
@@ -612,7 +612,7 @@ int add_DEHT(DEHT *deht, const unsigned char *key, int keyLength,
  * Returns: DEHT_STATUS_SUCCESS if the key was found; DEHT_STATUS_NOT_NEEDED if the
  * key was not found; DEHT_STATUS_FAIL on error.
  */
-static int bucket_find_key(DEHT * deht, int bucket, const unsigned char * validation, 
+static int bucket_find_key(DEHT * deht, int bucket, const unsigned char * validation,
 					   DEHT_DISK_PTR * pair, DEHT_DISK_PTR * block)
 {
 	int pair_count = 0;
@@ -625,32 +625,32 @@ static int bucket_find_key(DEHT * deht, int bucket, const unsigned char * valida
 		/* use cached head table if possible */
 		current_block_disk_ptr = deht->hashTableOfPointersImageInMemory[bucket];
 	} else {
-		if (fread_from(deht->sPrefixFileName, deht->keyFP, sizeof(deht->header) + 
-				bucket * sizeof(DEHT_DISK_PTR),  &current_block_disk_ptr, 
+		if (fread_from(deht->sPrefixFileName, deht->keyFP, sizeof(deht->header) +
+				bucket * sizeof(DEHT_DISK_PTR),  &current_block_disk_ptr,
 				sizeof(DEHT_DISK_PTR)) != 0) {
 			return DEHT_STATUS_FAIL;
 		}
 	}
-	
+
 	next_block_disk_ptr = current_block_disk_ptr;
 	while (next_block_disk_ptr != NULL_DISK_PTR) {
 		current_block_disk_ptr = next_block_disk_ptr;
 
 		/* read block */
-		if (fread_from(deht->sPrefixFileName, deht->keyFP, current_block_disk_ptr, 
+		if (fread_from(deht->sPrefixFileName, deht->keyFP, current_block_disk_ptr,
 				deht->tmpBlockPairs, deht->blockSize) != 0) {
 			return DEHT_STATUS_FAIL;
 		}
 
 		/* scan all pairs */
 		for (pair_count = 0; pair_count < deht->header.nPairsPerBlock; pair_count++) {
-			pair_ptr = (DEHT_DISK_PTR*)(deht->tmpBlockPairs + pair_count * deht->pairSize + 
+			pair_ptr = (DEHT_DISK_PTR*)(deht->tmpBlockPairs + pair_count * deht->pairSize +
 				deht->header.nBytesPerValidationKey);
 			if (*pair_ptr == NULL_DISK_PTR) {
 				/* end of block */
 				break;
 			}
-			if (memcmp(validation, deht->tmpBlockPairs + pair_count * deht->pairSize, 
+			if (memcmp(validation, deht->tmpBlockPairs + pair_count * deht->pairSize,
 					deht->header.nBytesPerValidationKey) == 0) {
 				/* key found */
 				*block = current_block_disk_ptr;
@@ -663,7 +663,7 @@ static int bucket_find_key(DEHT * deht, int bucket, const unsigned char * valida
 			break;
 		}
 
-		next_block_disk_ptr = *(DEHT_DISK_PTR*)(deht->tmpBlockPairs + 
+		next_block_disk_ptr = *(DEHT_DISK_PTR*)(deht->tmpBlockPairs +
 			deht->blockSize - sizeof(DEHT_DISK_PTR));
 	}
 
@@ -686,7 +686,7 @@ static int bucket_find_key(DEHT * deht, int bucket, const unsigned char * valida
  * Returns: the number of bytes retrieved from the table, or DEHT_STATUS_FAIL
  * on failure
  */
-static int read_pair_data(DEHT * deht, DEHT_DISK_PTR pair, unsigned char * data, 
+static int read_pair_data(DEHT * deht, DEHT_DISK_PTR pair, unsigned char * data,
 						  int dataMaxAllowedLength)
 {
 	DEHT_DISK_PTR data_ptr = NULL_DISK_PTR;
@@ -694,7 +694,7 @@ static int read_pair_data(DEHT * deht, DEHT_DISK_PTR pair, unsigned char * data,
 	DEHT_DISK_PTR offset;
 
 	/* read from keyFP the pointer to the data in dataFP */
-	if (fread_from(deht->sPrefixFileName, deht->keyFP, pair + deht->header.nBytesPerValidationKey, 
+	if (fread_from(deht->sPrefixFileName, deht->keyFP, pair + deht->header.nBytesPerValidationKey,
 			&data_ptr, sizeof(DEHT_DISK_PTR)) != 0) {
 		return DEHT_STATUS_FAIL;
 	}
@@ -712,7 +712,7 @@ static int read_pair_data(DEHT * deht, DEHT_DISK_PTR pair, unsigned char * data,
 	if (fread_from(deht->sPrefixFileName, deht->dataFP, offset, data, data_len) != 0) {
 		return DEHT_STATUS_FAIL;
 	}
-	
+
 	return data_len;
 }
 
@@ -738,8 +738,8 @@ static int find_pair_by_key(DEHT * deht, const unsigned char *key, int keyLength
 	return bucket_find_key(deht, bucket, deht->tmpValidationKey, pair, block);
 }
 
-/* 
- * API 
+/*
+ * API
  */
 int query_DEHT(DEHT *deht, const unsigned char *key, int keyLength,
         unsigned char *data, int dataMaxAllowedLength)
@@ -759,8 +759,8 @@ int query_DEHT(DEHT *deht, const unsigned char *key, int keyLength,
 
 /*****************************************************************************/
 
-/* 
- * API 
+/*
+ * API
  */
 int insert_uniquely_DEHT(DEHT *deht, const unsigned char *key, int keyLength,
         const unsigned char *data, int dataLength)
@@ -785,8 +785,8 @@ int insert_uniquely_DEHT(DEHT *deht, const unsigned char *key, int keyLength,
 
 /*****************************************************************************/
 
-/* 
- * API 
+/*
+ * API
  */
 int read_DEHT_pointers_table(DEHT *deht)
 {
@@ -808,7 +808,7 @@ int read_DEHT_pointers_table(DEHT *deht)
 		goto cleanup;
 	}
 
-	readcount = fread(deht->hashTableOfPointersImageInMemory, sizeof(DEHT_DISK_PTR), 
+	readcount = fread(deht->hashTableOfPointersImageInMemory, sizeof(DEHT_DISK_PTR),
 		deht->header.numEntriesInHashTable, deht->keyFP);
 	if (readcount != deht->header.numEntriesInHashTable) {
 		fprintf(stderr, "failed to read DEHT pointers table");
@@ -823,8 +823,8 @@ cleanup:
 	return DEHT_STATUS_FAIL;
 }
 
-/* 
- * API 
+/*
+ * API
  */
 int write_DEHT_pointers_table(DEHT *deht)
 {
@@ -840,7 +840,7 @@ int write_DEHT_pointers_table(DEHT *deht)
 		return DEHT_STATUS_FAIL;
 	}
 
-	written = fwrite(deht->hashTableOfPointersImageInMemory, sizeof(DEHT_DISK_PTR), 
+	written = fwrite(deht->hashTableOfPointersImageInMemory, sizeof(DEHT_DISK_PTR),
 		deht->header.numEntriesInHashTable, deht->keyFP);
 	if (written != deht->header.numEntriesInHashTable) {
 		/*perror("failed to write everything");*/

@@ -17,7 +17,7 @@ void find_password_for_digest(DEHT * deht, const unsigned char * digest, int dig
 {
 	int res;
 	unsigned char password[MAX_INPUT_BUFFER];
-	
+
 	res = query_DEHT(deht, digest, digestLength, password, sizeof(password));
 	if (res == DEHT_STATUS_NOT_NEEDED) {
 		printf("Sorry but this hash doesn't appear in pre-processing\n");
@@ -91,8 +91,8 @@ int main(int argc, const char** argv)
 		return 1;
 	}
 
-	/* instructions: 
-	 *   Load the header into memory, but not the table of pointers (i.e. do not call 
+	/* instructions:
+	 *   Load the header into memory, but not the table of pointers (i.e. do not call
 	 *   read_DEHT_pointers_table).
 	 */
 

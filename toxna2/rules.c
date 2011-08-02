@@ -245,7 +245,7 @@ error_cleanup:
 }
 
 /*
- * loads the rule's pattern -- does some preprocessing and stores it 
+ * loads the rule's pattern -- does some preprocessing and stores it
  * efficiently as terms
  */
 static int rule_load_pattern(rule_info_t * info, const char* pattern)
@@ -316,7 +316,7 @@ error_cleanup:
 /*
  * API
  *
- * initializes the given rule object with the given parameters (which are loaded 
+ * initializes the given rule object with the given parameters (which are loaded
  * from the INI file).
  * returns RULE_STATUS_OK on success, RULE_STATUS_ERROR on failure.
  */
@@ -390,7 +390,7 @@ int rule_max_password_length(rule_info_t * info)
 	return max_length;
 }
 
-/* 
+/*
  * implements flag=ALL -- goes over the entire password space, updating
  * the k's in the terms each time.
  */
@@ -403,9 +403,9 @@ static int rule_generate_incrementing(rule_info_t * info, char * output)
 	password[0] = '\0';
 
 	/* instructions:
-	 * Notice, however, that even though each substring in the rule can be an empty sequence, 
-	 * the entire rule must not be empty, that is, an empty password which theoretically can be 
-	 * invoked by a rule is illegal! 
+	 * Notice, however, that even though each substring in the rule can be an empty sequence,
+	 * the entire rule must not be empty, that is, an empty password which theoretically can be
+	 * invoked by a rule is illegal!
 	 */
 	while (password[0] == '\0') {
 		/* this loop will break only if the generated password is not empty */
@@ -451,7 +451,7 @@ static int rule_generate_incrementing(rule_info_t * info, char * output)
 	return RULE_STATUS_OK;
 }
 
-/* 
+/*
  * implements flag='n' -- chooses pseudo-random numbers as the term indexes,
  * and of course it may not cover the entire password space
  */
@@ -469,9 +469,9 @@ static int rule_generate_random(rule_info_t * info, char * output)
 	}
 
 	/* instructions:
-	 * Notice, however, that even though each substring in the rule can be an empty sequence, 
-	 * the entire rule must not be empty, that is, an empty password which theoretically can be 
-	 * invoked by a rule is illegal! 
+	 * Notice, however, that even though each substring in the rule can be an empty sequence,
+	 * the entire rule must not be empty, that is, an empty password which theoretically can be
+	 * invoked by a rule is illegal!
 	 */
 	while (password[0] == '\0') {
 		/* this loop will break only if the generated password is not empty */
@@ -553,7 +553,7 @@ static int is_comment_line(const char * text)
  * API
  *
  * initializes the given rule from an INI file. it loads the parameters from the
- * INI file and initializes the rule using rule_init(). 
+ * INI file and initializes the rule using rule_init().
  * returns RULE_STATUS_OK on success, RULE_STATUS_ERROR on failure.
  */
 int rule_load_from_file(rule_info_t * info, const char * inifilename)

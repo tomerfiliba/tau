@@ -109,8 +109,8 @@ int main(int argc, const char** argv)
 
 	/* instructions:
 	 *    Unlike querying, during the creation of the table (exhaustive_table_generator), you should
-	 *    hold the relevant table-of-pointers (both head and tails) in memory as it is frequently 
-	 *    accessed during creation. 
+	 *    hold the relevant table-of-pointers (both head and tails) in memory as it is frequently
+	 *    accessed during creation.
 	 */
 
 	/* enable caching to speed up insertion */
