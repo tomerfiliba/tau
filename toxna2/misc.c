@@ -13,8 +13,7 @@
 LONG_INDEX_PROJ pseudo_random_function(const unsigned char *x, int inputLength,
         LONG_INDEX_PROJ y)
 {
-	LONG_INDEX_PROJ
-	        md5res[MD5_OUTPUT_LENGTH_IN_BYTES / sizeof(LONG_INDEX_PROJ)];
+	LONG_INDEX_PROJ md5res[MD5_OUTPUT_LENGTH_IN_BYTES / sizeof(LONG_INDEX_PROJ)];
 	unsigned char buffer4hashing[MAX_SEED_USAGE + sizeof(LONG_INDEX_PROJ)];
 
 	if (inputLength > MAX_SEED_USAGE)
@@ -64,7 +63,7 @@ int SHA1BasicHash(const unsigned char * data, int size, unsigned char *digest)
 	if (!res) {
 		return -1;
 	}
-	/* convert low-endian unsigned ints to bytes */
+	/* convert low-endian unsigned ints to bytes in corrent order */
 	for (i = j = 0; i < 5; i++) {
 		tmp = ctx.Message_Digest[i];
 		digest[j++] = (tmp >> 24) & 0xFF;
@@ -157,6 +156,7 @@ int hexa2binary(const char *strIn, unsigned char *outBuf, int outMaxLen)
 	return bin_len;
 }
 
+/* power function (operates on integers, not floating point) */
 long longpow(int base, int exp)
 {
 	long val = 1;
@@ -166,6 +166,7 @@ long longpow(int base, int exp)
 	return val;
 }
 
+/* returns a random integer between [0, bound-1] */
 int randint(int bound)
 {
 	time_t t = time(NULL);
@@ -184,16 +185,9 @@ int randint(int bound)
 /****************************************************************************/
 int my_hash_func(const unsigned char * keyBuf, int keySize, int tableSize)
 {
-	int i;
-	unsigned int xorsum = 0x8BADF00D;
-	assert(keySize > sizeof(unsigned int));
-
-	/* xor the key, DWORD at a time, to generate a "unique value" */
-	for (i = 0; i < (int)(keySize - sizeof(unsigned int)); i += 1) {
-		xorsum ^= *((unsigned int*)(keyBuf+i));
-	}
-	/*printf("X = %d\n", xorsum % tableSize);*/
-	return xorsum % tableSize;
+	/* use the 4 bytes that follow the first 8 bytes as the hash */
+	assert(keySize >= 8 + sizeof(unsigned int));
+	return *((unsigned int*)(keyBuf + 8)) % tableSize;
 }
 
 /****************************************************************************/
@@ -208,7 +202,7 @@ int my_valid_func(const unsigned char *keyBuf, int keySize, unsigned char * vali
 {
 	/* make sure the key is long enough */
 	assert(keySize >= 8);
-	/* use the 8 bytes lower bytes as the validation data for the key */
+	/* instructions: use the 8 bytes lower bytes as the validation data for the key */
 	memcpy(validationKeyBuf, keyBuf, 8);
 	/* this is hardcoded because nBytesPerValidationKey == 8*/
 	return 8;

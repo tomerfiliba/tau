@@ -165,9 +165,12 @@ static int lexicon_term_get_rec(const char ** lexicon, int num_of_words,
 
 /* ========================================================================= */
 
+/*
+ * load the rule's lexicon into the rule info
+ */
 static int rule_load_lexicon(rule_info_t * info, const char* filename)
 {
-	char line[200];
+	char line[MAX_INPUT_BUFFER];
 	int i;
 	int allocated_indexes = 0;
 	char ** newbuf = NULL;
@@ -180,8 +183,8 @@ static int rule_load_lexicon(rule_info_t * info, const char* filename)
 	info->longest_word = 0;
 
 	if (f == NULL) {
-		/* fopen failed; */
-		perror("rule_load_lexicon: fopen of lexicon file failed");
+		/*perror("rule_load_lexicon: fopen of lexicon file failed");*/
+		perror(filename);
 		return RULE_STATUS_ERROR;
 	}
 
@@ -200,7 +203,7 @@ static int rule_load_lexicon(rule_info_t * info, const char* filename)
 			allocated_indexes += 1000;
 			newbuf = realloc(info->words, sizeof(char**) * allocated_indexes);
 			if (newbuf == NULL) {
-				fprintf(stderr, "memory allocation (1) failed\n");
+				fprintf(stderr, "could not grow words array\n");
 				goto error_cleanup;
 			}
 			info->words = (char**) newbuf;
@@ -209,7 +212,7 @@ static int rule_load_lexicon(rule_info_t * info, const char* filename)
 		length = strlen(line);
 		info->words[info->num_of_words] = (char*) malloc(length + 1);
 		if (info->words[info->num_of_words] == NULL) {
-			fprintf(stderr, "memory allocation (2) failed\n");
+			fprintf(stderr, "could not allocate space for word\n");
 			goto error_cleanup;
 		}
 		strcpy(info->words[info->num_of_words], line);
@@ -221,7 +224,8 @@ static int rule_load_lexicon(rule_info_t * info, const char* filename)
 
 	if (fclose(f) != 0) {
 		/* fclose failed */
-		perror("rule_load_lexicon: fclose failed");
+		/*perror("rule_load_lexicon: fclose failed");*/
+		perror(filename);
 		return RULE_STATUS_ERROR;
 	}
 
@@ -240,6 +244,10 @@ error_cleanup:
 	return RULE_STATUS_ERROR;
 }
 
+/*
+ * loads the rule's pattern -- does some preprocessing and stores it 
+ * efficiently as terms
+ */
 static int rule_load_pattern(rule_info_t * info, const char* pattern)
 {
 	const int pattern_len = strlen(pattern);
@@ -247,14 +255,14 @@ static int rule_load_pattern(rule_info_t * info, const char* pattern)
 
 	if (pattern_len % 2 != 0) {
 		/* invalid syntax */
-		fprintf(stderr, "invalid rule pattern\n");
+		fprintf(stderr, "Error: rule \"%s\" does not fit syntax.\n", pattern);
 		return RULE_STATUS_ERROR;
 	}
 	info->num_of_terms = pattern_len / 2;
 	info->terms = (term_info_t*) malloc(sizeof(term_info_t)
 	        * info->num_of_terms);
 	if (info->terms == NULL) {
-		fprintf(stderr, "rule_load_pattern: memory allocation (3) failed\n");
+		fprintf(stderr, "could not allocate space for terms array\n");
 		goto error_cleanup;
 	}
 
@@ -288,7 +296,7 @@ static int rule_load_pattern(rule_info_t * info, const char* pattern)
 				break;
 			default:
 				/* invalid syntax */
-				fprintf(stderr, "rule_load_pattern: invalid pattern '%c'\n", pattern[i]);
+				fprintf(stderr, "Error: rule \"%s\" does not fit syntax.\n", pattern);
 				goto error_cleanup;
 		}
 		/*printf("%d count=%d, limit=%d\n", info->terms[j].type, info->terms[j].count, info->terms[j].limit);*/
@@ -305,7 +313,14 @@ error_cleanup:
 	return RULE_STATUS_ERROR;
 }
 
-int rule_load(rule_info_t * info, const char * pattern,
+/*
+ * API
+ *
+ * initializes the given rule object with the given parameters (which are loaded 
+ * from the INI file).
+ * returns RULE_STATUS_OK on success, RULE_STATUS_ERROR on failure.
+ */
+int rule_init(rule_info_t * info, const char * pattern,
         const char * lexfilename, const char * hashname, const char * flag)
 {
 	if (strcasecmp(flag, "all") == 0) {
@@ -313,21 +328,19 @@ int rule_load(rule_info_t * info, const char * pattern,
 	} else {
 		if (sscanf(flag, "%d", &info->limit) != 1) {
 			/* invalid flag */
-			fprintf(stderr, "rule_load: invalid flag '%s'", flag);
+			fprintf(stderr, "Error: flag \"%s\" is not supported\n", flag);
 			return RULE_STATUS_ERROR;
 		}
 	}
 	if (strcasecmp(hashname, "md5") == 0) {
 		strcpy(info->hashname, "MD5");
 		info->hashfunc = MD5BasicHash;
-		info->digest_size = MD5_OUTPUT_LENGTH_IN_BYTES;
 	} else if (strcasecmp(hashname, "sha1") == 0) {
 		strcpy(info->hashname, "SHA1");
 		info->hashfunc = SHA1BasicHash;
-		info->digest_size = SHA1_OUTPUT_LENGTH_IN_BYTES;
 	} else {
 		/* invalid hash */
-		fprintf(stderr, "rule_load: invalid hash name '%s'", hashname);
+		fprintf(stderr, "Error: Hash \"%s\" is not supported\n", hashname);
 		return RULE_STATUS_ERROR;
 	}
 	info->remaining = info->limit;
@@ -340,6 +353,13 @@ int rule_load(rule_info_t * info, const char * pattern,
 	return RULE_STATUS_OK;
 }
 
+/*
+ * returns the number of password that this rule may generate. note that there might
+ * be some little overlap between passwords, which are counted separately. for example,
+ * the rule .1.1 might generate "a" + "\0" = "a" and "\0" + "a" = "a" -- but these
+ * two are counted twice. all in all, this happens for a very small percentage of the
+ * password space.
+ */
 unsigned long rule_num_of_passwords(rule_info_t * info)
 {
 	int i;
@@ -355,6 +375,9 @@ unsigned long rule_num_of_passwords(rule_info_t * info)
 	return limit;
 }
 
+/*
+ * returns the maximal length of a password generated by this rule
+ */
 int rule_max_password_length(rule_info_t * info)
 {
 	int i;
@@ -367,89 +390,131 @@ int rule_max_password_length(rule_info_t * info)
 	return max_length;
 }
 
+/* 
+ * implements flag=ALL -- goes over the entire password space, updating
+ * the k's in the terms each time.
+ */
 static int rule_generate_incrementing(rule_info_t * info, char * output)
 {
 	int i;
 	int succ;
+	char * password = output;
 
-	for (i = 0; i < info->num_of_terms; i++) {
-		if (info->terms[i].k > info->terms[i].limit) {
-			info->terms[i].k = 0;
-			if (i == info->num_of_terms - 1) {
-				/* exhausted all terms */
-				return RULE_STATUS_EXHAUSTED;
+	password[0] = '\0';
+
+	/* instructions:
+	 * Notice, however, that even though each substring in the rule can be an empty sequence, 
+	 * the entire rule must not be empty, that is, an empty password which theoretically can be 
+	 * invoked by a rule is illegal! 
+	 */
+	while (password[0] == '\0') {
+		/* this loop will break only if the generated password is not empty */
+
+		for (i = 0; i < info->num_of_terms; i++) {
+			if (info->terms[i].k > info->terms[i].limit) {
+				info->terms[i].k = 0;
+				if (i == info->num_of_terms - 1) {
+					/* exhausted all terms */
+					return RULE_STATUS_EXHAUSTED;
+				}
+				info->terms[i + 1].k += 1;
 			}
-			info->terms[i + 1].k += 1;
-		}
 
-		switch (info->terms[i].type) {
-			case TERM_DIGIT:
-				succ = digit_term_get(info->terms[i].count, info->terms[i].k,
-				        output);
-				break;
-			case TERM_LATIN:
-				succ = latin_term_get(info->terms[i].count, info->terms[i].k,
-				        output);
-				break;
-			case TERM_ASCII:
-				succ = ascii_term_get(info->terms[i].count, info->terms[i].k,
-				        output);
-				break;
-			case TERM_LEXICON:
-				succ = lexicon_term_get((const char**) info->words,
-				        info->num_of_words, info->terms[i].count,
-				        info->terms[i].k, output);
-				break;
+			switch (info->terms[i].type) {
+				case TERM_DIGIT:
+					succ = digit_term_get(info->terms[i].count, info->terms[i].k,
+							output);
+					break;
+				case TERM_LATIN:
+					succ = latin_term_get(info->terms[i].count, info->terms[i].k,
+							output);
+					break;
+				case TERM_ASCII:
+					succ = ascii_term_get(info->terms[i].count, info->terms[i].k,
+							output);
+					break;
+				case TERM_LEXICON:
+					succ = lexicon_term_get((const char**) info->words,
+							info->num_of_words, info->terms[i].count,
+							info->terms[i].k, output);
+					break;
+			}
+			if (succ != 0) {
+				fprintf(stderr, "get next term failed\n");
+				return RULE_STATUS_ERROR;
+			}
+			output += strlen(output);
 		}
-		if (succ != 0) {
-			fprintf(stderr, "get next term failed\n");
-			return RULE_STATUS_ERROR;
-		}
-		output += strlen(output);
+		info->terms[0].k += 1;
 	}
-	info->terms[0].k += 1;
+
 	return RULE_STATUS_OK;
 }
 
+/* 
+ * implements flag='n' -- chooses pseudo-random numbers as the term indexes,
+ * and of course it may not cover the entire password space
+ */
 static int rule_generate_random(rule_info_t * info, char * output)
 {
 	int i;
 	int succ;
 	int k;
+	char * password = output;
 
+	password[0] = '\0';
 	if (info->remaining <= 0) {
 		/* exhausted */
 		return RULE_STATUS_EXHAUSTED;
 	}
 
-	for (i = 0; i < info->num_of_terms; i++) {
-		k = (int) randint(info->terms[i].limit);
+	/* instructions:
+	 * Notice, however, that even though each substring in the rule can be an empty sequence, 
+	 * the entire rule must not be empty, that is, an empty password which theoretically can be 
+	 * invoked by a rule is illegal! 
+	 */
+	while (password[0] == '\0') {
+		/* this loop will break only if the generated password is not empty */
 
-		switch (info->terms[i].type) {
-			case TERM_DIGIT:
-				succ = digit_term_get(info->terms[i].count, k, output);
-				break;
-			case TERM_LATIN:
-				succ = latin_term_get(info->terms[i].count, k, output);
-				break;
-			case TERM_ASCII:
-				succ = ascii_term_get(info->terms[i].count, k, output);
-				break;
-			case TERM_LEXICON:
-				succ = lexicon_term_get((const char**) info->words,
-				        info->num_of_words, info->terms[i].count, k, output);
-				break;
+		for (i = 0; i < info->num_of_terms; i++) {
+			k = (int) randint(info->terms[i].limit);
+
+			switch (info->terms[i].type) {
+				case TERM_DIGIT:
+					succ = digit_term_get(info->terms[i].count, k, output);
+					break;
+				case TERM_LATIN:
+					succ = latin_term_get(info->terms[i].count, k, output);
+					break;
+				case TERM_ASCII:
+					succ = ascii_term_get(info->terms[i].count, k, output);
+					break;
+				case TERM_LEXICON:
+					succ = lexicon_term_get((const char**) info->words,
+							info->num_of_words, info->terms[i].count, k, output);
+					break;
+			}
+			if (succ != 0) {
+				fprintf(stderr, "get next term failed\n");
+				return RULE_STATUS_ERROR;
+			}
+			output += strlen(output);
 		}
-		if (succ != 0) {
-			fprintf(stderr, "get next term failed\n");
-			return RULE_STATUS_ERROR;
-		}
-		output += strlen(output);
 	}
+
 	info->remaining -= 1;
 	return RULE_STATUS_OK;
 }
 
+/*
+ * API
+ *
+ * generate the next password for the given rule. if flag=ALL, this will generate
+ * an incrementing password, otherwise, a random password. you may call this function
+ * for as long as it returns RULE_STATUS_OK. when it returns RULE_STATUS_EXHAUSTED,
+ * it means you've exhausted all the passwords this rule may generate.
+ * RULE_STATUS_ERROR is returned on error.
+ */
 int rule_generate_next_password(rule_info_t * info, char * output, int output_length)
 {
 	if (output_length < rule_max_password_length(info)) {
@@ -458,12 +523,17 @@ int rule_generate_next_password(rule_info_t * info, char * output, int output_le
 	}
 
 	if (info->limit < 0) {
+		/* flag=ALL */
 		return rule_generate_incrementing(info, output);
 	} else {
+		/* flag='n' */
 		return rule_generate_random(info, output);
 	}
 }
 
+/*
+ * checks for comment and empty lines in the INI file
+ */
 static int is_comment_line(const char * text)
 {
 	const char *p = text;
@@ -479,19 +549,27 @@ static int is_comment_line(const char * text)
 	return 1;
 }
 
+/*
+ * API
+ *
+ * initializes the given rule from an INI file. it loads the parameters from the
+ * INI file and initializes the rule using rule_init(). 
+ * returns RULE_STATUS_OK on success, RULE_STATUS_ERROR on failure.
+ */
 int rule_load_from_file(rule_info_t * info, const char * inifilename)
 {
+	char lexfilename[MAX_INPUT_BUFFER];
+	char pattern[MAX_INPUT_BUFFER];
+	char hashname[MAX_INPUT_BUFFER];
+	char flag[MAX_INPUT_BUFFER];
+	char name[MAX_INPUT_BUFFER];
+	char value[MAX_INPUT_BUFFER];
+	char line[MAX_INPUT_BUFFER];
 	FILE *f = fopen(inifilename, "r");
-	char lexfilename[200];
-	char pattern[200];
-	char hashname[200];
-	char flag[200];
-	char name[100];
-	char value[200];
-	char line[200];
 
 	if (f == NULL) {
-		perror("rule_load_from_file: fopen failed");
+		/*perror("rule_load_from_file: fopen failed");*/
+		perror(inifilename);
 		return RULE_STATUS_ERROR;
 	}
 
@@ -527,12 +605,12 @@ int rule_load_from_file(rule_info_t * info, const char * inifilename)
 		} else if (strcasecmp(name, "hash_name") == 0) {
 			strcpy(hashname, value);
 		} else {
-			fprintf(stderr, "Invalid key '%s' in INI file\n", name);
-			goto error_cleaup;
+			/* instructions: ignore unknown keys in INI file */
 		}
 	}
 	if (fclose(f) != 0) {
-		perror("rule_load_from_file: fclose failed");
+		/*perror("rule_load_from_file: fclose failed");*/
+		perror(inifilename);
 		return RULE_STATUS_ERROR;
 	}
 
@@ -550,13 +628,18 @@ int rule_load_from_file(rule_info_t * info, const char * inifilename)
 		return RULE_STATUS_ERROR;
 	}
 
-	return rule_load(info, pattern, lexfilename, hashname, flag);
+	return rule_init(info, pattern, lexfilename, hashname, flag);
 
 error_cleaup:
 	fclose(f);
 	return RULE_STATUS_ERROR;
 }
 
+/*
+ * API
+ *
+ * releases all resources held by this rule object
+ */
 void rule_finalize(rule_info_t * info)
 {
 	int i;

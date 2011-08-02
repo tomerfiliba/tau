@@ -10,13 +10,13 @@
 #endif
 
 
-#define MAX_LINE_SIZE    256
-
-
+/*
+ * look up a password in the DEHT by the given digest, and print it to the screen
+ */
 void find_password_for_digest(DEHT * deht, const unsigned char * digest, int digestLength)
 {
 	int res;
-	unsigned char password[400];
+	unsigned char password[MAX_INPUT_BUFFER];
 	
 	res = query_DEHT(deht, digest, digestLength, password, sizeof(password));
 	if (res == DEHT_STATUS_NOT_NEEDED) {
@@ -32,36 +32,14 @@ void find_password_for_digest(DEHT * deht, const unsigned char * digest, int dig
 	}
 }
 
-int main(int argc, const char** argv)
+/*
+ * read a line from the user and handle the command (either a hash or "quit")
+ */
+static void user_input_loop(DEHT * deht, unsigned int digest_size)
 {
-	DEHT * deht = NULL;
-	char line[MAX_LINE_SIZE + 1];
+	char line[MAX_INPUT_BUFFER];
 	unsigned char digest[MAX_DIGEST_LENGTH_IN_BYTES];
-	int res = 0;
 	char * cmd, * rcmd;
-	int digest_size;
-
-	if (argc != 2) {
-		fprintf(stderr, "Usage: %s <prefix>\n", argv[0]);
-		return 1;
-	}
-
-	deht = load_DEHT_from_files(argv[1], my_hash_func, my_valid_func);
-	if (deht == NULL) {
-		return 1;
-	}
-
-	if (strcmp(deht->header.sHashName, "MD5") == 0) {
-		digest_size = MD5_OUTPUT_LENGTH_IN_BYTES;
-	}
-	else if (strcmp(deht->header.sHashName, "SHA1") == 0) {
-		digest_size = SHA1_OUTPUT_LENGTH_IN_BYTES;
-	}
-	else {
-		fprintf(stderr, "invalid DEHT hash '%s'", deht->header.sHashName);
-		res = 1;
-		goto cleanup;
-	}
 
 	while (1) {
 		printf(">> ");
@@ -94,6 +72,45 @@ int main(int argc, const char** argv)
 		}
 		find_password_for_digest(deht, digest, digest_size);
 	}
+}
+
+int main(int argc, const char** argv)
+{
+	DEHT * deht = NULL;
+	int res = 0;
+	unsigned int digest_size;
+
+	if (argc != 2) {
+		fprintf(stderr, "Usage: %s <prefix>\n", argv[0]);
+		return 1;
+	}
+
+	/* load deht */
+	deht = load_DEHT_from_files(argv[1], my_hash_func, my_valid_func);
+	if (deht == NULL) {
+		return 1;
+	}
+
+	/* instructions: 
+	 *   Load the header into memory, but not the table of pointers (i.e. do not call 
+	 *   read_DEHT_pointers_table).
+	 */
+
+	/* compute digest size (determined by hash name) */
+	if (strcmp(deht->header.sHashName, "MD5") == 0) {
+		digest_size = MD5_OUTPUT_LENGTH_IN_BYTES;
+	}
+	else if (strcmp(deht->header.sHashName, "SHA1") == 0) {
+		digest_size = SHA1_OUTPUT_LENGTH_IN_BYTES;
+	}
+	else {
+		fprintf(stderr, "invalid DEHT hash '%s'", deht->header.sHashName);
+		res = 1;
+		goto cleanup;
+	}
+
+	/* main loop */
+	user_input_loop(deht, digest_size);
 
 cleanup:
 	if (deht != NULL) {

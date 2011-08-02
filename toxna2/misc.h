@@ -15,6 +15,10 @@ typedef unsigned __int64 uint64_t;
 #endif
 #include <string.h>
 
+/* max size of user inputs, passwords, and filename */
+#define MAX_USER_INPUT      256
+#define MAX_INPUT_BUFFER    (MAX_USER_INPUT+1)
+
 /*************************************************************************/
 /* typedef BasicHashFunctionPtr:                                         */
 /* A cryptographic hash function performs many bitic operation on a      */
