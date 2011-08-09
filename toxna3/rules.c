@@ -510,15 +510,24 @@ int rule_get_kth_password_per_pattern(rule_info_t * info, rule_pattern_t * ptrn,
 int rule_kth_password(rule_info_t * info, unsigned long k, char * output, int output_length)
 {
 	int i;
-	int succ;
-	int j;
 
-	if (output_length < rule_max_password_length(info)) {
-		fprintf(stderr, "rule_generate_next_password: output buffer too small\n");
+	if (output_length < info->longest_password) {
+		fprintf(stderr, "rule_kth_password: output buffer too small\n");
 		return RULE_STATUS_ERROR;
 	}
 
-	return RULE_STATUS_OK;
+	for (i = 0; i < info->num_of_patterns; i++) {
+		if (k < info->pattern_offsets[i]) {
+			return rule_get_kth_password_per_pattern(info, &info->patterns[i], k, output);
+		}
+		else {
+			k -= info->pattern_offsets[i];
+		}
+	}
+
+	/* k too large */
+	fprintf(stderr, "rule_kth_password: k out of bounds of the password space\n");
+	return RULE_STATUS_ERROR;
 }
 
 
@@ -627,7 +636,6 @@ error_cleaup:
 void rule_finalize(rule_info_t * info)
 {
 	int i;
-	int j;
 
 	if (info->patterns != NULL) {
 		for (i = 0; i < info->num_of_patterns; i++) {
