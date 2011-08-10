@@ -1,0 +1,6 @@
+foo
+bar
+spam and eggs
+bacon
+w00t
+lalala

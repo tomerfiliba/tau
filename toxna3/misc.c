@@ -208,3 +208,6 @@ int my_valid_func(const unsigned char *keyBuf, int keySize, unsigned char * vali
 	return 8;
 }
 
+/*
+ *
+ */

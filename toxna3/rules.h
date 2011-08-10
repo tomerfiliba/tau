@@ -2,6 +2,7 @@
 #define RULES_H_INCLUDED
 
 #include "misc.h"
+#include "iniloader.h"
 
 #define RULE_STATUS_EXHAUSTED  (-2)
 #define RULE_STATUS_ERROR      (-1)
@@ -43,6 +44,7 @@ typedef struct
 
 	BasicHashFunctionPtr hashfunc;  /* the hash function (function pointer) */
 	char hashname[10];              /* '10' is taken from deht.h */
+	int digest_size;                /* the digest's size (16 for MD5, 20 for SHA1) */
 
 	unsigned long num_of_passwords; /* the size of the password space (good approximation) */
 	int longest_password;           /* the longest possible password that this rule generates */
@@ -53,8 +55,9 @@ typedef struct
  */
 int rule_init(rule_info_t * info, const char * pattern,
         const char * lexfilename, const char * hashname);
-int rule_load_from_file(rule_info_t * info, const char * inifilename);
-int rule_kth_password(rule_info_t * info, unsigned long k, char * output, int output_length);
+int rule_load(rule_info_t * info, const inifile_t * ini);
+int rule_kth_password(const rule_info_t * info, unsigned long k, char * output, 
+					  int output_length);
 void rule_finalize(rule_info_t * info);
 
 

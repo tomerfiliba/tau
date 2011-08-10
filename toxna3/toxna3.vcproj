@@ -171,7 +171,19 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
+				RelativePath=".\crack_using_rainbow_table.c"
+				>
+			</File>
+			<File
+				RelativePath=".\create_rainbow_table.c"
+				>
+			</File>
+			<File
 				RelativePath=".\deht.c"
+				>
+			</File>
+			<File
+				RelativePath=".\iniloader.c"
 				>
 			</File>
 			<File
@@ -201,6 +213,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\iniloader.h"
+				>
+			</File>
+			<File
 				RelativePath=".\md5.h"
 				>
 			</File>
@@ -223,7 +239,15 @@
 			UniqueIdentifier="{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}"
 			>
 			<File
+				RelativePath=".\lex.txt"
+				>
+			</File>
+			<File
 				RelativePath=".\Makefile"
+				>
+			</File>
+			<File
+				RelativePath=".\test.ini"
 				>
 			</File>
 		</Filter>

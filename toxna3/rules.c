@@ -8,6 +8,8 @@
 	#include <strings.h>
 #endif
 #include "rules.h"
+#include "iniloader.h"
+
 
 /* ============================= DIGIT TERM ================================ */
 static int digit_term_get_rec(int count, int k, char * output);
@@ -340,7 +342,7 @@ static int rule_load_multiple_patterns(rule_info_t * info, const char * pattern)
 	/* count subpatterns */
 	info->num_of_patterns = 1;
 	for (ch = pattern; *ch != '\0'; ch++) {
-		if (*ch == 1) {
+		if (*ch == '&') {
 			info->num_of_patterns += 1;
 		}
 	}
@@ -452,9 +454,11 @@ int rule_init(rule_info_t * info, const char * pattern, const char * lexfilename
 	if (strcasecmp(hashname, "md5") == 0) {
 		strcpy(info->hashname, "MD5");
 		info->hashfunc = MD5BasicHash;
+		info->digest_size = MD5_OUTPUT_LENGTH_IN_BYTES;
 	} else if (strcasecmp(hashname, "sha1") == 0) {
 		strcpy(info->hashname, "SHA1");
 		info->hashfunc = SHA1BasicHash;
+		info->digest_size = SHA1_OUTPUT_LENGTH_IN_BYTES;
 	} else {
 		/* invalid hash */
 		fprintf(stderr, "Error: Hash \"%s\" is not supported\n", hashname);
@@ -472,7 +476,7 @@ int rule_init(rule_info_t * info, const char * pattern, const char * lexfilename
 	return RULE_STATUS_OK;
 }
 
-int rule_get_kth_password_per_pattern(rule_info_t * info, rule_pattern_t * ptrn, 
+int rule_get_kth_password_per_pattern(const rule_info_t * info, rule_pattern_t * ptrn, 
 									  unsigned long k, char * output)
 {
 	int i;
@@ -507,7 +511,7 @@ int rule_get_kth_password_per_pattern(rule_info_t * info, rule_pattern_t * ptrn,
 	return RULE_STATUS_OK;
 }
 
-int rule_kth_password(rule_info_t * info, unsigned long k, char * output, int output_length)
+int rule_kth_password(const rule_info_t * info, unsigned long k, char * output, int output_length)
 {
 	int i;
 
@@ -531,23 +535,6 @@ int rule_kth_password(rule_info_t * info, unsigned long k, char * output, int ou
 }
 
 
-/*
- * checks for comment and empty lines in the INI file
- */
-static int is_comment_line(const char * text)
-{
-	const char *p = text;
-	for (; *p != '\0'; p++) {
-		if (isspace(*p)) {
-			continue;
-		}
-		if (*p == ';') {
-			return 1;
-		}
-		return 0;
-	}
-	return 1;
-}
 
 /*
  * API
@@ -556,76 +543,28 @@ static int is_comment_line(const char * text)
  * INI file and initializes the rule using rule_init().
  * returns RULE_STATUS_OK on success, RULE_STATUS_ERROR on failure.
  */
-int rule_load_from_file(rule_info_t * info, const char * inifilename)
+int rule_load(rule_info_t * info, const inifile_t * ini)
 {
-	char lexfilename[MAX_INPUT_BUFFER];
-	char pattern[MAX_INPUT_BUFFER];
-	char hashname[MAX_INPUT_BUFFER];
-	char name[MAX_INPUT_BUFFER];
-	char value[MAX_INPUT_BUFFER];
-	char line[MAX_INPUT_BUFFER];
-	FILE *f = fopen(inifilename, "r");
+	const char * pattern = NULL;
+	const char * lexfilename = NULL;
+	const char * hashname = NULL;
 
-	if (f == NULL) {
-		/*perror("rule_load_from_file: fopen failed");*/
-		perror(inifilename);
+	pattern = ini_get(ini, "rule");
+	lexfilename = ini_get(ini, "lexicon_name");
+	hashname = ini_get(ini, "hash_name");
+
+	if (lexfilename == NULL) {
+		fprintf(stderr, "INI file did not specify 'lexicon_name'\n");
 		return RULE_STATUS_ERROR;
-	}
-
-	lexfilename[0] = '\0';
-	pattern[0] = '\0';
-	hashname[0] = '\0';
-
-	while (1) {
-		if (fgets(line, sizeof(line)-1, f) == NULL) {
-			if (feof(f)) {
-				break;
-			}
-			else {
-				perror("rule_load_from_file: fgets failed");
-				goto error_cleaup;
-			}
-		}
-		if (is_comment_line(line)) {
-			continue;
-		}
-
-		if (sscanf(line, "%s = %s", name, value) != 2) {
-			fprintf(stderr, "Syntax error in INI file\n");
-			goto error_cleaup;
-		}
-		if (strcasecmp(name, "rule") == 0) {
-			strcpy(pattern, value);
-		} else if (strcasecmp(name, "lexicon_name") == 0) {
-			strcpy(lexfilename, value);
-		} else if (strcasecmp(name, "hash_name") == 0) {
-			strcpy(hashname, value);
-		} else {
-			/* instructions: ignore unknown keys in INI file */
-		}
-	}
-	if (fclose(f) != 0) {
-		/*perror("rule_load_from_file: fclose failed");*/
-		perror(inifilename);
+	} else if (pattern == NULL) {
+		fprintf(stderr, "INI file did not specify 'rule'\n");
 		return RULE_STATUS_ERROR;
-	}
-
-	if (lexfilename[0] == '\0') {
-		fprintf(stderr, "INI file did not specify lexicon_name\n");
-		return RULE_STATUS_ERROR;
-	} else if (pattern[0] == '\0') {
-		fprintf(stderr, "INI file did not specify rule\n");
-		return RULE_STATUS_ERROR;
-	} else if (hashname[0] == '\0') {
-		fprintf(stderr, "INI file did not specify hash_name\n");
+	} else if (hashname == NULL) {
+		fprintf(stderr, "INI file did not specify 'hash_name'\n");
 		return RULE_STATUS_ERROR;
 	}
 
 	return rule_init(info, pattern, lexfilename, hashname);
-
-error_cleaup:
-	fclose(f);
-	return RULE_STATUS_ERROR;
 }
 
 /*
@@ -654,4 +593,41 @@ void rule_finalize(rule_info_t * info)
 	}
 }
 
+
+int main3(int argc, const char ** argv)
+{
+	inifile_t ini;
+	rule_info_t rule;
+	int i;
+	int ks[] = {82,8326,1423,8112, 9800, 9833};
+	char password[MAX_INPUT_BUFFER];
+
+	if (ini_load(&ini, "test.ini") != 0) {
+		printf("ini_load failed\n");
+		return 1;
+	}
+	if (rule_load(&rule, &ini) != 0) {
+		printf("rule_load failed\n");
+		return 1;
+	}
+
+	printf("lexicon:\n");
+	for (i = 0; i < rule.num_of_words; i++) {
+		printf("    '%s'\n", rule.words[i]);
+	}
+
+	printf("password space = %d\n", rule.num_of_passwords);
+
+	for (i = 0; i < sizeof(ks)/sizeof(ks[0]); i++) {
+		if (rule_kth_password(&rule, ks[i], password, sizeof(password) - 1) != 0) {
+			printf("rule_kth_password failed\n");
+			return 1;
+		}
+		printf("password %d is '%s'\n", ks[i], password);
+	}
+
+	rule_finalize(&rule);
+	ini_finalize(&ini);
+	return 0;
+}
 
