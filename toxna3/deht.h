@@ -7,6 +7,7 @@
 #ifndef _DEHT_H_
 #define _DEHT_H_
 
+#include "misc.h"
 #include <stdio.h>
 
 /********************************************************************/
@@ -14,11 +15,7 @@
 /* Data-type of long (argument of "fseek" function) represents an   */
 /* offset in a file, which is "disk pointers" in our implementation */
 /********************************************************************/
-#ifdef _MSC_VER
-#define DEHT_DISK_PTR    __int64
-#else
-#define DEHT_DISK_PTR    long
-#endif
+#define DEHT_DISK_PTR    uint64_t
 
 /******************************************************************/
 /* structure of "first level header" - basic preferences of a DEHT*/

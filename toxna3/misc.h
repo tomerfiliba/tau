@@ -6,8 +6,8 @@
 #define _MISC_H_
 
 #ifdef _MSC_VER
-typedef signed __int32 sint32_t;
-typedef signed __int64 sint64_t;
+typedef signed __int32 int32_t;
+typedef signed __int64 int64_t;
 typedef unsigned __int32 uint32_t;
 typedef unsigned __int64 uint64_t;
 #else
@@ -113,7 +113,7 @@ int binary2hexa(const unsigned char *bufIn, int lengthIn, char *outStr,
 LONG_INDEX_PROJ pseudo_random_function(const unsigned char *x, int inputLength,
         LONG_INDEX_PROJ y);
 
-long longpow(int base, int exp);
+int64_t longpow(int base, int exp);
 
 int randint(int bound);
 

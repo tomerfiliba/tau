@@ -157,9 +157,9 @@ int hexa2binary(const char *strIn, unsigned char *outBuf, int outMaxLen)
 }
 
 /* power function (operates on integers, not floating point) */
-long longpow(int base, int exp)
+int64_t longpow(int base, int exp)
 {
-	long val = 1;
+	uint64_t val = 1;
 	for (; exp > 0; exp--) {
 		val *= base;
 	}

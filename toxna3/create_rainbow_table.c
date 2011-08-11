@@ -16,7 +16,6 @@
 
 static DEHT * create_deht_from_ini(const char * prefix, const inifile_t * ini)
 {
-	DEHT * deht = NULL;
 	int hash_size;
 	const char * hash_name;
 	int bucket_size;
@@ -28,23 +27,23 @@ static DEHT * create_deht_from_ini(const char * prefix, const inifile_t * ini)
 	return create_empty_DEHT(prefix, my_hash_func, my_valid_func, hash_size, bucket_size, 8, hash_name);
 }
 
-static unsigned long * generate_seed_table(const char * prefix, const char * rand_seed, int chain_length)
+static uint64_t * generate_seed_table(const char * prefix, const char * rand_seed, int chain_length)
 {
 	int i;
-	unsigned long * seed_table = NULL;
-	char digest[MD5_OUTPUT_LENGTH_IN_BYTES];
+	uint64_t * seed_table = NULL;
+	unsigned char digest[MD5_OUTPUT_LENGTH_IN_BYTES];
 	FILE * f = NULL;
 	char seedfilename[MAX_INPUT_BUFFER];
 
-	seed_table = (unsigned long *)malloc(chain_length * sizeof(unsigned long));
+	seed_table = (uint64_t*)malloc(chain_length * sizeof(uint64_t));
 	if (seed_table == NULL) {
 		fprintf(stderr, "failed to allocate seed_table\n");
 		return NULL;
 	}
 
-	MD5BasicHash(rand_seed, strlen(rand_seed), digest);
+	MD5BasicHash((const unsigned char*)rand_seed, strlen(rand_seed), digest);
 	for (i = 0; i < chain_length; i++) {
-		memcpy(&seed_table[i], digest, sizeof(unsigned long));
+		memcpy(&seed_table[i], digest, sizeof(uint64_t));
 		MD5BasicHash(digest, sizeof(digest), digest);
 	}
 
@@ -55,7 +54,7 @@ static unsigned long * generate_seed_table(const char * prefix, const char * ran
 		perror(seedfilename);
 		goto cleanup;
 	}
-	if (fwrite(seed_table, sizeof(unsigned long), chain_length, f) != chain_length) {
+	if (fwrite(seed_table, sizeof(uint64_t), chain_length, f) != chain_length) {
 		perror(seedfilename);
 		goto cleanup;
 	}
@@ -70,24 +69,24 @@ cleanup:
 	return NULL;
 }
 
-static unsigned long R_function(unsigned long seed, unsigned char * digest, int digest_size)
+static uint64_t R_function(uint64_t seed, unsigned char * digest, int digest_size)
 {
-	unsigned long h = *((unsigned long *)digest);
+	uint64_t h = *((uint64_t*)digest);
 	return h * seed;
 }
 
-static int generate_single_chain(const rule_info_t * rule, int chain_length, int k, unsigned long * seed_table, 
-						  char * first_password, char * last_digest)
+static int generate_single_chain(const rule_info_t * rule, int chain_length, uint64_t k,
+		uint64_t * seed_table, char * first_password, unsigned char * last_digest)
 {
 	int i;
 	char password[MAX_INPUT_BUFFER];
-	char digest[MAX_DIGEST_LENGTH_IN_BYTES];
+	unsigned char digest[MAX_DIGEST_LENGTH_IN_BYTES];
 
 	if (rule_kth_password(rule, k, password, sizeof(password)) != RULE_STATUS_OK) {
 		/* error message printed by rule_kth_password */
 		return 1;
 	}
-	rule->hashfunc(password, strlen(password), digest);
+	rule->hashfunc((unsigned char*)password, strlen(password), digest);
 	strncpy(first_password, password, sizeof(password));
 
 	for (i = 0; i < chain_length; i++) {
@@ -96,31 +95,40 @@ static int generate_single_chain(const rule_info_t * rule, int chain_length, int
 			/* error message printed by rule_kth_password */
 			return 1;
 		}
-		rule->hashfunc(password, strlen(password), digest);
+		rule->hashfunc((unsigned char*)password, strlen(password), digest);
 	}
 
 	memcpy(last_digest, digest, rule->digest_size);
 	return 0;
 }
 
-static int generate_all_chains(const rule_info_t * rule, DEHT * deht, unsigned long * seed_table, 
+static int generate_all_chains(const rule_info_t * rule, DEHT * deht, uint64_t * seed_table,
 							   int chain_length)
 {
-	unsigned long i;
+	const uint64_t iterations = 10 * (rule->num_of_passwords / chain_length);
+	uint64_t i;
+	uint64_t k = 313;
 	char first_password[MAX_INPUT_BUFFER];
-	char last_digest[MAX_DIGEST_LENGTH_IN_BYTES];
+	unsigned char last_digest[MAX_DIGEST_LENGTH_IN_BYTES];
+	/*char hexdigest[MAX_DIGEST_LENGTH_IN_BYTES * 2 + 1];
+	memset(hexdigest, 0, sizeof(hexdigest));*/
 
 	/* fill DEHT with chain heads and tails */
-	for (i = 0; i < 10 * (rule->num_of_passwords / chain_length); i++) {
-		if (generate_single_chain(rule, chain_length, i, seed_table, first_password, last_digest) != 0) {
+	for (i = 0; i < iterations; i++) {
+		k %= rule->num_of_passwords;
+		if (generate_single_chain(rule, chain_length, k, seed_table,
+				first_password, last_digest) != 0) {
 			/* error message printed by generate_chain */
 			return 1;
 		}
-		if (add_DEHT(deht, last_digest, rule->digest_size, first_password, 
+		if (add_DEHT(deht, last_digest, rule->digest_size, (unsigned char*)first_password,
 				strlen(first_password)) == DEHT_STATUS_FAIL) {
 			/* error message printed by add_DEHT */
 			return 1;
 		}
+		/*binary2hexa(last_digest, rule->digest_size, hexdigest, sizeof(hexdigest));
+		printf("%05llu: added %s : '%s'\n", k, hexdigest, first_password);*/
+		k *= 47;
 	}
 
 	/* great success */
@@ -134,7 +142,7 @@ static int generate_passwords(const char * prefix, const inifile_t * ini,
 	int chain_length;
 	const char * rand_seed;
 	int res;
-	unsigned long * seed_table = NULL;
+	uint64_t * seed_table = NULL;
 
 	if (ini_get_integer(ini, "num_of_R", &chain_length) != INI_STATUS_OK) {
 		fprintf(stderr, "INI file did not specify 'num_of_R'");
@@ -157,7 +165,7 @@ static int generate_passwords(const char * prefix, const inifile_t * ini,
 }
 
 
-int main2(int argc, const char ** argv)
+int main(int argc, const char ** argv)
 {
 	int res = 1;
 	inifile_t ini;
@@ -188,11 +196,6 @@ int main2(int argc, const char ** argv)
 
 	res = generate_passwords(argv[1], &ini, &rule, deht);
 
-	/* success */
-	res = 0;
-
-
-//cleanup3:
 	close_DEHT_files(deht);
 cleanup2:
 	rule_finalize(&rule);

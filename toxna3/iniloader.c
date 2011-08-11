@@ -52,8 +52,8 @@ static int parse_line(char * line, char ** key, char ** value)
 	for (; **key == ' ' || **key == '\t'; (*key)++);
 	for (; *rkey == ' ' || *rkey == '\t'; *(rkey--) = '\0');
 	for (; **value == ' ' || **value == '\t'; (*value)++);
-	ch = *value + strlen(*value) - 1;
-	for (; *ch == ' ' || *ch == '\t' || *ch == '\n'; *(ch--) = '\0');
+	for (ch = *value + strlen(*value) - 1;
+			*ch == ' ' || *ch == '\t' || *ch == '\n' || *ch == '\r'; *(ch--) = '\0');
 
 	return INI_STATUS_OK;
 }
