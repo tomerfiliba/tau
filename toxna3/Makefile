@@ -21,19 +21,22 @@ iniloader.o: iniloader.c
 rules.o: misc.o rules.c iniloader.o
 	gcc -std=c99 -pedantic-errors -c -Wall -Werror -g rules.c
 
-create_rainbow_table.o: deht.o misc.o create_rainbow_table.c iniloader.o rules.o
+rainbow.o: misc.o rainbow.c rules.o deht.o
+	gcc -std=c99 -pedantic-errors -c -Wall -Werror -g rainbow.c
+
+create_rainbow_table.o: deht.o misc.o create_rainbow_table.c iniloader.o rules.o rainbow.o
 	gcc -std=c99 -pedantic-errors -c -Wall -Werror -g create_rainbow_table.c
 
-crack_using_rainbow_table.o: deht.o misc.o crack_using_rainbow_table.c iniloader.o
+crack_using_rainbow_table.o: deht.o misc.o crack_using_rainbow_table.c iniloader.o rainbow.o
 	gcc -std=c99 -pedantic-errors -c -Wall -Werror -g crack_using_rainbow_table.c
 
 create_rainbow_table: create_rainbow_table.o 
 	gcc -pedantic-errors -Wall -Werror -g -lm -o create_rainbow_table \
-	deht.o iniloader.o misc.o md5.o sha1.o create_rainbow_table.o rules.o
+	deht.o iniloader.o misc.o md5.o sha1.o create_rainbow_table.o rules.o rainbow.o
 
 crack_using_rainbow_table: crack_using_rainbow_table.o
 	gcc -pedantic-errors -Wall -Werror -g -lm -o crack_using_rainbow_table \
-	deht.o iniloader.o misc.o md5.o sha1.o crack_using_rainbow_table.o
+	deht.o iniloader.o misc.o md5.o sha1.o crack_using_rainbow_table.o rainbow.o
 
 test-rules: rules.o
 	gcc -pedantic-errors -Wall -Werror -g -lm -o test-rules \

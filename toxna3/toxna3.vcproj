@@ -195,6 +195,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\rainbow.c"
+				>
+			</File>
+			<File
 				RelativePath=".\rules.c"
 				>
 			</File>
@@ -222,6 +226,10 @@
 			</File>
 			<File
 				RelativePath=".\misc.h"
+				>
+			</File>
+			<File
+				RelativePath=".\rainbow.h"
 				>
 			</File>
 			<File

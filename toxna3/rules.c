@@ -10,21 +10,7 @@
 #include "rules.h"
 #include "iniloader.h"
 
-/*
-static void repr(const char * text)
-{
-	const char * ch;
-	for (ch = text; *ch != '\0'; ch++) {
-		if (*ch >= 32 && *ch <= 126) {
-			printf("%c", *ch);
-		}
-		else {
-			printf("\\%02x", *ch);
-		}
-	}
-	printf("\n");
-}
-*/
+
 
 static void to_base(uint64_t value, char offset, char radix, char * output)
 {
@@ -518,7 +504,8 @@ int rule_get_kth_password_per_pattern(const rule_info_t * info, rule_pattern_t *
 	return RULE_STATUS_OK;
 }
 
-int rule_kth_password(const rule_info_t * info, uint64_t k, char * output, int output_length)
+int rule_kth_password(const rule_info_t * info, uint64_t k, char * output, 
+					  int output_length, int allow_empty)
 {
 	int i;
 
@@ -527,12 +514,23 @@ int rule_kth_password(const rule_info_t * info, uint64_t k, char * output, int o
 		return RULE_STATUS_ERROR;
 	}
 
-	for (i = 0; i < info->num_of_patterns; i++) {
-		if (k < info->pattern_offsets[i]) {
-			return rule_get_kth_password_per_pattern(info, &info->patterns[i], k, output);
+	output[0] = '\0';
+	while (output[0] == '\0') {
+		for (i = 0; i < info->num_of_patterns; i++) {
+			if (k < info->pattern_offsets[i]) {
+				return rule_get_kth_password_per_pattern(info, &info->patterns[i], k, output);
+			}
+			else {
+				k -= info->pattern_offsets[i];
+			}
+		}
+		/* if we allow the empty password, just break, otherwise loop until we get a 
+		   non-empty password */
+		if (allow_empty) {
+			break;
 		}
 		else {
-			k -= info->pattern_offsets[i];
+			k = (k * 593) % info->num_of_passwords;
 		}
 	}
 

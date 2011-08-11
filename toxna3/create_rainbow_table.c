@@ -2,6 +2,7 @@
 #include "iniloader.h"
 #include "rules.h"
 #include "misc.h"
+#include "rainbow.h"
 #include <string.h>
 #include <stdlib.h>
 
@@ -27,81 +28,6 @@ static DEHT * create_deht_from_ini(const char * prefix, const inifile_t * ini)
 	return create_empty_DEHT(prefix, my_hash_func, my_valid_func, hash_size, bucket_size, 8, hash_name);
 }
 
-static uint64_t * generate_seed_table(const char * prefix, const char * rand_seed, int chain_length)
-{
-	int i;
-	uint64_t * seed_table = NULL;
-	unsigned char digest[MD5_OUTPUT_LENGTH_IN_BYTES];
-	FILE * f = NULL;
-	char seedfilename[MAX_INPUT_BUFFER];
-
-	seed_table = (uint64_t*)malloc(chain_length * sizeof(uint64_t));
-	if (seed_table == NULL) {
-		fprintf(stderr, "failed to allocate seed_table\n");
-		return NULL;
-	}
-
-	MD5BasicHash((const unsigned char*)rand_seed, strlen(rand_seed), digest);
-	for (i = 0; i < chain_length; i++) {
-		memcpy(&seed_table[i], digest, sizeof(uint64_t));
-		MD5BasicHash(digest, sizeof(digest), digest);
-	}
-
-	strncpy(seedfilename, prefix, sizeof(seedfilename) - 6);
-	strcat(seedfilename, ".seed");
-	f = fopen(seedfilename, "w");
-	if (f == NULL) {
-		perror(seedfilename);
-		goto cleanup;
-	}
-	if (fwrite(seed_table, sizeof(uint64_t), chain_length, f) != chain_length) {
-		perror(seedfilename);
-		goto cleanup;
-	}
-	fclose(f);
-	return seed_table;
-
-cleanup:
-	if (f != NULL) {
-		fclose(f);
-	}
-	free(seed_table);
-	return NULL;
-}
-
-static uint64_t R_function(uint64_t seed, unsigned char * digest, int digest_size)
-{
-	uint64_t h = *((uint64_t*)digest);
-	return h * seed;
-}
-
-static int generate_single_chain(const rule_info_t * rule, int chain_length, uint64_t k,
-		uint64_t * seed_table, char * first_password, unsigned char * last_digest)
-{
-	int i;
-	char password[MAX_INPUT_BUFFER];
-	unsigned char digest[MAX_DIGEST_LENGTH_IN_BYTES];
-
-	if (rule_kth_password(rule, k, password, sizeof(password)) != RULE_STATUS_OK) {
-		/* error message printed by rule_kth_password */
-		return 1;
-	}
-	rule->hashfunc((unsigned char*)password, strlen(password), digest);
-	strncpy(first_password, password, sizeof(password));
-
-	for (i = 0; i < chain_length; i++) {
-		k = R_function(seed_table[i], digest, rule->digest_size) % rule->num_of_passwords;
-		if (rule_kth_password(rule, k, password, sizeof(password)) != RULE_STATUS_OK) {
-			/* error message printed by rule_kth_password */
-			return 1;
-		}
-		rule->hashfunc((unsigned char*)password, strlen(password), digest);
-	}
-
-	memcpy(last_digest, digest, rule->digest_size);
-	return 0;
-}
-
 static int generate_all_chains(const rule_info_t * rule, DEHT * deht, uint64_t * seed_table,
 							   int chain_length)
 {
@@ -116,7 +42,7 @@ static int generate_all_chains(const rule_info_t * rule, DEHT * deht, uint64_t *
 	/* fill DEHT with chain heads and tails */
 	for (i = 0; i < iterations; i++) {
 		k %= rule->num_of_passwords;
-		if (generate_single_chain(rule, chain_length, k, seed_table,
+		if (rainbow_generate_single_chain(rule, chain_length, k, seed_table,
 				first_password, last_digest) != 0) {
 			/* error message printed by generate_chain */
 			return 1;
@@ -153,7 +79,7 @@ static int generate_passwords(const char * prefix, const inifile_t * ini,
 		fprintf(stderr, "INI file did not specify 'main_rand_seed'");
 		return 1;
 	}
-	seed_table = generate_seed_table(prefix, rand_seed, chain_length);
+	seed_table = rainbow_generate_seed_table(prefix, rand_seed, chain_length);
 	if (seed_table == NULL) {
 		/* error message printed by generate_seed_table */
 		return 1;

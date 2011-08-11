@@ -1,6 +1,7 @@
 #include "misc.h"
 #include "deht.h"
 #include "iniloader.h"
+#include "rainbow.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,87 +11,6 @@
 	#include <strings.h>
 #endif
 
-/*
-Pseudo code for cracking a hashed password referred as “target”, assuming cryptographic hash is
-MD5 for clarity
-
-For j = chain_length to 1 do
-	//Gamble that our password is in location "j" in some chain as follow:
-	curHash=target
-
-	// go down the chain (chain_length-j ) steps (till curHash = end-point hash).
-	For i=j to chain_length do
-		k = pseudo-random-function with seed seed[i] and input curHash;
-		NewPassword = get_kth_password (k,S)
-		curHash = MD5(NewPassword);
-	end // going down the chain.
-
-	Multi-query in disk-embedded hash table with key: curHash.
-	Get data (passwords set) to array: tryThisPassword[0..n]
-
-	For k =0 to n-1 // if n=0 (no password is found), we guessed wrong j, continue loop other j.
-		//assume tryThisPassword[k] is beginning of correct chain
-		curPass = tryThisPassword[k]
-		Go j-1 steps down // (till curPass is the password before the hash we are looking for).
-		If MD5(curPass)==target
-			return curPass
-		Else
-			continue loop // false alarm.
-	End // looping multiple query
-End //main loop on j
-
-If you arrived here, it means that the target does not exist in any location in any chain,
-in other-words, not in our Rainbow-Table.
- */
-
-static void rainbow_query(DEHT * deht, const uint64_t * seed_table, int chain_length,
-		int multi_query, BasicHashFunctionPtr hashfunc,	int digest_size,
-		const unsigned char * target_digest)
-{
-	int j;
-	unsigned char curr_digest[MAX_DIGEST_LENGTH_IN_BYTES];
-
-	for (j = chain_length; j >= 1; j--) {
-		memcpy(curr_digest, target_digest, digest_size);
-
-	}
-
-	printf("Sorry but this hash doesn't appears in pre-processing\n");
-}
-
-static uint64_t * load_seed_table(const char * prefix, int chain_length)
-{
-	char seedfilename[MAX_INPUT_BUFFER];
-	FILE * f = NULL;
-	uint64_t * seed_table = NULL;
-
-	strncpy(seedfilename, prefix, sizeof(seedfilename) - 6);
-	strcat(seedfilename, ".seed");
-	f = fopen(seedfilename, "r");
-	if (f == NULL) {
-		perror(seedfilename);
-		return NULL;
-	}
-
-	seed_table = (uint64_t*)malloc(chain_length * sizeof(uint64_t));
-	if (seed_table == NULL) {
-		fprintf(stderr, "failed to allocate seed_table\n");
-		goto cleanup1;
-	}
-
-	if (fread(seed_table, sizeof(uint64_t), chain_length, f) != chain_length) {
-		perror(seedfilename);
-		goto cleanup2;
-	}
-	fclose(f);
-	return seed_table;
-
-cleanup2:
-	free(seed_table);
-cleanup1:
-	fclose(f);
-	return NULL;
-}
 
 static int get_params_from_ini(const inifile_t * ini, int * chain_length, int * multi_query,
 							   int * digest_size, BasicHashFunctionPtr * hashfunc)
@@ -169,8 +89,9 @@ static int user_input_loop(DEHT * deht, const uint64_t * seed_table,
 			continue;
 		}
 
-		rainbow_query(deht, seed_table, chain_length, multi_query, hashfunc,
-				digest_size, digest);
+		/*if (rainbow_query(deht, rule, seed_table, chain_length, multi_query, digest) != 0) {
+			return 1;
+		}*/
 	}
 
 	return 0;
@@ -222,7 +143,7 @@ int main(int argc, const char ** argv)
 	}
 
 	/* load seed table */
-	seed_table = load_seed_table(argv[1], chain_length);
+	seed_table = rainbow_load_seed_table(argv[1], chain_length);
 	if (seed_table == NULL) {
 		/* error message printed by load_seed_table */
 		goto cleanup2;

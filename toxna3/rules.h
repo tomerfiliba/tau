@@ -57,7 +57,7 @@ int rule_init(rule_info_t * info, const char * pattern,
         const char * lexfilename, const char * hashname);
 int rule_load(rule_info_t * info, const inifile_t * ini);
 int rule_kth_password(const rule_info_t * info, uint64_t k, char * output,
-					  int output_length);
+					  int output_length, int allow_empty);
 void rule_finalize(rule_info_t * info);
 
 
