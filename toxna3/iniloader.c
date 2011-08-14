@@ -111,7 +111,7 @@ int ini_load(inifile_t * ini, const char * filename)
 		ini->num_of_lines += 1;
 	}
 	fclose(f);
-	
+
 	return INI_STATUS_OK;
 
 cleanup:

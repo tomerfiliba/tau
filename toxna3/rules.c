@@ -326,7 +326,7 @@ static int rule_load_multiple_patterns(rule_info_t * info, const char * pattern)
 	int i, j;
 	const char * ch;
 	char subpattern[MAX_INPUT_BUFFER];
-	
+
 	/* count subpatterns */
 	info->num_of_patterns = 1;
 	for (ch = pattern; *ch != '\0'; ch++) {
@@ -338,7 +338,7 @@ static int rule_load_multiple_patterns(rule_info_t * info, const char * pattern)
 	/*printf("info->num_of_patterns = %d\n", info->num_of_patterns);*/
 
 	/* allocate space */
-	info->patterns = (rule_pattern_t*) malloc(sizeof(rule_pattern_t) * 
+	info->patterns = (rule_pattern_t*) malloc(sizeof(rule_pattern_t) *
 		info->num_of_patterns);
 	if (info->patterns == NULL) {
 		fprintf(stderr, "failed to allocated rule->patterns\n");
@@ -359,7 +359,7 @@ static int rule_load_multiple_patterns(rule_info_t * info, const char * pattern)
 			subpattern[j] = '\0';
 			j = 0;
 			/*printf("subpattern[%d] = %s\n", i, subpattern);*/
-			if (rule_load_single_pattern(&info->patterns[i], subpattern, 
+			if (rule_load_single_pattern(&info->patterns[i], subpattern,
 					info->num_of_words, info->longest_word) !=  RULE_STATUS_OK) {
 				goto cleanup;
 			}
@@ -375,7 +375,7 @@ static int rule_load_multiple_patterns(rule_info_t * info, const char * pattern)
 	/* don't forget the last one */
 	subpattern[j] = '\0';
 	/*printf("subpattern[%d] = %s\n", i, subpattern);*/
-	if (rule_load_single_pattern(&info->patterns[i], subpattern, 
+	if (rule_load_single_pattern(&info->patterns[i], subpattern,
 			info->num_of_words, info->longest_word) !=  RULE_STATUS_OK) {
 		goto cleanup;
 	}
@@ -455,7 +455,7 @@ int rule_init(rule_info_t * info, const char * pattern, const char * lexfilename
 	return RULE_STATUS_OK;
 }
 
-int rule_get_kth_password_per_pattern(const rule_info_t * info, rule_pattern_t * ptrn, 
+int rule_get_kth_password_per_pattern(const rule_info_t * info, rule_pattern_t * ptrn,
 		uint64_t k, char * output)
 {
 	int i;
@@ -492,13 +492,13 @@ int rule_get_kth_password_per_pattern(const rule_info_t * info, rule_pattern_t *
 
 /*
  * API
- * 
+ *
  * returns the k'th password in the password space defined by this rule
- * if allow_empty is 0, this function will not return empty passwords 
+ * if allow_empty is 0, this function will not return empty passwords
  * (it will choose a different k until the password is non-empty). if you
  * set this argument to 1, you may get empty passwords.
  */
-int rule_kth_password(const rule_info_t * info, uint64_t k, char * output, 
+int rule_kth_password(const rule_info_t * info, uint64_t k, char * output,
 					  int output_length, int allow_empty)
 {
 	int i;
@@ -518,7 +518,7 @@ int rule_kth_password(const rule_info_t * info, uint64_t k, char * output,
 				k -= info->pattern_offsets[i];
 			}
 		}
-		/* if we allow the empty password, just break, otherwise loop until we get a 
+		/* if we allow the empty password, just break, otherwise loop until we get a
 		   non-empty password */
 		if (allow_empty) {
 			break;

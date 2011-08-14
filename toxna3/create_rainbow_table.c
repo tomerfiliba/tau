@@ -7,23 +7,25 @@
 #include <stdlib.h>
 
 
-static int generate_all_chains(const config_t * config, const rule_info_t * rule, 
+static int generate_all_chains(const config_t * config, const rule_info_t * rule,
 							   DEHT * deht)
 {
 	const uint64_t iterations = 10 * (rule->num_of_passwords / config->chain_length);
 	uint64_t i;
-	uint64_t k = 13; /* some prime number */
+	uint64_t k = 17; /* some prime number */
 	char first_password[MAX_INPUT_BUFFER];
 	unsigned char last_digest[MAX_DIGEST_LENGTH_IN_BYTES];
 #ifdef SHOW_GENERATED_CHAINS
 	char hexdigest[MAX_DIGEST_LENGTH_IN_BYTES * 2 + 1];
 	memset(hexdigest, 0, sizeof(hexdigest));
+
+	printf("Generating %llu chains\n", iterations);
 #endif
 
 	/* fill DEHT with chain heads and tails */
 	for (i = 0; i < iterations; i++) {
 		k = (k * 47 + 1) % rule->num_of_passwords;
-		if (rainbow_generate_single_chain(config, rule, k, first_password, 
+		if (rainbow_generate_single_chain(config, rule, k, first_password,
 				sizeof(first_password), last_digest) != 0) {
 			/* error message printed by generate_chain */
 			return 1;
@@ -34,7 +36,7 @@ static int generate_all_chains(const config_t * config, const rule_info_t * rule
 			return 1;
 		}
 #if SHOW_GENERATED_CHAINS
-		binary2hexa(last_digest, rule->digest_size, hexdigest, sizeof(hexdigest));
+		binary2hexa(last_digest, config->digest_size, hexdigest, sizeof(hexdigest));
 		printf("%05llu: added %s : '%s'\n", k, hexdigest, first_password);
 #endif
 	}
@@ -49,7 +51,6 @@ int main(int argc, const char ** argv)
 	config_t config;
 	rule_info_t rule;
 	DEHT * deht = NULL;
-	uint64_t * seed_table = NULL;
 
 	if (argc != 2) {
 		fprintf(stderr, "Usage: %s <prefix>\n", argv[0]);
@@ -65,7 +66,7 @@ int main(int argc, const char ** argv)
 		goto cleanup1;
 	}
 
-	deht = 	create_empty_DEHT(config.prefix, my_hash_func, my_valid_func, 
+	deht = 	create_empty_DEHT(config.prefix, my_hash_func, my_valid_func,
 		config.num_of_buckets, config.bucket_size, 8, config.hash_name);
 	if (deht == NULL) {
 		/* error message printed by create_empty_DEHT */

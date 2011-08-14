@@ -878,10 +878,10 @@ int write_DEHT_pointers_table(DEHT *deht)
 /*
  * finds the first pair that matches the validation data, or the last pair in the bucket.
  */
-int bucket_multi_find_key(DEHT * deht, int bucket, const unsigned char * validation, 
+int bucket_multi_find_key(DEHT * deht, int bucket, const unsigned char * validation,
 						  DEHT_DISK_PTR * block, DEHT_DISK_PTR * pair)
 {
-	int pair_count = 0; 
+	int pair_count = 0;
 	DEHT_DISK_PTR current_block_disk_ptr = NULL_DISK_PTR;
 	DEHT_DISK_PTR next_block_disk_ptr = NULL_DISK_PTR;
 	DEHT_DISK_PTR * pair_ptr = NULL_DISK_PTR;
@@ -891,15 +891,15 @@ int bucket_multi_find_key(DEHT * deht, int bucket, const unsigned char * validat
 		if (deht->hashTableOfPointersImageInMemory != NULL) {
 			/* use cached head table if possible */
 			current_block_disk_ptr = deht->hashTableOfPointersImageInMemory[bucket];
-		} 
+		}
 		else {
-			if (fread_from(deht->sPrefixFileName, deht->keyFP, sizeof(deht->header) + 
-					bucket * sizeof(DEHT_DISK_PTR), &current_block_disk_ptr, 
+			if (fread_from(deht->sPrefixFileName, deht->keyFP, sizeof(deht->header) +
+					bucket * sizeof(DEHT_DISK_PTR), &current_block_disk_ptr,
 					sizeof(DEHT_DISK_PTR)) != 0) {
 				return DEHT_STATUS_FAIL;
 			}
 		}
-	} 
+	}
 	else {
 		/* otherwise continue from where we stopped previously */
 		current_block_disk_ptr = *block;
@@ -950,15 +950,14 @@ int bucket_multi_find_key(DEHT * deht, int bucket, const unsigned char * validat
 
 #define MIN(a,b) (((a) < (b)) ? (a) : (b))
 
-int multi_query_DEHT(DEHT *deht, const unsigned char * key, int keyLength, 
+int multi_query_DEHT(DEHT *deht, const unsigned char * key, int keyLength,
 					 masrek_t * masrek)
 {
 	int res;
-	int bucket; 
+	int bucket;
 	int item_index = 0;
 	DEHT_DISK_PTR pair = NULL_DISK_PTR;
 	DEHT_DISK_PTR block = NULL_DISK_PTR;
-	DEHT_DISK_PTR data_ptr = NULL_DISK_PTR;
 	unsigned char * masrek_ptr = (unsigned char*)masrek->buffer;
 	int remaining = masrek->buffer_size;
 
@@ -967,7 +966,7 @@ int multi_query_DEHT(DEHT *deht, const unsigned char * key, int keyLength,
 
 	/* scan the bucket for the given key */
 	while (item_index < masrek->max_items) {
-		res = bucket_multi_find_key(deht, bucket, deht->tmpValidationKey, 
+		res = bucket_multi_find_key(deht, bucket, deht->tmpValidationKey,
 			&block, &pair);
 
 		if (res == DEHT_STATUS_SUCCESS) {
@@ -981,7 +980,7 @@ int multi_query_DEHT(DEHT *deht, const unsigned char * key, int keyLength,
 			if (res < 0) {
 				return -1;
 			}
-			masrek->items[item_index].buffer = masrek_ptr;
+			masrek->items[item_index].buffer = (char*)masrek_ptr;
 			masrek->items[item_index].length = res;
 			item_index++;
 			remaining -= res;

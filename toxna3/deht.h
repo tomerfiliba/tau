@@ -231,7 +231,7 @@ typedef struct {
 /************************************************************************************/
 /*  */
 /************************************************************************************/
-int multi_query_DEHT(DEHT *deht, const unsigned char * key, int keyLength, 
+int multi_query_DEHT(DEHT *deht, const unsigned char * key, int keyLength,
 					 masrek_t * masrek);
 
 

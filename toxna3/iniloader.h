@@ -25,7 +25,7 @@ void ini_finalize(inifile_t * ini);
 
 /****************************************************************************/
 
-/* a struct that holds all the configuration parametes for this project 
+/* a struct that holds all the configuration parametes for this project
  * (loaded from the INI file) */
 typedef struct {
 	char prefix[MAX_INPUT_BUFFER];

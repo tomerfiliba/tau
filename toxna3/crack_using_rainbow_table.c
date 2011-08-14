@@ -12,7 +12,7 @@
 #endif
 
 
-static int user_input_loop(const config_t * config, const rule_info_t * rule, 
+static int user_input_loop(const config_t * config, const rule_info_t * rule,
 						   DEHT * deht)
 {
 	int res;
@@ -56,13 +56,13 @@ static int user_input_loop(const config_t * config, const rule_info_t * rule,
 			continue;
 		}
 
-		/* query the rainbow table */
+		/* look for the hash in the rainbow table */
 		res = rainbow_query(config, rule, deht, digest, password, sizeof(password) - 1);
 		if (res == RAINBOW_STATUS_OK) {
-			printf("Try to login with %s\n", password);
+			printf("Try to login with password \"%s\"\n", password);
 		}
 		else if (res == RAINBOW_STATUS_NOT_FOUND) {
-			printf("Password not found\n");
+			printf("Sorry but this hash doesn't appears in pre-processing\n");
 		}
 		else {
 			/* error message printed by crack_password */
@@ -74,7 +74,7 @@ static int user_input_loop(const config_t * config, const rule_info_t * rule,
 }
 
 
-int main2(int argc, const char ** argv)
+int main(int argc, const char ** argv)
 {
 	int res = 1;
 	DEHT * deht = NULL;

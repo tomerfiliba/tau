@@ -14,11 +14,11 @@
 int rainbow_generate_seed_table(config_t * config);
 int rainbow_load_seed_table(config_t * config);
 
-int rainbow_generate_single_chain(const config_t * config, const rule_info_t * rule, 
-								  uint64_t k, char * first_password, int max_password, 
+int rainbow_generate_single_chain(const config_t * config, const rule_info_t * rule,
+								  uint64_t k, char * first_password, int max_password,
 								  unsigned char * last_digest);
 
-int rainbow_query(const config_t * config, const rule_info_t * rule, DEHT * deht, 
+int rainbow_query(const config_t * config, const rule_info_t * rule, DEHT * deht,
 				  const unsigned char * target_digest, char * output, int max_output);
 
 

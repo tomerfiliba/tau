@@ -1,7 +1,7 @@
 all: create_rainbow_table crack_using_rainbow_table 
 
 clean:
-	-rm *.o create_rainbow_table crack_using_rainbow_table
+	-rm *.o create_rainbow_table crack_using_rainbow_table create_rainbow_table-debug
 
 md5.o: md5.c md5.h
 	gcc -std=c99 -pedantic-errors -c -Wall -Werror -g md5.c
@@ -27,21 +27,24 @@ rainbow.o: misc.o rainbow.c rules.o deht.o
 create_rainbow_table.o: deht.o misc.o create_rainbow_table.c iniloader.o rules.o rainbow.o
 	gcc -std=c99 -pedantic-errors -c -Wall -Werror -g create_rainbow_table.c
 
-crack_using_rainbow_table.o: deht.o misc.o crack_using_rainbow_table.c iniloader.o rainbow.o
+create_rainbow_table-debug.o: deht.o misc.o create_rainbow_table.c iniloader.o rules.o rainbow.o
+	gcc -std=c99 -pedantic-errors -c -Wall -Werror -g -o create_rainbow_table-debug.o create_rainbow_table.c -DSHOW_GENERATED_CHAINS
+
+crack_using_rainbow_table.o: deht.o misc.o crack_using_rainbow_table.c iniloader.o rainbow.o rules.o
 	gcc -std=c99 -pedantic-errors -c -Wall -Werror -g crack_using_rainbow_table.c
 
 create_rainbow_table: create_rainbow_table.o 
 	gcc -pedantic-errors -Wall -Werror -g -lm -o create_rainbow_table \
 	deht.o iniloader.o misc.o md5.o sha1.o create_rainbow_table.o rules.o rainbow.o
 
+create_rainbow_table-debug: create_rainbow_table-debug.o 
+	gcc -pedantic-errors -Wall -Werror -g -lm -o create_rainbow_table-debug \
+	deht.o iniloader.o misc.o md5.o sha1.o create_rainbow_table-debug.o rules.o rainbow.o
+
 crack_using_rainbow_table: crack_using_rainbow_table.o
 	gcc -pedantic-errors -Wall -Werror -g -lm -o crack_using_rainbow_table \
-	deht.o iniloader.o misc.o md5.o sha1.o crack_using_rainbow_table.o rainbow.o
+	deht.o iniloader.o misc.o md5.o sha1.o crack_using_rainbow_table.o rainbow.o rules.o
 
-test-rules: rules.o
-	gcc -pedantic-errors -Wall -Werror -g -lm -o test-rules \
-	iniloader.o misc.o md5.o sha1.o rules.o
-
-test: clean all
-	-rm *.key *.data
+debug: clean create_rainbow_table-debug crack_using_rainbow_table
+	-rm *.key *.data *.seed
 
