@@ -106,12 +106,16 @@ static int init_deht_caches(DEHT * deht)
 
 cleanup4:
 	free(deht->tmpValidationKey);
+	deht->tmpValidationKey = NULL;
 cleanup3:
 	free(deht->anLastBlockSize);
+	deht->anLastBlockSize = NULL;
 cleanup2:
 	free(deht->hashPointersForLastBlockImageInMemory);
+	deht->hashPointersForLastBlockImageInMemory = NULL;
 cleanup1:
 	fclose(deht->dataFP);
+	deht->dataFP = NULL;
 	return -1;
 }
 
@@ -306,8 +310,14 @@ void close_DEHT_files(DEHT * deht)
 
 	/* no point in checking return value of fclose -- this function is void
 	 * anyway and is not meant to report errors back */
-	fclose(deht->keyFP);
-	fclose(deht->dataFP);
+	if (deht->keyFP != NULL) {
+		fclose(deht->keyFP);
+		deht->keyFP = NULL;
+	}
+	if (deht->dataFP != NULL) {
+		fclose(deht->dataFP);
+		deht->dataFP = NULL;
+	}
 
 	/* since we malloc()'ed the deht, it's time for us to free() it */
 	free(deht);
@@ -321,7 +331,7 @@ void close_DEHT_files(DEHT * deht)
 static int fread_from(const char * prefix, FILE * file, DEHT_DISK_PTR offset,
 					  void * data, size_t size)
 {
-	if (fseek(file, offset, SEEK_SET) != 0) {
+	if (fseek(file, (long)offset, SEEK_SET) != 0) {
 		/*perror("fseek");*/
 		perror(prefix);
 		return -1;
@@ -340,7 +350,7 @@ static int fread_from(const char * prefix, FILE * file, DEHT_DISK_PTR offset,
 static int fwrite_at(const char * prefix, FILE * file, DEHT_DISK_PTR offset,
 					 const void * data, size_t size)
 {
-	if (fseek(file, offset, SEEK_SET) != 0) {
+	if (fseek(file, (long)offset, SEEK_SET) != 0) {
 		/*perror("fseek");*/
 		perror(prefix);
 		return -1;
@@ -377,8 +387,16 @@ static int bucket_find_empty_slot(DEHT * deht, int bucket, DEHT_DISK_PTR * block
 
 	/* try to serve request from cache */
 	if (deht->anLastBlockSize[bucket] != -1 && deht->hashTableOfPointersImageInMemory != NULL) {
-		*block = deht->hashTableOfPointersImageInMemory[bucket];
-		*pair = *block + deht->anLastBlockSize[bucket] * deht->pairSize;
+		*block = deht->hashPointersForLastBlockImageInMemory[bucket];
+		pair_count = deht->anLastBlockSize[bucket];
+
+		if (pair_count == deht->header.nPairsPerBlock) {
+			/* the last block is full */
+			*pair = NULL_DISK_PTR;
+		} else {
+			/* there still is room in the last block */
+			*pair = *block + deht->anLastBlockSize[bucket] * deht->pairSize;
+		}
 		return DEHT_STATUS_SUCCESS;
 	}
 
@@ -417,7 +435,7 @@ static int bucket_find_empty_slot(DEHT * deht, int bucket, DEHT_DISK_PTR * block
 
 	/* read last block's pairs */
 	if (fread_from(deht->sPrefixFileName, deht->keyFP, current_block_disk_ptr, deht->tmpBlockPairs,
-			deht->pairSize * deht->header.nPairsPerBlock) != 0) {
+			deht->blockSize) != 0) {
 		return DEHT_STATUS_FAIL;
 	}
 
@@ -493,8 +511,7 @@ static int add_block_to_bucket(DEHT * deht, int bucket, DEHT_DISK_PTR block,
 		}
 	} else {
 		/* bucket already exists, update pointer "next" in last block */
-		if (fwrite_at(deht->sPrefixFileName, deht->keyFP, block + deht->header.nPairsPerBlock *
-				(deht->header.nBytesPerValidationKey + sizeof(DEHT_DISK_PTR)),
+		if (fwrite_at(deht->sPrefixFileName, deht->keyFP, block + deht->blockSize - sizeof(DEHT_DISK_PTR),
 				&next, sizeof(DEHT_DISK_PTR)) != 0) {
 			return DEHT_STATUS_FAIL;
 		}
@@ -854,18 +871,149 @@ int write_DEHT_pointers_table(DEHT *deht)
 	return DEHT_STATUS_SUCCESS;
 }
 
+/*****************************************************************************/
+/* Additions for part 3 */
+/*****************************************************************************/
+
+/*
+ * finds the first pair that matches the validation data, or the last pair in the bucket.
+ */
+int bucket_multi_find_key(DEHT * deht, int bucket, const unsigned char * validation, 
+						  DEHT_DISK_PTR* block, DEHT_DISK_PTR* pair)
+{
+	DEHT_DISK_PTR pair_count = 0; 
+	int found = 1;
+	DEHT_DISK_PTR current_block_disk_ptr = NULL_DISK_PTR;
+	DEHT_DISK_PTR next_block_disk_ptr = NULL_DISK_PTR;
+
+	/* find the first block, if this is the first call */
+	if (*block == NULL_DISK_PTR) {
+		if (deht->hashTableOfPointersImageInMemory != NULL) {
+			/* use cached head table if possible */
+			current_block_disk_ptr = deht->hashTableOfPointersImageInMemory[bucket];
+		} 
+		else {
+			if (fread_from(deht->sPrefixFileName, deht->keyFP, sizeof(deht->header) + 
+					bucket * sizeof(DEHT_DISK_PTR), &current_block_disk_ptr, 
+					sizeof(DEHT_DISK_PTR)) != 0) {
+				return DEHT_STATUS_FAIL;
+			}
+		}
+	} 
+	/* otherwise continue from where we stopped previously */
+	else {
+		current_block_disk_ptr = *block;
+		pair_count = ((*pair - *block) / deht->pairSize) + 1;
+	}
+
+#if 0
+	next_block_disk_ptr = current_block_disk_ptr;
+	while (next_block_disk_ptr != NULL_DISK_PTR) {
+		current_block_disk_ptr = next_block_disk_ptr;
+
+		/* read block */
+		if (fread_from(deht->sPrefixFileName, ht->keyFP, current_block_disk_ptr, 
+				deht->tmpBlockPairs, block_size) != 0) {
+			goto cleanup;
+		}
+
+		/* scan all pairs */
+		for (; pair_count < deht->header.nPairsPerBlock; pair_count++) {
+			/* if data pointer is not initialized, got to end of block, stop scanning*/
+			if (*(DEHT_DISK_PTR*)(current_block + pair_count * deht->pairSize + 
+					deht->header.nBytesPerValidationKey) == NULL_DISK_PTR) {
+				break;
+			}
+			found = memcmp(signature, current_block + pair_count * deht->pairSize, 
+				deht->header.nBytesPerValidationKey);
+			if (found == 0) {
+				break;
+			}
+		}
+
+		if (0 == found) {
+			break;
+		}
+		if (pair_count < ht->header.nPairsPerBlock) {
+			/* Reached a vacant spot */
+			break;
+		}
+		
+		/* Skip to next block */
+		pair_count = 0;
+		next_block_disk_ptr = *(DEHT_DISK_PTR*)(current_block + block_size - sizeof(DEHT_DISK_PTR));
+	}
+
+	*block = current_block_disk_ptr;
+	if (found != 0) {
+		/* Stopped at the end of the bucket. Update the caches while we're at it. */
+		ht->hashPointersForLastBlockImageInMemory[bucket_index] = current_block_disk_ptr;
+		ht->anLastBlockSize[bucket_index] = pair_count;
+		if (next_block_disk_ptr == NULL_DISK_PTR) {
+			/* No vacant spot at end of last block */
+			*pair = NULL_DISK_PTR;
+		} else {
+			/* Point to vacant spot at end of last block */
+			*pair = current_block_disk_ptr + pair_count * pair_size;
+		}
+		return DEHT_STATUS_NOT_FOUND;
+	} else {
+		*pair = current_block_disk_ptr + pair_count * pair_size;
+		return DEHT_STATUS_FOUND;
+	}
+#endif
+	return DEHT_STATUS_SUCCESS;
+}
 
 
+#define MIN(a,b) (((a) < (b)) ? (a) : (b))
 
+int multi_query_DEHT(DEHT *deht, const unsigned char * key, int keyLength, 
+					 masrek_t * masrek, int dataMaxAllowedLength)
+{
+	int res;
+	int bucket; 
+	int item_index = 0;
+	DEHT_DISK_PTR pair = NULL_DISK_PTR;
+	DEHT_DISK_PTR block = NULL_DISK_PTR;
+	DEHT_DISK_PTR data_ptr = NULL_DISK_PTR;
+	char * masrek_ptr = masrek->buffer;
+	const char * end_of_masrek = masrek->buffer + masrek->total_size;
 
+	bucket = deht->hashFunc(key, keyLength, deht->header.numEntriesInHashTable);
+	deht->comparisonHashFunc(key, keyLength, deht->tmpValidationKey);
 
+	/* scan the bucket for the given key */
+	while (item_index < masrek->max_items) {
+		res = bucket_multi_find_key(deht, bucket, deht->tmpValidationKey, 
+			&block, &pair);
 
+		if (res == DEHT_STATUS_SUCCESS) {
+			/* found a matching value */
+			if (masrek_ptr >= end_of_masrek) {
+				/* masrek is full */
+				break;
+			}
 
+			res = read_pair_data(deht, pair, (unsigned char *)masrek_ptr, 
+				MIN(end_of_masrek - masrek_ptr, dataMaxAllowedLength));
+			if (res < 0) {
+				return -1;
+			}
+			masrek->item_offsets[item_index++] = masrek_ptr;
+			masrek_ptr += res;
+		}
+		else if (res == DEHT_STATUS_NOT_NEEDED) {
+			/* no more matches */
+			break;
+		}
+		else {
+			/* some kind of error */
+			return -1;
+		}
+	};
 
-
-
-
-
-
+	return item_index;
+}
 
 
