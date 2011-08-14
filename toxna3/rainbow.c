@@ -120,7 +120,7 @@ int rainbow_generate_single_chain(const config_t * config, const rule_info_t * r
 		return 1;
 	}
 	config->hash_func((unsigned char*)first_password, strlen(first_password), last_digest);
-	return rainbow_compute_chain(config, rule, 0, config->chain_length - 1, last_digest);
+	return rainbow_compute_chain(config, rule, 0, config->chain_length, last_digest);
 }
 
 /****************************************************************************/

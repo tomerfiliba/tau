@@ -18,8 +18,6 @@ static int generate_all_chains(const config_t * config, const rule_info_t * rule
 #ifdef SHOW_GENERATED_CHAINS
 	char hexdigest[MAX_DIGEST_LENGTH_IN_BYTES * 2 + 1];
 	memset(hexdigest, 0, sizeof(hexdigest));
-
-	printf("Generating %llu chains\n", iterations);
 #endif
 
 	/* fill DEHT with chain heads and tails */
@@ -37,7 +35,7 @@ static int generate_all_chains(const config_t * config, const rule_info_t * rule
 		}
 #if SHOW_GENERATED_CHAINS
 		binary2hexa(last_digest, config->digest_size, hexdigest, sizeof(hexdigest));
-		printf("%05llu: added %s : '%s'\n", k, hexdigest, first_password);
+		printf("%05lu (%05lu): added %s = '%s'\n", i, k, hexdigest, first_password);
 #endif
 	}
 
