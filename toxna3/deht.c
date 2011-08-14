@@ -879,12 +879,12 @@ int write_DEHT_pointers_table(DEHT *deht)
  * finds the first pair that matches the validation data, or the last pair in the bucket.
  */
 int bucket_multi_find_key(DEHT * deht, int bucket, const unsigned char * validation, 
-						  DEHT_DISK_PTR* block, DEHT_DISK_PTR* pair)
+						  DEHT_DISK_PTR * block, DEHT_DISK_PTR * pair)
 {
-	DEHT_DISK_PTR pair_count = 0; 
-	int found = 1;
+	int pair_count = 0; 
 	DEHT_DISK_PTR current_block_disk_ptr = NULL_DISK_PTR;
 	DEHT_DISK_PTR next_block_disk_ptr = NULL_DISK_PTR;
+	DEHT_DISK_PTR * pair_ptr = NULL_DISK_PTR;
 
 	/* find the first block, if this is the first call */
 	if (*block == NULL_DISK_PTR) {
@@ -900,76 +900,58 @@ int bucket_multi_find_key(DEHT * deht, int bucket, const unsigned char * validat
 			}
 		}
 	} 
-	/* otherwise continue from where we stopped previously */
 	else {
+		/* otherwise continue from where we stopped previously */
 		current_block_disk_ptr = *block;
-		pair_count = ((*pair - *block) / deht->pairSize) + 1;
+		pair_count = (int)(((*pair - *block) / deht->pairSize) + 1);
 	}
 
-#if 0
 	next_block_disk_ptr = current_block_disk_ptr;
 	while (next_block_disk_ptr != NULL_DISK_PTR) {
 		current_block_disk_ptr = next_block_disk_ptr;
 
 		/* read block */
-		if (fread_from(deht->sPrefixFileName, ht->keyFP, current_block_disk_ptr, 
-				deht->tmpBlockPairs, block_size) != 0) {
-			goto cleanup;
+		if (fread_from(deht->sPrefixFileName, deht->keyFP, current_block_disk_ptr,
+				deht->tmpBlockPairs, deht->blockSize) != 0) {
+			return DEHT_STATUS_FAIL;
 		}
 
 		/* scan all pairs */
 		for (; pair_count < deht->header.nPairsPerBlock; pair_count++) {
-			/* if data pointer is not initialized, got to end of block, stop scanning*/
-			if (*(DEHT_DISK_PTR*)(current_block + pair_count * deht->pairSize + 
-					deht->header.nBytesPerValidationKey) == NULL_DISK_PTR) {
-				break;
-			}
-			found = memcmp(signature, current_block + pair_count * deht->pairSize, 
+			pair_ptr = (DEHT_DISK_PTR*)(deht->tmpBlockPairs + pair_count * deht->pairSize +
 				deht->header.nBytesPerValidationKey);
-			if (found == 0) {
+			if (*pair_ptr == NULL_DISK_PTR) {
+				/* end of block */
 				break;
 			}
+			if (memcmp(validation, deht->tmpBlockPairs + pair_count * deht->pairSize,
+					deht->header.nBytesPerValidationKey) == 0) {
+				/* key found */
+				*block = current_block_disk_ptr;
+				*pair = current_block_disk_ptr + pair_count * deht->pairSize;
+				return DEHT_STATUS_SUCCESS;
+			}
 		}
-
-		if (0 == found) {
+		if (pair_count < deht->header.nPairsPerBlock) {
+			/* reached an empty slot */
 			break;
 		}
-		if (pair_count < ht->header.nPairsPerBlock) {
-			/* Reached a vacant spot */
-			break;
-		}
-		
-		/* Skip to next block */
-		pair_count = 0;
-		next_block_disk_ptr = *(DEHT_DISK_PTR*)(current_block + block_size - sizeof(DEHT_DISK_PTR));
+
+		next_block_disk_ptr = *(DEHT_DISK_PTR*)(deht->tmpBlockPairs +
+			deht->blockSize - sizeof(DEHT_DISK_PTR));
 	}
 
-	*block = current_block_disk_ptr;
-	if (found != 0) {
-		/* Stopped at the end of the bucket. Update the caches while we're at it. */
-		ht->hashPointersForLastBlockImageInMemory[bucket_index] = current_block_disk_ptr;
-		ht->anLastBlockSize[bucket_index] = pair_count;
-		if (next_block_disk_ptr == NULL_DISK_PTR) {
-			/* No vacant spot at end of last block */
-			*pair = NULL_DISK_PTR;
-		} else {
-			/* Point to vacant spot at end of last block */
-			*pair = current_block_disk_ptr + pair_count * pair_size;
-		}
-		return DEHT_STATUS_NOT_FOUND;
-	} else {
-		*pair = current_block_disk_ptr + pair_count * pair_size;
-		return DEHT_STATUS_FOUND;
-	}
-#endif
-	return DEHT_STATUS_SUCCESS;
+	/* key not found (but let's update the cache anyway) */
+	deht->hashPointersForLastBlockImageInMemory[bucket] = current_block_disk_ptr;
+	deht->anLastBlockSize[bucket] = pair_count;
+	return DEHT_STATUS_NOT_NEEDED;
 }
 
 
 #define MIN(a,b) (((a) < (b)) ? (a) : (b))
 
 int multi_query_DEHT(DEHT *deht, const unsigned char * key, int keyLength, 
-					 masrek_t * masrek, int dataMaxAllowedLength)
+					 masrek_t * masrek)
 {
 	int res;
 	int bucket; 
@@ -977,8 +959,8 @@ int multi_query_DEHT(DEHT *deht, const unsigned char * key, int keyLength,
 	DEHT_DISK_PTR pair = NULL_DISK_PTR;
 	DEHT_DISK_PTR block = NULL_DISK_PTR;
 	DEHT_DISK_PTR data_ptr = NULL_DISK_PTR;
-	char * masrek_ptr = masrek->buffer;
-	const char * end_of_masrek = masrek->buffer + masrek->total_size;
+	unsigned char * masrek_ptr = (unsigned char*)masrek->buffer;
+	int remaining = masrek->buffer_size;
 
 	bucket = deht->hashFunc(key, keyLength, deht->header.numEntriesInHashTable);
 	deht->comparisonHashFunc(key, keyLength, deht->tmpValidationKey);
@@ -990,17 +972,19 @@ int multi_query_DEHT(DEHT *deht, const unsigned char * key, int keyLength,
 
 		if (res == DEHT_STATUS_SUCCESS) {
 			/* found a matching value */
-			if (masrek_ptr >= end_of_masrek) {
-				/* masrek is full */
+			if (remaining <= 0) {
+				/* masrek buffer is full */
 				break;
 			}
 
-			res = read_pair_data(deht, pair, (unsigned char *)masrek_ptr, 
-				MIN(end_of_masrek - masrek_ptr, dataMaxAllowedLength));
+			res = read_pair_data(deht, pair, masrek_ptr, remaining);
 			if (res < 0) {
 				return -1;
 			}
-			masrek->item_offsets[item_index++] = masrek_ptr;
+			masrek->items[item_index].buffer = masrek_ptr;
+			masrek->items[item_index].length = res;
+			item_index++;
+			remaining -= res;
 			masrek_ptr += res;
 		}
 		else if (res == DEHT_STATUS_NOT_NEEDED) {

@@ -11,17 +11,15 @@
 #define RAINBOW_STATUS_NOT_FOUND  (1)
 
 
-uint64_t * rainbow_generate_seed_table(const char * prefix, const char * rand_seed, int chain_length);
+int rainbow_generate_seed_table(config_t * config);
+int rainbow_load_seed_table(config_t * config);
 
-uint64_t * rainbow_load_seed_table(const char * prefix, int chain_length);
+int rainbow_generate_single_chain(const config_t * config, const rule_info_t * rule, 
+								  uint64_t k, char * first_password, int max_password, 
+								  unsigned char * last_digest);
 
-int rainbow_generate_single_chain(const rule_info_t * rule, int chain_length, uint64_t k,
-		const uint64_t * seed_table, char * first_password, unsigned char * last_digest);
-
-int rainbow_query(DEHT * deht, const rule_info_t * rule, const uint64_t * seed_table,
-				  int chain_length, int multi_query, const unsigned char * target_digest,
-				  char * out_password);
-
+int rainbow_query(const config_t * config, const rule_info_t * rule, DEHT * deht, 
+				  const unsigned char * target_digest, char * output, int max_output);
 
 
 #endif /* RAINBOW_H_INCLUDED */

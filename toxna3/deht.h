@@ -35,16 +35,6 @@ struct DEHTpreferences
 };
 
 /******************************************************************/
-/* the "masrek" for multi-query                                   */
-/******************************************************************/
-typedef struct {
-	int total_size;
-	char * buffer;
-	int max_items;
-	char ** item_offsets;
-} masrek_t;
-
-/******************************************************************/
 /* Kind of data-structure DEHT_STATUS that can be -1,0,1 as flags */
 /******************************************************************/
 #define DEHT_STATUS_SUCCESS        1
@@ -223,9 +213,26 @@ int write_DEHT_pointers_table(DEHT *ht);
 /************************************************************************************/
 void close_DEHT_files(DEHT *ht);
 
+/******************************************************************/
+/* the "masrek" for multi-query                                   */
+/******************************************************************/
+typedef struct {
+	int length;
+	char * buffer;
+} masrek_item_t;
 
+typedef struct {
+	int buffer_size;
+	char * buffer;
+	int max_items;
+	masrek_item_t * items;
+} masrek_t;
+
+/************************************************************************************/
+/*  */
+/************************************************************************************/
 int multi_query_DEHT(DEHT *deht, const unsigned char * key, int keyLength, 
-					 masrek_t * masrek, int dataMaxAllowedLength);
+					 masrek_t * masrek);
 
 
 #endif

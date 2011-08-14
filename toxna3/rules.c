@@ -425,7 +425,8 @@ static int rule_max_password_length(const rule_info_t * info)
 		}
 	}
 
-	return max_length;
+	/* plus 1 for terminating NUL */
+	return max_length + 1;
 }
 
 /*
@@ -435,28 +436,13 @@ static int rule_max_password_length(const rule_info_t * info)
  * from the INI file).
  * returns RULE_STATUS_OK on success, RULE_STATUS_ERROR on failure.
  */
-int rule_init(rule_info_t * info, const char * pattern, const char * lexfilename, 
-			  const char * hashname)
+int rule_init(rule_info_t * info, const char * pattern, const char * lexfilename)
 {
 	info->num_of_patterns = 0;
 	info->patterns = NULL;
 	info->words = NULL;
 	info->num_of_words = 0;
 	info->longest_word = -1;
-
-	if (strcasecmp(hashname, "md5") == 0) {
-		strcpy(info->hashname, "MD5");
-		info->hashfunc = MD5BasicHash;
-		info->digest_size = MD5_OUTPUT_LENGTH_IN_BYTES;
-	} else if (strcasecmp(hashname, "sha1") == 0) {
-		strcpy(info->hashname, "SHA1");
-		info->hashfunc = SHA1BasicHash;
-		info->digest_size = SHA1_OUTPUT_LENGTH_IN_BYTES;
-	} else {
-		/* invalid hash */
-		fprintf(stderr, "Error: Hash \"%s\" is not supported\n", hashname);
-		return RULE_STATUS_ERROR;
-	}
 
 	if (rule_load_lexicon(info, lexfilename) != RULE_STATUS_OK) {
 		return RULE_STATUS_ERROR;
@@ -504,6 +490,14 @@ int rule_get_kth_password_per_pattern(const rule_info_t * info, rule_pattern_t *
 	return RULE_STATUS_OK;
 }
 
+/*
+ * API
+ * 
+ * returns the k'th password in the password space defined by this rule
+ * if allow_empty is 0, this function will not return empty passwords 
+ * (it will choose a different k until the password is non-empty). if you
+ * set this argument to 1, you may get empty passwords.
+ */
 int rule_kth_password(const rule_info_t * info, uint64_t k, char * output, 
 					  int output_length, int allow_empty)
 {
@@ -530,44 +524,13 @@ int rule_kth_password(const rule_info_t * info, uint64_t k, char * output,
 			break;
 		}
 		else {
-			k = (k * 593) % info->num_of_passwords;
+			k = (k * 593 + 1) % info->num_of_passwords;
 		}
 	}
 
 	/* k too large */
 	fprintf(stderr, "rule_kth_password: k out of bounds of the password space\n");
 	return RULE_STATUS_ERROR;
-}
-
-/*
- * API
- *
- * initializes the given rule from an INI file. it loads the parameters from the
- * INI file and initializes the rule using rule_init().
- * returns RULE_STATUS_OK on success, RULE_STATUS_ERROR on failure.
- */
-int rule_load(rule_info_t * info, const inifile_t * ini)
-{
-	const char * pattern = NULL;
-	const char * lexfilename = NULL;
-	const char * hashname = NULL;
-
-	pattern = ini_get(ini, "rule");
-	lexfilename = ini_get(ini, "lexicon_name");
-	hashname = ini_get(ini, "hash_name");
-
-	if (lexfilename == NULL) {
-		fprintf(stderr, "INI file did not specify 'lexicon_name'\n");
-		return RULE_STATUS_ERROR;
-	} else if (pattern == NULL) {
-		fprintf(stderr, "INI file did not specify 'rule'\n");
-		return RULE_STATUS_ERROR;
-	} else if (hashname == NULL) {
-		fprintf(stderr, "INI file did not specify 'hash_name'\n");
-		return RULE_STATUS_ERROR;
-	}
-
-	return rule_init(info, pattern, lexfilename, hashname);
 }
 
 /*

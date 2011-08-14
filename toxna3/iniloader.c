@@ -154,20 +154,77 @@ void ini_finalize(inifile_t * ini)
 	}
 }
 
-/*
-int main()
+#define INI_GET_STR(key, dest)	if ((str_value = ini_get(&ini, key)) == NULL) { \
+									fprintf(stderr, "INI file does not specify '%s'\n", key); \
+									goto cleanup; \
+								} \
+								strncpy(dest, str_value, sizeof(dest));
+
+#define INI_GET_NUM(key, dest)	if ((ini_get_integer(&ini, key, &dest)) != INI_STATUS_OK) { \
+									fprintf(stderr, "INI file does not specify '%s'\n", key); \
+									goto cleanup; \
+								} \
+								if (dest <= 0) { \
+									fprintf(stderr, "INI: '%s' must be >= 1'", key); \
+									goto cleanup; \
+								}
+
+int config_load(config_t * config, const char * prefix)
 {
-	int i;
+	int res = INI_STATUS_ERROR;
+	const char * str_value;
+	char inifilename[MAX_INPUT_BUFFER];
 	inifile_t ini;
 
-	if (ini_load(&ini, "test.ini") != INI_STATUS_OK) {
-		return 1;
-	}
-	for (i = 0; i < ini.num_of_lines; i++) {
-		printf("'%s' = '%s'\n", ini.lines[i].key, ini.lines[i].value);
-	}
-	printf("'%s'\n", ini_get(&ini, "num_of_r"));
+	config->seed_table = NULL;
 
-	return 0;
+	strncpy(inifilename, prefix, sizeof(inifilename) - 5);
+	strcat(inifilename, ".ini");
+	if (ini_load(&ini, inifilename) != INI_STATUS_OK) {
+		/* error message printed by ini_load */
+		return INI_STATUS_ERROR;
+	}
+
+	strncpy(config->prefix, prefix, sizeof(config->prefix));
+
+	INI_GET_STR("rule", config->rule_pattern);
+	INI_GET_STR("lexicon_name", config->lexicon_file);
+	INI_GET_STR("hash_name", config->hash_name);
+	INI_GET_STR("main_rand_seed", config->random_seed);
+
+	INI_GET_NUM("num_of_R", config->chain_length);
+	INI_GET_NUM("multi_query", config->num_of_query_results);
+	INI_GET_NUM("bucket_size", config->bucket_size);
+	INI_GET_NUM("hash_size", config->num_of_buckets);
+
+	if (strcasecmp(config->hash_name, "MD5") == 0) {
+		config->hash_func = MD5BasicHash;
+		config->digest_size = MD5_OUTPUT_LENGTH_IN_BYTES;
+	}
+	else if (strcasecmp(config->hash_name, "SHA1") == 0) {
+		config->hash_func = SHA1BasicHash;
+		config->digest_size = SHA1_OUTPUT_LENGTH_IN_BYTES;
+	}
+	else {
+		fprintf(stderr, "INI: hash_name must be 'MD5' or 'SHA1'");
+		goto cleanup;
+	}
+
+	res = INI_STATUS_OK;
+
+cleanup:
+	ini_finalize(&ini);
+	return res;
 }
-*/
+
+#undef INI_GET_STR
+#undef INI_GET_NUM
+
+void config_finalize(config_t * config)
+{
+	if (config->seed_table != NULL) {
+		free(config->seed_table);
+		config->seed_table = NULL;
+	}
+}
+

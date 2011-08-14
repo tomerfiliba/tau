@@ -42,10 +42,6 @@ typedef struct
 	int longest_word;               /* longest word in the lexicon */
 	char ** words;                  /* lexicon (dynamically allocated) */
 
-	BasicHashFunctionPtr hashfunc;  /* the hash function (function pointer) */
-	char hashname[10];              /* '10' is taken from deht.h */
-	int digest_size;                /* the digest's size (16 for MD5, 20 for SHA1) */
-
 	uint64_t num_of_passwords;      /* the size of the password space (good approximation) */
 	int longest_password;           /* the longest possible password that this rule generates */
 } rule_info_t;
@@ -53,9 +49,7 @@ typedef struct
 /* 
  * APIs (documented in the C file) 
  */
-int rule_init(rule_info_t * info, const char * pattern,
-        const char * lexfilename, const char * hashname);
-int rule_load(rule_info_t * info, const inifile_t * ini);
+int rule_init(rule_info_t * info, const char * pattern, const char * lexfilename);
 int rule_kth_password(const rule_info_t * info, uint64_t k, char * output,
 					  int output_length, int allow_empty);
 void rule_finalize(rule_info_t * info);
