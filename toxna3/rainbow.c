@@ -83,7 +83,7 @@ cleanup1:
 }
 
 
-static uint64_t rainbow_reduce(const rule_info_t * rule, uint64_t seed, unsigned char * digest)
+static uint64_t reducer(const rule_info_t * rule, uint64_t seed, unsigned char * digest)
 {
 	/* the input digest has a high-enough entropy, and so does the seed,
        so we might as well just multiply them... no need for more complex
@@ -92,42 +92,29 @@ static uint64_t rainbow_reduce(const rule_info_t * rule, uint64_t seed, unsigned
 	return (h * seed) % rule->num_of_passwords;
 }
 
-static int rainbow_single_pass(const config_t * config, const rule_info_t * rule,
-							   int seed_index, unsigned char * digest)
+static int rainbow_reduce_chain(const config_t * config, const rule_info_t * rule,
+								int from, int upper_bound, unsigned char * digest,
+								char * password, int max_password)
 {
-	uint64_t k;
-	char password[MAX_INPUT_BUFFER];
-
-	k = rainbow_reduce(rule, config->seed_table[seed_index], digest);
-	if (rule_kth_password(rule, k, password, sizeof(password) - 1, 0) != RULE_STATUS_OK) {
-		/* error message printed by rule_kth_password */
-		return RAINBOW_STATUS_ERROR;
-	}
-	config->hash_func((unsigned char*)password, strlen(password), digest);
-	return RAINBOW_STATUS_OK;
-}
-
-static int rainbow_single_pass_with_password(const config_t * config, 
-			const rule_info_t * rule, int seed_index, unsigned char * digest,
-			char * password, int max_password)
-{
+	int i;
 	uint64_t k;
 
-	k = rainbow_reduce(rule, config->seed_table[seed_index], digest);
-	if (rule_kth_password(rule, k, password, max_password, 0) != RULE_STATUS_OK) {
-		/* error message printed by rule_kth_password */
-		return RAINBOW_STATUS_ERROR;
+	for (i = 0; i < config->chain_length; i++) {
+		k = reducer(rule, config->seed_table[i], digest);
+		if (rule_kth_password(rule, k, password, max_password, 0) != RULE_STATUS_OK) {
+			/* error message printed by rule_kth_password */
+			return RAINBOW_STATUS_ERROR;
+		}
+		config->hash_func((unsigned char*)password, strlen(password), digest);
 	}
-	config->hash_func((unsigned char*)password, strlen(password), digest);
 	return RAINBOW_STATUS_OK;
 }
-
 
 int rainbow_generate_single_chain(const config_t * config, const rule_info_t * rule,
 								  uint64_t k, char * first_password, int max_password,
 								  unsigned char * last_digest)
 {
-	int i;
+	char tmp_password[MAX_INPUT_BUFFER];
 
 	if (rule_kth_password(rule, k, first_password, max_password, 0) !=
 			RULE_STATUS_OK) {
@@ -135,13 +122,8 @@ int rainbow_generate_single_chain(const config_t * config, const rule_info_t * r
 		return RAINBOW_STATUS_ERROR;
 	}
 	config->hash_func((unsigned char*)first_password, strlen(first_password), last_digest);
-
-	for (i = 1; i <= config->chain_length; i++) {
-		if (rainbow_single_pass(config, rule, i - 1, last_digest) != RAINBOW_STATUS_OK) {
-			return RAINBOW_STATUS_ERROR;
-		}
-	}
-	return RAINBOW_STATUS_OK;
+	return rainbow_reduce_chain(config, rule, 0, config->chain_length, last_digest,
+		tmp_password, sizeof(tmp_password) - 1);
 }
 
 /****************************************************************************/
@@ -184,7 +166,7 @@ static void masrek_finalize(masrek_t * masrek)
 	}
 }
 
-static void repr(char * buf, int length)
+/*static void repr(char * buf, int length)
 {
 	int i;
 	unsigned char ch;
@@ -203,12 +185,12 @@ static void repr(char * buf, int length)
 		}
 	}
 	printf("'");
-}
+}*/
 
 int rainbow_query(const config_t * config, const rule_info_t * rule, DEHT * deht,
 				  const unsigned char * target_digest, char * output, int max_output)
 {
-	int i, j, k, max_size;
+	int j, k, max_size;
 	int res;
 	int num_of_matches;
 	masrek_t masrek;
@@ -225,11 +207,9 @@ int rainbow_query(const config_t * config, const rule_info_t * rule, DEHT * deht
 		memcpy(digest, target_digest, config->digest_size);
 		
 		/* go down the chain */
-		for (i = j + 1; i <= config->chain_length; i++) {
-			if (rainbow_single_pass(config, rule, i - 1, digest) != RAINBOW_STATUS_OK) {
-				/* error message printed by rainbow_single_pass */
-				goto cleanup_error;
-			}
+		if (rainbow_reduce_chain(config, rule, j, config->chain_length, digest, 
+				tmp_password, sizeof(tmp_password) - 1) != RAINBOW_STATUS_OK) {
+			goto cleanup_error;
 		}
 
 		/* find all possible starting points */
@@ -244,16 +224,9 @@ int rainbow_query(const config_t * config, const rule_info_t * rule, DEHT * deht
 			config->hash_func((unsigned char*)masrek.items[k].buffer, 
 				masrek.items[k].length, digest);
 
-			printf("%d) %d  ", k, masrek.items[k].length);
-			repr(masrek.items[k].buffer, masrek.items[k].length);
-			printf("\n");
-
-			for (i = 1; i <= j; i++) {
-				if (rainbow_single_pass_with_password(config, rule, i - 1, digest, 
-						tmp_password, sizeof(tmp_password) - 1) != RAINBOW_STATUS_OK) {
-					/* error message printed by rainbow_single_pass */
-					goto cleanup_error;
-				}
+			if (rainbow_reduce_chain(config, rule, 0, j, digest, 
+					tmp_password, sizeof(tmp_password) - 1) != RAINBOW_STATUS_OK) {
+				goto cleanup_error;
 			}
 
 			if (memcmp(digest, target_digest, config->digest_size) == 0) {
