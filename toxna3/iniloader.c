@@ -27,6 +27,9 @@ static int is_comment_line(const char * text)
 	return 1;
 }
 
+/*
+ * parses a config line, the format is "<KEY> = <VALUE>"
+ */
 static int parse_line(char * line, char ** key, char ** value)
 {
 	char * ch, * rkey;
@@ -58,6 +61,12 @@ static int parse_line(char * line, char ** key, char ** value)
 	return INI_STATUS_OK;
 }
 
+/*
+ * API
+ *
+ * initializes an INI-file holder object, loaded from the given file. this function
+ * reads the entire file, parses it, and stores it as a key-value array
+ */
 int ini_load(inifile_t * ini, const char * filename)
 {
 	char line[MAX_INPUT_BUFFER];
@@ -122,6 +131,13 @@ cleanup:
 	return INI_STATUS_ERROR;
 }
 
+/* 
+ * API
+ *
+ * returns the value associated with the given key. note that a CONST pointer to 
+ * the data is returned. returns NULL if the key was not found. keys are NOT 
+ * case sensitive.
+ */
 const char * ini_get(const inifile_t * ini, const char * key)
 {
 	int i;
@@ -134,6 +150,13 @@ const char * ini_get(const inifile_t * ini, const char * key)
 	return NULL;
 }
 
+/*
+ * API
+ * 
+ * returns an integer value associated with the given key. if the key was not
+ * found, returns INI_STATUS_ERROR; otherwise returns INI_STATUS_OK and sets
+ * the `value` argument to the integral value of the string.
+ */
 int ini_get_integer(const inifile_t * ini, const char * key, int * value)
 {
 	const char * text = ini_get(ini, key);
@@ -144,7 +167,11 @@ int ini_get_integer(const inifile_t * ini, const char * key, int * value)
 	return INI_STATUS_OK;
 }
 
-
+/*
+ * API
+ *
+ * releases all resources associated with the INI file holder object
+ */
 void ini_finalize(inifile_t * ini)
 {
 	ini->num_of_lines = 0;
@@ -169,6 +196,18 @@ void ini_finalize(inifile_t * ini)
 									goto cleanup; \
 								}
 
+/*
+ * API
+ *
+ * loads the project's configuration from the INI file specified by `prefix`.
+ * the INI file is `prefix`.ini.
+ *
+ * if some required parameters is missing, or if its value is illegal, a message
+ * is printed and the functions returns INI_STATUS_ERROR. otherwise, the function
+ * returns INI_STATUS_OK.
+ *
+ * the config argument will be populated with the values of the parameters
+ */
 int config_load(config_t * config, const char * prefix)
 {
 	int res = INI_STATUS_ERROR;
@@ -220,6 +259,9 @@ cleanup:
 #undef INI_GET_STR
 #undef INI_GET_NUM
 
+/*
+ * releases all resources held by the config object
+ */
 void config_finalize(config_t * config)
 {
 	if (config->seed_table != NULL) {

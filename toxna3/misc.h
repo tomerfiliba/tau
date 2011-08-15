@@ -42,7 +42,8 @@ int MD5BasicHash(const unsigned char *in, int len, unsigned char *outBuf);
 #define SHA1_OUTPUT_LENGTH_IN_BYTES   20
 int SHA1BasicHash(const unsigned char *in, int len, unsigned char *outBuf);
 
-#define MAX_DIGEST_LENGTH_IN_BYTES	  ((SHA1_OUTPUT_LENGTH_IN_BYTES > MD5_OUTPUT_LENGTH_IN_BYTES) ? SHA1_OUTPUT_LENGTH_IN_BYTES : MD5_OUTPUT_LENGTH_IN_BYTES)
+#define MAX_DIGEST_LENGTH_IN_BYTES	  ((SHA1_OUTPUT_LENGTH_IN_BYTES > MD5_OUTPUT_LENGTH_IN_BYTES) ? \
+											SHA1_OUTPUT_LENGTH_IN_BYTES : MD5_OUTPUT_LENGTH_IN_BYTES)
 
 
 /*************************************************************************/
@@ -95,27 +96,7 @@ int binary2hexa(const unsigned char *bufIn, int lengthIn, char *outStr,
 /*************************************************************************/
 #define LONG_INDEX_PROJ uint64_t
 
-/*************************************************************************/
-/* Function pseudo_random_function replaces rand for 64bit               */
-/* It also randomizes better (i.e. results are more close to white noise)*/
-/* Input is an index you use. same index causes same answer.             */
-/* Inputs:                                                               */
-/*   A binary buffer (i.e. pointer "x" and size "inputLength") & a number*/
-/* the number and buffer will be concatenated and feed to deterministic  */
-/* function thus each of them can be consider as a random "seed".		 */
-/* Output:   A 64bit index (top bit always 0,to avoid sign issue bugs ). */
-/* Note: for a fixed y, this can be considered as a "random" function 	 */
-/* activating on x. To get a familiy of such functions, use severl seeds.*/
-/* Function is purely deterministic, same results for same args          */
-/* It is allowed to change interface a little if you want more efficient */
-/*   implementation. Just make it as generic as this one.                */
-/*************************************************************************/
-LONG_INDEX_PROJ pseudo_random_function(const unsigned char *x, int inputLength,
-        LONG_INDEX_PROJ y);
-
 int64_t longpow(int base, int exp);
-
-int randint(int bound);
 
 int my_hash_func(const unsigned char * keyBuf, int keySize, int tableSize);
 

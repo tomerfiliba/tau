@@ -455,8 +455,8 @@ int rule_init(rule_info_t * info, const char * pattern, const char * lexfilename
 	return RULE_STATUS_OK;
 }
 
-int rule_get_kth_password_per_pattern(const rule_info_t * info, rule_pattern_t * ptrn,
-		uint64_t k, char * output)
+static int rule_get_kth_password_per_pattern(const rule_info_t * info, 
+		rule_pattern_t * ptrn, uint64_t k, char * output)
 {
 	int i;
 	int j;
@@ -559,44 +559,6 @@ void rule_finalize(rule_info_t * info)
 	}
 }
 
-/*
-int main(int argc, const char ** argv)
-{
-	inifile_t ini;
-	rule_info_t rule;
-	int i;
-	int ks[] = {82,400,500,600,700,900,1423,2000,3000,4000,5000,8112,9800,9999,10008};
-	char password[MAX_INPUT_BUFFER];
-
-	if (ini_load(&ini, "test.ini") != 0) {
-		printf("ini_load failed\n");
-		return 1;
-	}
-	if (rule_load(&rule, &ini) != 0) {
-		printf("rule_load failed\n");
-		return 1;
-	}
-
-	printf("lexicon:\n");
-	for (i = 0; i < rule.num_of_words; i++) {
-		printf("    '%s'\n", rule.words[i]);
-	}
-	printf("max password = %d\n", rule.longest_password);
-	printf("password space = %llu\n", rule.num_of_passwords);
-
-	for (i = 0; i < sizeof(ks)/sizeof(ks[0]); i++) {
-		if (rule_kth_password(&rule, ks[i], password, sizeof(password) - 1) != 0) {
-			printf("rule_kth_password failed\n");
-			return 1;
-		}
-		printf("password %d is '%s'\n", ks[i], password);
-	}
-
-	rule_finalize(&rule);
-	ini_finalize(&ini);
-	return 0;
-}
-*/
 
 
 

@@ -9,27 +9,6 @@
 
 #define MAX_SEED_USAGE 24
 
-/* You are allowed to change it or keep as is. Up to you*/
-LONG_INDEX_PROJ pseudo_random_function(const unsigned char *x, int inputLength,
-        LONG_INDEX_PROJ y)
-{
-	LONG_INDEX_PROJ md5res[MD5_OUTPUT_LENGTH_IN_BYTES / sizeof(LONG_INDEX_PROJ)];
-	unsigned char buffer4hashing[MAX_SEED_USAGE + sizeof(LONG_INDEX_PROJ)];
-
-	if (inputLength > MAX_SEED_USAGE)
-		inputLength = MAX_SEED_USAGE;
-	/*for efficiency purpose*/
-	memcpy(buffer4hashing, x, inputLength);/*copy y itself*/
-	memcpy(buffer4hashing + inputLength, &y, sizeof(LONG_INDEX_PROJ));
-	/*concatenate step to the y*/
-	MD5BasicHash(buffer4hashing, inputLength + sizeof(LONG_INDEX_PROJ),
-	        (unsigned char *) md5res);
-	/*main step, hash both y and index as fusion process*/
-	/*now just harvest 63 bit out of 128*/
-	/*return ((md5res[0])&0x7fffffffffffffffull); */
-	return md5res[0] >> 1;
-}
-
 int cryptHash(BasicHashFunctionPtr cryptHashPtr, const unsigned char *passwd,
         unsigned char *outBuf)
 {
@@ -166,15 +145,6 @@ int64_t longpow(int base, int exp)
 	return val;
 }
 
-/* returns a random integer between [0, bound-1] */
-int randint(int bound)
-{
-	time_t t = time(NULL);
-	LONG_INDEX_PROJ r = pseudo_random_function((unsigned char*) &t, sizeof(t),
-	        rand());
-	return r % bound;
-}
-
 /****************************************************************************/
 /* const unsigned char *keyBuf, i.e. Binary buffer input                    */
 /* int keySize , i.e. in this project this is crypt output size,            */
@@ -208,6 +178,3 @@ int my_valid_func(const unsigned char *keyBuf, int keySize, unsigned char * vali
 	return 8;
 }
 
-/*
- *
- */

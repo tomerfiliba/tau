@@ -46,12 +46,26 @@ typedef struct
 	int longest_password;           /* the longest possible password that this rule generates */
 } rule_info_t;
 
-/* 
- * APIs (documented in the C file) 
+
+/*
+ * initializes the given rule object with the given parameters (which are loaded
+ * from the INI file).
+ * returns RULE_STATUS_OK on success, RULE_STATUS_ERROR on failure.
  */
 int rule_init(rule_info_t * info, const char * pattern, const char * lexfilename);
+
+/*
+ * returns the k'th password in the password space defined by this rule
+ * if allow_empty is 0, this function will not return empty passwords
+ * (it will choose a different k until the password is non-empty). if you
+ * set this argument to 1, you may get empty passwords.
+ */
 int rule_kth_password(const rule_info_t * info, uint64_t k, char * output,
 					  int output_length, int allow_empty);
+
+/*
+ * releases all resources held by this rule object
+ */
 void rule_finalize(rule_info_t * info);
 
 

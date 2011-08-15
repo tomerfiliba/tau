@@ -7,21 +7,26 @@
 #include <stdlib.h>
 
 
+/*
+ * generates all the rainbow table chains: it performs (10 * num_of_password / chain_length)
+ * iterations, within each it calculates a rainbow table chain (first-password 
+ * and last-digest) and stores them in the DEHT.
+ */
 static int generate_all_chains(const config_t * config, const rule_info_t * rule,
 							   DEHT * deht)
 {
 	const uint64_t iterations = 10 * (rule->num_of_passwords / config->chain_length);
 	uint64_t i;
-	uint64_t k = 17; /* some prime number */
+	uint64_t k = config->seed_table[0]; /* some "random" k to start with */
 	char first_password[MAX_INPUT_BUFFER];
 	unsigned char last_digest[MAX_DIGEST_LENGTH_IN_BYTES];
 #ifdef SHOW_GENERATED_CHAINS
 	char hexdigest[MAX_DIGEST_LENGTH_IN_BYTES * 2 + 1];
-	memset(hexdigest, 0, sizeof(hexdigest));
 #endif
 
 	/* fill DEHT with chain heads and tails */
 	for (i = 0; i < iterations; i++) {
+		/* get the next k "randomly" */
 		k = (k * 47 + 1) % rule->num_of_passwords;
 		if (rainbow_generate_single_chain(config, rule, k, first_password,
 				sizeof(first_password), last_digest) != 0) {

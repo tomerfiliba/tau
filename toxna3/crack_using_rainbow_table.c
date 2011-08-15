@@ -12,6 +12,13 @@
 #endif
 
 
+/*
+ * the main user-input loop: read command from user, process it, and query the
+ * rainbow table for the reverse of the given digest.
+ *
+ * returns 0 on success, 1 on error (meaning rainbow_query failed, due to an IO 
+ * error or something)
+ */
 static int user_input_loop(const config_t * config, const rule_info_t * rule,
 						   DEHT * deht)
 {

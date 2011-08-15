@@ -3,6 +3,18 @@
 #include <stdlib.h>
 
 
+/*
+ * API
+ *
+ * generates the seed table, from the random seed given in the configuration.
+ * the table will be stored inside the config struct (config->seed_table), 
+ * and it will be freed by config_finalize(). also saves it to the seed file.
+ *
+ * Parameters:
+ *    * config - the configuration struct
+ * Returns: RAINBOW_STATUS_OK if the seed table was generated successfully; 
+ *          RAINBOW_STATUS_ERROR on error.
+ */
 int rainbow_generate_seed_table(config_t * config)
 {
 	int i;
@@ -47,6 +59,18 @@ cleanup:
 	return RAINBOW_STATUS_ERROR;
 }
 
+/*
+ * API
+ *
+ * loads a previously generated seed table. the table will be stored
+ * inside the config struct (config->seed_table), and it will be freed
+ * by config_finalize().
+ *
+ * Parameters:
+ *    * config - the configuration struct
+ * Returns: RAINBOW_STATUS_OK if the seed table was loaded successfully; 
+ *          RAINBOW_STATUS_ERROR on error.
+ */
 int rainbow_load_seed_table(config_t * config)
 {
 	char seedfilename[MAX_INPUT_BUFFER];
@@ -82,7 +106,10 @@ cleanup1:
 	return RAINBOW_STATUS_ERROR;
 }
 
-
+/*
+ * out reduction function: takes a digest and a seed and returns back a number
+ * in range [0,num_of_passwords)
+ */
 static uint64_t reducer(const rule_info_t * rule, uint64_t seed, unsigned char * digest)
 {
 	/* the input digest has a high-enough entropy, and so does the seed,
@@ -92,6 +119,10 @@ static uint64_t reducer(const rule_info_t * rule, uint64_t seed, unsigned char *
 	return (h * seed) % rule->num_of_passwords;
 }
 
+/*
+ * computes a rainbow chain: iteratively reduces a digest and projects it back 
+ * into the password space; goes from `from` up to `upper_bound` (exclusive)
+ */
 static int rainbow_reduce_chain(const config_t * config, const rule_info_t * rule,
 								int from, int upper_bound, unsigned char * digest,
 								char * password, int max_password)
@@ -110,6 +141,23 @@ static int rainbow_reduce_chain(const config_t * config, const rule_info_t * rul
 	return RAINBOW_STATUS_OK;
 }
 
+/*
+ * API
+ *
+ * generates a single rainbow chain, and returns the head (first password) and
+ * tail (last digest)
+ *
+ * Parameters:
+ *    * config - the configuration struct
+ *    * rule - the rule object
+ *    * k - the first password index into the password space
+ *    * max_password - the maximal size of the password buffer
+ * Output Parameters:
+ *    * first_password - the buffer for the first password (head of chain)
+ *    * last_digest - the buffer for the last digest (end of chain)
+ * Returns: RAINBOW_STATUS_OK if the target digest was found; 
+ *          RAINBOW_STATUS_ERROR on error.
+ */
 int rainbow_generate_single_chain(const config_t * config, const rule_info_t * rule,
 								  uint64_t k, char * first_password, int max_password,
 								  unsigned char * last_digest)
@@ -126,8 +174,9 @@ int rainbow_generate_single_chain(const config_t * config, const rule_info_t * r
 		tmp_password, sizeof(tmp_password) - 1);
 }
 
-/****************************************************************************/
-
+/*
+ * initialize a masrek object (allocates the memory buffers)
+ */
 static int masrek_init(masrek_t * masrek, int max_items)
 {
 	int i;
@@ -154,6 +203,9 @@ static int masrek_init(masrek_t * masrek, int max_items)
 	return 0;
 }
 
+/*
+ * release all resources held by the masrek
+ */
 static void masrek_finalize(masrek_t * masrek)
 {
 	if (masrek->buffer != NULL) {
@@ -166,29 +218,25 @@ static void masrek_finalize(masrek_t * masrek)
 	}
 }
 
-static void repr(char * buf, int length)
-{
-	int i;
-	unsigned char ch;
-
-	printf("'");
-	for (i = 0; i < length; i++) {
-		ch = (unsigned char)buf[i];
-		if (ch == '\'') {
-			printf("\\'");
-		}
-		else if (ch >= 32 && ch <= 126) {
-			printf("%c", ch);
-		}
-		else {
-			printf("\\x%02x", ch);
-		}
-	}
-	printf("'");
-}
-
+/*
+ * API
+ *
+ * performs a query on the rainbow table, looking for a password that generates
+ * the target hash.
+ *
+ * Parameters:
+ *    * config - the configuration struct
+ *    * rule - the rule object
+ *    * deht - the DEHT
+ *    * target_digest - the digest to try to match
+ *    * max_password - the maximal size of the password buffer
+ * Output Parameters:
+ *    * password - the password buffer (NUL-terminated string)
+ * Returns: RAINBOW_STATUS_OK if the target digest was found; RAINBOW_STATUS_NOT_FOUND
+ *          if the target digest was not found; RAINBOW_STATUS_ERROR on error.
+ */
 int rainbow_query(const config_t * config, const rule_info_t * rule, DEHT * deht,
-				  const unsigned char * target_digest, char * output, int max_output)
+				  const unsigned char * target_digest, char * password, int max_password)
 {
 	int j, k, max_size;
 	int res;
@@ -224,23 +272,19 @@ int rainbow_query(const config_t * config, const rule_info_t * rule, DEHT * deht
 			config->hash_func((unsigned char*)masrek.items[k].buffer, 
 				masrek.items[k].length, digest);
 
-			printf("%d %d ", k, masrek.items[k].length);
-			repr(masrek.items[k].buffer, masrek.items[k].length);
-			printf("\n");
-
 			if (rainbow_reduce_chain(config, rule, 0, j, digest, 
 					tmp_password, sizeof(tmp_password) - 1) != RAINBOW_STATUS_OK) {
 				goto cleanup_error;
 			}
 
 			if (memcmp(digest, target_digest, config->digest_size) == 0) {
-				/* found a matching password */
+				/* found a matching password - copy it out */
 				max_size = strlen(tmp_password);
-				if (max_size > max_output) {
-					max_size = max_output;
+				if (max_size > max_password) {
+					max_size = max_password;
 				}
-				memcpy(output, tmp_password, max_size);
-				output[max_size] = '\0';
+				memcpy(password, tmp_password, max_size);
+				password[max_size] = '\0';
 				goto cleanup_success;
 			}
 		}

@@ -139,21 +139,6 @@ DEHT *load_DEHT_from_files(const char *prefix,
         hashKeyforEfficientComparisonFunctionPtr validfun);
 
 /********************************************************************************/
-/* Function insert_uniquely_DEHT inserts an element.                           */
-/* Inputs: DEHT to insert into, key and data (as binary buffer with size)       */
-/* Output: just status of action:                                               */
-/* If exist returns DEHT_STATUS_NOT_NEEDED(does not insert new key and data)    */
-/* If successfully insert returns DEHT_STATUS_SUCCESS.                          */
-/* If fail, returns DEHT_STATUS_FAIL                                            */
-/* Notes:                                                                       */
-/* if hashTableOfPointersImageInMemory use it                                   */
-/* if  null, do not load table of pointers into memory just make simple         */
-/* insert using several fseek when necessary.                                   */
-/********************************************************************************/
-int insert_uniquely_DEHT(DEHT *ht, const unsigned char *key, int keyLength,
-        const unsigned char *data, int dataLength);
-
-/********************************************************************************/
 /* Function add_DEHT inserts an element, whether it exists or not               */
 /* Inputs: DEHT to insert into, key and data (as binary buffer with size)       */
 /* Output: just status of action:                                               */
@@ -168,21 +153,6 @@ int insert_uniquely_DEHT(DEHT *ht, const unsigned char *key, int keyLength,
 /********************************************************************************/
 int add_DEHT(DEHT *ht, const unsigned char *key, int keyLength,
         const unsigned char *data, int dataLength);
-
-/********************************************************************************/
-/* Function query_DEHT query a key.                                             */
-/* Inputs: DEHT to query in, key input and data output buffer.                  */
-/* Output:                                                                      */
-/* If successfully insert returns number of bytes fullfiled in data buffer      */
-/* If not found returns DEHT_STATUS_NOT_NEEDED                                  */
-/* If fail returns DEHT_STATUS_FAIL                                             */
-/* Notes:                                                                       */
-/* If hashTableOfPointersImageInMemory!=NULL use it to save single seek.        */
-/* Else access using table of pointers on disk.                                 */
-/* "ht" argument is non const as fseek is non const too (will change "keyFP")   */
-/********************************************************************************/
-int query_DEHT(DEHT *ht, const unsigned char *key, int keyLength,
-        unsigned char *data, int dataMaxAllowedLength);
 
 /********************************************************************************/
 /* Function read_DEHT_pointers_table loads pointer of tables from disk into RAM     */
@@ -217,20 +187,35 @@ void close_DEHT_files(DEHT *ht);
 /* the "masrek" for multi-query                                   */
 /******************************************************************/
 typedef struct {
-	int length;
-	char * buffer;
+	int length;                       /* the size of the buffer */
+	char * buffer;                    /* pointer to the buffer's data */
 } masrek_item_t;
 
 typedef struct {
-	int buffer_size;
-	char * buffer;
-	int max_items;
-	masrek_item_t * items;
+	int buffer_size;                  /* total size in bytes of the buffer */
+	char * buffer;                    /* pointer to the buffer */
+	int max_items;                    /* max number of items that this masrek can hold */
+	masrek_item_t * items;            /* array of masrek items */
 } masrek_t;
 
-/************************************************************************************/
-/*  */
-/************************************************************************************/
+/************************************************************************************
+ * API
+ *
+ * Performs a multi-query on the DEHT: instead of returning a single result, this 
+ * function returns several ones (the minimum of the size of the masrek and the 
+ * actual number of hits in the DEHT)
+ *
+ * Parameters:
+ *    * deht - the DEHT object
+ *    * key - the key to look for
+ *    * keyLength - the size of the key (in bytes)
+ * Output Parameters:
+ *    * masrek - the masrek data structure that will hold the results. note that
+ *      it must be properly initialized (as done by masrek_init), or the program
+ *      will likely crash.
+ * Returns: the number of results that were found (up to the size of the masrek).
+ *          0 means no results were found; a negative value means an error occured.
+ ************************************************************************************/
 int multi_query_DEHT(DEHT *deht, const unsigned char * key, int keyLength,
 					 masrek_t * masrek);
 

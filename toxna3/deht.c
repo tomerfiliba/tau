@@ -616,196 +616,6 @@ int add_DEHT(DEHT *deht, const unsigned char *key, int keyLength,
 /*****************************************************************************/
 
 /*
- * locate a pair by the given key. it goes over all of the pairs in all of the
- * blocks of the bucket, and attempts to match the validation data.
- *
- * Parameters:
- *     * deht - the DEHT
- *     * bucket - the bucket index in the table of pointers
- *     * validation - the validation data to match
- * Output Parameters:
- *     * pair - disk pointer to the pair
- *     * block - disk pointer to the block
- * Returns: DEHT_STATUS_SUCCESS if the key was found; DEHT_STATUS_NOT_NEEDED if the
- * key was not found; DEHT_STATUS_FAIL on error.
- */
-static int bucket_find_key(DEHT * deht, int bucket, const unsigned char * validation,
-					   DEHT_DISK_PTR * pair, DEHT_DISK_PTR * block)
-{
-	int pair_count = 0;
-	DEHT_DISK_PTR current_block_disk_ptr = NULL_DISK_PTR;
-	DEHT_DISK_PTR next_block_disk_ptr = NULL_DISK_PTR;
-	DEHT_DISK_PTR * pair_ptr = NULL_DISK_PTR;
-
-	/* find the first block */
-	if (deht->hashTableOfPointersImageInMemory != NULL) {
-		/* use cached head table if possible */
-		current_block_disk_ptr = deht->hashTableOfPointersImageInMemory[bucket];
-	} else {
-		if (fread_from(deht->sPrefixFileName, deht->keyFP, sizeof(deht->header) +
-				bucket * sizeof(DEHT_DISK_PTR),  &current_block_disk_ptr,
-				sizeof(DEHT_DISK_PTR)) != 0) {
-			return DEHT_STATUS_FAIL;
-		}
-	}
-
-	next_block_disk_ptr = current_block_disk_ptr;
-	while (next_block_disk_ptr != NULL_DISK_PTR) {
-		current_block_disk_ptr = next_block_disk_ptr;
-
-		/* read block */
-		if (fread_from(deht->sPrefixFileName, deht->keyFP, current_block_disk_ptr,
-				deht->tmpBlockPairs, deht->blockSize) != 0) {
-			return DEHT_STATUS_FAIL;
-		}
-
-		/* scan all pairs */
-		for (pair_count = 0; pair_count < deht->header.nPairsPerBlock; pair_count++) {
-			pair_ptr = (DEHT_DISK_PTR*)(deht->tmpBlockPairs + pair_count * deht->pairSize +
-				deht->header.nBytesPerValidationKey);
-			if (*pair_ptr == NULL_DISK_PTR) {
-				/* end of block */
-				break;
-			}
-			if (memcmp(validation, deht->tmpBlockPairs + pair_count * deht->pairSize,
-					deht->header.nBytesPerValidationKey) == 0) {
-				/* key found */
-				deht->hashPointersForLastBlockImageInMemory[bucket] = current_block_disk_ptr;
-				deht->anLastBlockSize[bucket] = pair_count;
-				*block = current_block_disk_ptr;
-				*pair = current_block_disk_ptr + pair_count * deht->pairSize;
-				return DEHT_STATUS_SUCCESS;
-			}
-		}
-		if (pair_count < deht->header.nPairsPerBlock) {
-			/* reached an empty slot */
-			break;
-		}
-
-		next_block_disk_ptr = *(DEHT_DISK_PTR*)(deht->tmpBlockPairs +
-			deht->blockSize - sizeof(DEHT_DISK_PTR));
-	}
-
-	/* key not found (but let's update the cache anyway) */
-	deht->hashPointersForLastBlockImageInMemory[bucket] = current_block_disk_ptr;
-	deht->anLastBlockSize[bucket] = pair_count;
-	return DEHT_STATUS_NOT_NEEDED;
-}
-
-/*
- * reads the pair's data (the value associated with the key).
- * note: if the data buffer is too small, the data will be truncated
- *
- * Parameters:
- *     * deht - the DEHT
- *     * pair - disk pointer to the pair
- *     * dataMaxAllowedLength - the maximal size of the data
- * Output Parameters:
- *     * data - byte buffer that will hold the value
- * Returns: the number of bytes retrieved from the table, or DEHT_STATUS_FAIL
- * on failure
- */
-static int read_pair_data(DEHT * deht, DEHT_DISK_PTR pair, unsigned char * data,
-						  int dataMaxAllowedLength)
-{
-	DEHT_DISK_PTR data_ptr = NULL_DISK_PTR;
-	int data_len;
-	DEHT_DISK_PTR offset;
-
-	/* read from keyFP the pointer to the data in dataFP */
-	if (fread_from(deht->sPrefixFileName, deht->keyFP, pair + deht->header.nBytesPerValidationKey,
-			&data_ptr, sizeof(DEHT_DISK_PTR)) != 0) {
-		return DEHT_STATUS_FAIL;
-	}
-
-	/* decode length and offset */
-	data_len = data_ptr & 0xFF;
-	offset = data_ptr >> 8;
-
-	if (data_len > dataMaxAllowedLength) {
-		/* truncate output data */
-		data_len = dataMaxAllowedLength;
-		/*fprintf(stderr, "query_DEHT: given buffer too short");
-		return DEHT_STATUS_FAIL;*/
-	}
-	if (data_len > 0 &&
-			fread_from(deht->sPrefixFileName, deht->dataFP, offset, data, data_len) != 0) {
-		return DEHT_STATUS_FAIL;
-	}
-
-	return data_len;
-}
-
-/*
- * locates a pair by the given key.
- *
- * Parameters:
- *	   * deht - the DEHT
- *     * key - the key (non null-terminated)
- *     * keyLength - the key's length in bytes
- * Output Parameters:
- *     * pair - disk pointer to the key's pair
- *     * block - disk pointer to the key's block
- * Returns DEHT_STATUS_SUCCESS if the key is found, DEHT_STATUS_NOT_NEEDED is the key
- * is not found, and DEHT_STATUS_FAIL on error
- */
-static int find_pair_by_key(DEHT * deht, const unsigned char *key, int keyLength,
-					DEHT_DISK_PTR * pair, DEHT_DISK_PTR * block)
-{
-	int bucket;
-	bucket = deht->hashFunc(key, keyLength, deht->header.numEntriesInHashTable);
-	deht->comparisonHashFunc(key, keyLength, deht->tmpValidationKey);
-	return bucket_find_key(deht, bucket, deht->tmpValidationKey, pair, block);
-}
-
-/*
- * API
- */
-int query_DEHT(DEHT *deht, const unsigned char *key, int keyLength,
-        unsigned char *data, int dataMaxAllowedLength)
-{
-	int res;
-	DEHT_DISK_PTR pair = NULL_DISK_PTR;
-	DEHT_DISK_PTR block = NULL_DISK_PTR;
-
-	res = find_pair_by_key(deht, key, keyLength, &pair, &block);
-	if (res == DEHT_STATUS_SUCCESS) {
-		return read_pair_data(deht, pair, data, dataMaxAllowedLength);
-	}
-
-	/* some kind of error or key not found */
-	return res;
-}
-
-/*****************************************************************************/
-
-/*
- * API
- */
-int insert_uniquely_DEHT(DEHT *deht, const unsigned char *key, int keyLength,
-        const unsigned char *data, int dataLength)
-{
-	int res;
-	DEHT_DISK_PTR pair = NULL_DISK_PTR;
-	DEHT_DISK_PTR block = NULL_DISK_PTR;
-
-	res = find_pair_by_key(deht, key, keyLength, &pair, &block);
-	if (res == DEHT_STATUS_SUCCESS) {
-		/* already exists */
-		return DEHT_STATUS_NOT_NEEDED;
-	}
-	else if (res == DEHT_STATUS_NOT_NEEDED) {
-		/* if key was not found, add it */
-		return add_DEHT(deht, key, keyLength, data, dataLength);
-	}
-
-	/* some kind of error */
-	return res;
-}
-
-/*****************************************************************************/
-
-/*
  * API
  */
 int read_DEHT_pointers_table(DEHT *deht)
@@ -879,12 +689,72 @@ int write_DEHT_pointers_table(DEHT *deht)
 /*****************************************************************************/
 
 /*
- * finds the first pair that matches the validation data, or the last pair in the bucket.
+ * reads the pair's data (the value associated with the key).
+ * note: if the data buffer is too small, the data will be truncated
+ *
+ * Parameters:
+ *     * deht - the DEHT
+ *     * pair - disk pointer to the pair
+ *     * dataMaxAllowedLength - the maximal size of the data
+ * Output Parameters:
+ *     * data - byte buffer that will hold the value
+ * Returns: the number of bytes retrieved from the table, or DEHT_STATUS_FAIL
+ * on failure
+ */
+static int read_pair_data(DEHT * deht, DEHT_DISK_PTR pair, unsigned char * data,
+						  int dataMaxAllowedLength)
+{
+	DEHT_DISK_PTR data_ptr = NULL_DISK_PTR;
+	int data_len;
+	DEHT_DISK_PTR offset;
+
+	/* read from keyFP the pointer to the data in dataFP */
+	if (fread_from(deht->sPrefixFileName, deht->keyFP, pair + deht->header.nBytesPerValidationKey,
+			&data_ptr, sizeof(DEHT_DISK_PTR)) != 0) {
+		return DEHT_STATUS_FAIL;
+	}
+
+	/* decode length and offset */
+	data_len = data_ptr & 0xFF;
+	offset = data_ptr >> 8;
+
+	if (data_len > dataMaxAllowedLength) {
+		/* truncate output data */
+		data_len = dataMaxAllowedLength;
+		/*fprintf(stderr, "query_DEHT: given buffer too short");
+		return DEHT_STATUS_FAIL;*/
+	}
+	if (data_len > 0 &&
+			fread_from(deht->sPrefixFileName, deht->dataFP, offset, data, data_len) != 0) {
+		return DEHT_STATUS_FAIL;
+	}
+
+	return data_len;
+}
+
+
+/*
+ * locate a pair by the given key. it goes over all of the pairs in all of the
+ * blocks of the bucket, and attempts to match the validation data.
+ * this function returns one match at a time -- first call it wil 
+ * block = NULL_DISK_PTR, in order to get the first match. then call it with 
+ * the returned block, to continue the scan from the point where we left off
+ *
+ * Parameters:
+ *     * deht - the DEHT
+ *     * bucket - the bucket index in the table of pointers
+ *     * validation - the validation data to match
+ * Output Parameters:
+ *     * pair - disk pointer to the pair
+ *     * block - disk pointer to the block
+ * Returns: DEHT_STATUS_SUCCESS if the key was found; DEHT_STATUS_NOT_NEEDED if the
+ * key was not found; DEHT_STATUS_FAIL on error.
  */
 int bucket_multi_find_key(DEHT * deht, int bucket, const unsigned char * validation,
 						  DEHT_DISK_PTR * block, DEHT_DISK_PTR * pair)
 {
 	int pair_count = 0;
+	int res = DEHT_STATUS_NOT_NEEDED;
 	DEHT_DISK_PTR current_block_disk_ptr = NULL_DISK_PTR;
 	DEHT_DISK_PTR next_block_disk_ptr = NULL_DISK_PTR;
 	DEHT_DISK_PTR * pair_ptr = NULL_DISK_PTR;
@@ -930,11 +800,10 @@ int bucket_multi_find_key(DEHT * deht, int bucket, const unsigned char * validat
 			if (memcmp(validation, deht->tmpBlockPairs + pair_count * deht->pairSize,
 					deht->header.nBytesPerValidationKey) == 0) {
 				/* key found */
-				deht->hashPointersForLastBlockImageInMemory[bucket] = current_block_disk_ptr;
-				deht->anLastBlockSize[bucket] = pair_count;
 				*block = current_block_disk_ptr;
 				*pair = current_block_disk_ptr + pair_count * deht->pairSize;
-				return DEHT_STATUS_SUCCESS;
+				res = DEHT_STATUS_SUCCESS;
+				goto cache_search;
 			}
 		}
 		if (pair_count < deht->header.nPairsPerBlock) {
@@ -946,15 +815,33 @@ int bucket_multi_find_key(DEHT * deht, int bucket, const unsigned char * validat
 			deht->blockSize - sizeof(DEHT_DISK_PTR));
 	}
 
-	/* key not found (but let's update the cache anyway) */
+	/* if we reached here, the key was not found */
+
+cache_search:
+	/* update the cache */
 	deht->hashPointersForLastBlockImageInMemory[bucket] = current_block_disk_ptr;
 	deht->anLastBlockSize[bucket] = pair_count;
-	return DEHT_STATUS_NOT_NEEDED;
+	return res;
 }
 
-
-#define MIN(a,b) (((a) < (b)) ? (a) : (b))
-
+/*
+ * API
+ *
+ * Performs a multi-query on the DEHT: instead of returning a single result, this 
+ * function returns several ones (the minimum of the size of the masrek and the 
+ * actual number of hits in the DEHT)
+ *
+ * Parameters:
+ *    * deht - the DEHT object
+ *    * key - the key to look for
+ *    * keyLength - the size of the key (in bytes)
+ * Output Parameters:
+ *    * masrek - the masrek data structure that will hold the results. note that
+ *      it must be properly initialized (as done by masrek_init), or the program
+ *      will likely crash.
+ * Returns: the number of results that were found (up to the size of the masrek).
+ *          0 means no results were found; a negative value means an error occured.
+ */
 int multi_query_DEHT(DEHT *deht, const unsigned char * key, int keyLength, masrek_t * masrek)
 {
 	int res;
