@@ -99,7 +99,7 @@ static int rainbow_reduce_chain(const config_t * config, const rule_info_t * rul
 	int i;
 	uint64_t k;
 
-	for (i = 0; i < config->chain_length; i++) {
+	for (i = from; i < upper_bound; i++) {
 		k = reducer(rule, config->seed_table[i], digest);
 		if (rule_kth_password(rule, k, password, max_password, 0) != RULE_STATUS_OK) {
 			/* error message printed by rule_kth_password */
@@ -166,7 +166,7 @@ static void masrek_finalize(masrek_t * masrek)
 	}
 }
 
-/*static void repr(char * buf, int length)
+static void repr(char * buf, int length)
 {
 	int i;
 	unsigned char ch;
@@ -185,7 +185,7 @@ static void masrek_finalize(masrek_t * masrek)
 		}
 	}
 	printf("'");
-}*/
+}
 
 int rainbow_query(const config_t * config, const rule_info_t * rule, DEHT * deht,
 				  const unsigned char * target_digest, char * output, int max_output)
@@ -223,6 +223,10 @@ int rainbow_query(const config_t * config, const rule_info_t * rule, DEHT * deht
 		for (k = 0; k < num_of_matches; k++) {
 			config->hash_func((unsigned char*)masrek.items[k].buffer, 
 				masrek.items[k].length, digest);
+
+			printf("%d %d ", k, masrek.items[k].length);
+			repr(masrek.items[k].buffer, masrek.items[k].length);
+			printf("\n");
 
 			if (rainbow_reduce_chain(config, rule, 0, j, digest, 
 					tmp_password, sizeof(tmp_password) - 1) != RAINBOW_STATUS_OK) {
