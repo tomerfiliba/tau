@@ -670,6 +670,8 @@ static int bucket_find_key(DEHT * deht, int bucket, const unsigned char * valida
 			if (memcmp(validation, deht->tmpBlockPairs + pair_count * deht->pairSize,
 					deht->header.nBytesPerValidationKey) == 0) {
 				/* key found */
+				deht->hashPointersForLastBlockImageInMemory[bucket] = current_block_disk_ptr;
+				deht->anLastBlockSize[bucket] = pair_count;
 				*block = current_block_disk_ptr;
 				*pair = current_block_disk_ptr + pair_count * deht->pairSize;
 				return DEHT_STATUS_SUCCESS;
@@ -726,7 +728,8 @@ static int read_pair_data(DEHT * deht, DEHT_DISK_PTR pair, unsigned char * data,
 		/*fprintf(stderr, "query_DEHT: given buffer too short");
 		return DEHT_STATUS_FAIL;*/
 	}
-	if (fread_from(deht->sPrefixFileName, deht->dataFP, offset, data, data_len) != 0) {
+	if (data_len > 0 &&
+			fread_from(deht->sPrefixFileName, deht->dataFP, offset, data, data_len) != 0) {
 		return DEHT_STATUS_FAIL;
 	}
 
@@ -927,6 +930,8 @@ int bucket_multi_find_key(DEHT * deht, int bucket, const unsigned char * validat
 			if (memcmp(validation, deht->tmpBlockPairs + pair_count * deht->pairSize,
 					deht->header.nBytesPerValidationKey) == 0) {
 				/* key found */
+				deht->hashPointersForLastBlockImageInMemory[bucket] = current_block_disk_ptr;
+				deht->anLastBlockSize[bucket] = pair_count;
 				*block = current_block_disk_ptr;
 				*pair = current_block_disk_ptr + pair_count * deht->pairSize;
 				return DEHT_STATUS_SUCCESS;
@@ -950,8 +955,7 @@ int bucket_multi_find_key(DEHT * deht, int bucket, const unsigned char * validat
 
 #define MIN(a,b) (((a) < (b)) ? (a) : (b))
 
-int multi_query_DEHT(DEHT *deht, const unsigned char * key, int keyLength,
-					 masrek_t * masrek)
+int multi_query_DEHT(DEHT *deht, const unsigned char * key, int keyLength, masrek_t * masrek)
 {
 	int res;
 	int bucket;
