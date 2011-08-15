@@ -107,6 +107,22 @@ static int rainbow_single_pass(const config_t * config, const rule_info_t * rule
 	return RAINBOW_STATUS_OK;
 }
 
+static int rainbow_single_pass_with_password(const config_t * config, 
+			const rule_info_t * rule, int seed_index, unsigned char * digest,
+			char * password, int max_password)
+{
+	uint64_t k;
+
+	k = rainbow_reduce(rule, config->seed_table[seed_index], digest);
+	if (rule_kth_password(rule, k, password, max_password, 0) != RULE_STATUS_OK) {
+		/* error message printed by rule_kth_password */
+		return RAINBOW_STATUS_ERROR;
+	}
+	config->hash_func((unsigned char*)password, strlen(password), digest);
+	return RAINBOW_STATUS_OK;
+}
+
+
 int rainbow_generate_single_chain(const config_t * config, const rule_info_t * rule,
 								  uint64_t k, char * first_password, int max_password,
 								  unsigned char * last_digest)
@@ -197,6 +213,7 @@ int rainbow_query(const config_t * config, const rule_info_t * rule, DEHT * deht
 	int num_of_matches;
 	masrek_t masrek;
 	unsigned char digest[MAX_DIGEST_LENGTH_IN_BYTES];
+	char tmp_password[MAX_INPUT_BUFFER];
 
 	if (masrek_init(&masrek, config->num_of_query_results) != 0) {
 		/* error message printed by masrek_init */
@@ -232,7 +249,8 @@ int rainbow_query(const config_t * config, const rule_info_t * rule, DEHT * deht
 			printf("\n");
 
 			for (i = 1; i <= j; i++) {
-				if (rainbow_single_pass(config, rule, i - 1, digest) != RAINBOW_STATUS_OK) {
+				if (rainbow_single_pass_with_password(config, rule, i - 1, digest, 
+						tmp_password, sizeof(tmp_password) - 1) != RAINBOW_STATUS_OK) {
 					/* error message printed by rainbow_single_pass */
 					goto cleanup_error;
 				}
@@ -240,49 +258,16 @@ int rainbow_query(const config_t * config, const rule_info_t * rule, DEHT * deht
 
 			if (memcmp(digest, target_digest, config->digest_size) == 0) {
 				/* found a matching password */
-				max_size = (masrek.items[k].length < max_output) ? masrek.items[k].length : max_output;
-				memcpy(output, masrek.items[k].buffer, max_size);
+				max_size = strlen(tmp_password);
+				if (max_size > max_output) {
+					max_size = max_output;
+				}
+				memcpy(output, tmp_password, max_size);
 				output[max_size] = '\0';
 				goto cleanup_success;
 			}
 		}
 	}
-
-#if 0
-	/* iterate over all starting points in the chain */
-	for (j = config->chain_length; j >= 0; j--) {
-		memcpy(digest, target_digest, config->digest_size);
-		if (rainbow_compute_chain(config, rule, j, config->chain_length, digest) != RAINBOW_STATUS_OK) {
-			/* error message printed by rainbow_compute_chain */
-			goto cleanup_error;
-		}
-
-		/* find all possible starting points */
-		num_of_matches = multi_query_DEHT(deht, digest, config->digest_size, &masrek);
-		if (num_of_matches < 0) {
-			/* error message printed by multi_query_DEHT */
-			goto cleanup_error;
-		}
-
-		for (k = 0; k < num_of_matches; k++) {
-			config->hash_func((unsigned char*)masrek.items[k].buffer,
-				masrek.items[k].length, digest);
-
-			if (rainbow_compute_chain(config, rule, 0, j, digest) != RAINBOW_STATUS_OK) {
-				/* error message printed by rainbow_compute_chain */
-				goto cleanup_error;
-			}
-
-			if (memcmp(digest, target_digest, config->digest_size) == 0) {
-				/* found a matching password */
-				max_size = (masrek.items[k].length < max_output) ? masrek.items[k].length : max_output;
-				memcpy(output, masrek.items[k].buffer, max_size);
-				output[max_size] = '\0';
-				goto cleanup_success;
-			}
-		}
-	}
-#endif
 
 	/* finished searching the table without any match */
 	res = RAINBOW_STATUS_NOT_FOUND;
