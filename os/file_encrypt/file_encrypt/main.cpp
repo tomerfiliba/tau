@@ -59,9 +59,9 @@ bool open_files(const _TCHAR * infile, const _TCHAR * keyfile, const _TCHAR * ou
 	return true;
 
 cleanup3:
-	CloseHandle(hkey);
+	CloseHandle(*hkey);
 cleanup2:
-	CloseHandle(hin);
+	CloseHandle(*hin);
 cleanup1:
 	return false;
 }

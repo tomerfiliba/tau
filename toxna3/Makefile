@@ -28,7 +28,7 @@ create_rainbow_table.o: deht.o misc.o create_rainbow_table.c iniloader.o rules.o
 	gcc -std=c99 -pedantic-errors -c -Wall -Werror -g create_rainbow_table.c
 
 create_rainbow_table-debug.o: deht.o misc.o create_rainbow_table.c iniloader.o rules.o rainbow.o
-	gcc -std=c99 -pedantic-errors -c -Wall -Werror -g -o create_rainbow_table-debug.o create_rainbow_table.c -DSHOW_GENERATED_CHAINS
+	gcc -std=c99 -pedantic-errors -c -Wall -g -o create_rainbow_table-debug.o create_rainbow_table.c -DSHOW_GENERATED_CHAINS
 
 crack_using_rainbow_table.o: deht.o misc.o crack_using_rainbow_table.c iniloader.o rainbow.o rules.o
 	gcc -std=c99 -pedantic-errors -c -Wall -Werror -g crack_using_rainbow_table.c
