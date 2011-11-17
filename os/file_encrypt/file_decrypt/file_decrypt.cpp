@@ -108,7 +108,7 @@ int main(int argc, char* argv[])
 	int infd, outfd, keyfd;
 
 	if (argc != 4) {
-		fprintf(stderr, "Usage: %s <infile> <keyfile> <outfile>", argv[0]);
+		fprintf(stderr, "Usage: %s <infile> <keyfile> <outfile>\n", argv[0]);
 		goto cleanup1;
 	}
 

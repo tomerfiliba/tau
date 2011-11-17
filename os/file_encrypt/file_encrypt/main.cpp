@@ -117,7 +117,7 @@ bool encrypt_file(HANDLE hin, HANDLE hkey, HANDLE hout)
 			return false;
 		}
 		if (outsize != written) {
-			_tprintf(_T("Unable to write to output file: Wrote fewer bytes"));
+			_tprintf(_T("Unable to write to output file: Wrote fewer bytes\n"));
 			return false;
 		}
 	}
@@ -131,7 +131,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	HANDLE hin, hout, hkey;
 
 	if (argc != 4) {
-		_tprintf(_T("Usage: %s <infile> <keyfile> <outfile>"), argv[0]);
+		_tprintf(_T("Usage: %s <infile> <keyfile> <outfile>\n"), argv[0]);
 		goto cleanup1;
 	}
 
