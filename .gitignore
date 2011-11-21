@@ -10,3 +10,17 @@ Debug/
 *.*~
 *.key
 *.data
+*.pdb
+*.pch
+*.obj
+*.exe
+*.htm
+*.dep
+*.css
+*.xslt
+*.gif
+*.XML
+*.xml
+*.manifest
+*.idb
+*.zip
