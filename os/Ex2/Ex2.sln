@@ -1,0 +1,32 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "randomfile", "randomfile\randomfile.vcproj", "{EBBF1ABD-A0BA-4198-86FF-7F06AF322F34}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "sectioncheck", "sectioncheck\sectioncheck.vcproj", "{0DE8ED69-91F2-4CF1-8FB0-4340AD4DB8EC}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "parcheck", "parcheck\parcheck.vcproj", "{8662C8F3-A3F2-45F8-931B-B7FE7B016895}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{EBBF1ABD-A0BA-4198-86FF-7F06AF322F34}.Debug|Win32.ActiveCfg = Debug|Win32
+		{EBBF1ABD-A0BA-4198-86FF-7F06AF322F34}.Debug|Win32.Build.0 = Debug|Win32
+		{EBBF1ABD-A0BA-4198-86FF-7F06AF322F34}.Release|Win32.ActiveCfg = Release|Win32
+		{EBBF1ABD-A0BA-4198-86FF-7F06AF322F34}.Release|Win32.Build.0 = Release|Win32
+		{0DE8ED69-91F2-4CF1-8FB0-4340AD4DB8EC}.Debug|Win32.ActiveCfg = Debug|Win32
+		{0DE8ED69-91F2-4CF1-8FB0-4340AD4DB8EC}.Debug|Win32.Build.0 = Debug|Win32
+		{0DE8ED69-91F2-4CF1-8FB0-4340AD4DB8EC}.Release|Win32.ActiveCfg = Release|Win32
+		{0DE8ED69-91F2-4CF1-8FB0-4340AD4DB8EC}.Release|Win32.Build.0 = Release|Win32
+		{8662C8F3-A3F2-45F8-931B-B7FE7B016895}.Debug|Win32.ActiveCfg = Debug|Win32
+		{8662C8F3-A3F2-45F8-931B-B7FE7B016895}.Debug|Win32.Build.0 = Debug|Win32
+		{8662C8F3-A3F2-45F8-931B-B7FE7B016895}.Release|Win32.ActiveCfg = Release|Win32
+		{8662C8F3-A3F2-45F8-931B-B7FE7B016895}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
