@@ -39,6 +39,7 @@ bool generate_randfile(size_t size, const TCHAR * filename)
 	HANDLE hfile = CreateFile(filename, GENERIC_WRITE, 0, NULL, 
 		CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (hfile == INVALID_HANDLE_VALUE) {
+		print_last_error(_T("CreateFile"));
 		return false;
 	}
 
