@@ -76,14 +76,14 @@ int _tmain(int argc, TCHAR *argv[])
 	}
 
 	int offset = _tstoi(argv[2]);
-	if (offset <= 0) {
-		_tprintf(_T("'offset' must be a positive integer: '%s'\n"), argv[1]);
+	if (offset < 0) {
+		_tprintf(_T("'offset' must be a positive integer: '%s'\n"), argv[2]);
 		return 1;
 	}
 
 	int size = _tstoi(argv[3]);
 	if (size <= 0) {
-		_tprintf(_T("'size' must be a positive integer: '%s'\n"), argv[1]);
+		_tprintf(_T("'size' must be a positive integer: '%s'\n"), argv[3]);
 		return 1;
 	}
 
