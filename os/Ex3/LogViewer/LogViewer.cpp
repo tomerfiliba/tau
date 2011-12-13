@@ -3,11 +3,16 @@
 #include <malloc.h>
 #include "..\LogWriter\ex3_common.h"
 
+
+typedef struct {
+	int pid;
+	int last_sequence;
+} writer_sequence_t;
+
 typedef struct {
 	int num_of_writers;
-	int * last_sequences;
+	writer_sequence_t * last_sequences;
 	int next_read_slot;
-	HANDLE ctrl_file;
 	HANDLE log_file;
 	HANDLE exit_evt;
 	bool exit_evt_set;
@@ -17,6 +22,24 @@ typedef struct {
 	HANDLE can_read_sem;
 } program_state_t;
 
+
+void print_last_error(const _TCHAR * text)
+{
+	void * msg = NULL;
+	DWORD code = GetLastError();
+
+	FormatMessage(
+		FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+		NULL, code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&msg, 0, NULL);
+
+	if (text != NULL && text[0] != '\0') {
+		_tprintf(_T("%s: %s (%d)\n"), text, (LPTSTR)msg, code);
+	}
+	else {
+		_tprintf(_T("%s (%d)\n"), (LPTSTR)msg, code);
+	}
+	LocalFree(msg);
+}
 
 bool wait_for_object(program_state_t * state, HANDLE hobj)
 {
@@ -31,6 +54,7 @@ bool wait_for_object(program_state_t * state, HANDLE hobj)
 		return true;
 	}
 	else {
+		print_last_error(_T("WaitForMultipleObjects"));
 		return false;
 	}
 }
@@ -39,29 +63,15 @@ bool read_at(HANDLE hfile, DWORD pos, void * buf, DWORD count)
 {
 	DWORD actual;
 	if (SetFilePointer(hfile, pos, 0, FILE_BEGIN) == INVALID_SET_FILE_POINTER) {
+		print_last_error(_T("SetFilePointer"));
 		return false;
 	}
 	if (!ReadFile(hfile, buf, count, &actual, NULL)) {
+		print_last_error(_T("ReadFile"));
 		return false;
 	}
 	if (actual != count) {
 		// oops: actual read count != what we requested
-		return false;
-	}
-	return true;
-}
-
-bool write_at(HANDLE hfile, DWORD pos, const void * buf, DWORD count)
-{
-	DWORD actual;
-	if (SetFilePointer(hfile, pos, 0, FILE_BEGIN) == INVALID_SET_FILE_POINTER) {
-		return false;
-	}
-	if (!WriteFile(hfile, buf, count, &actual, NULL)) {
-		return false;
-	}
-	if (actual != count) {
-		// oops: actual write count != what we requested
 		return false;
 	}
 	return true;
@@ -78,24 +88,30 @@ bool init_program_state(program_state_t * state, _TCHAR * logfile, int num_of_wr
 	state->exit_evt_set = false;
 	state->file_mtx = NULL;
 	state->file_mtx_owned = false;
-	state->ctrl_file = INVALID_HANDLE_VALUE;
 	state->log_file = INVALID_HANDLE_VALUE;
 
-	state->last_sequences = (int*)calloc(num_of_writers, sizeof(int));
+	state->last_sequences = (writer_sequence_t*)malloc(num_of_writers * sizeof(writer_sequence_t));
 	if (state->last_sequences == NULL) {
+		_tprintf(_T("malloc failed"));
 		return false;
 	}
+	for (int i = 0; i < num_of_writers; i++) {
+		state->last_sequences[i].pid = -1;
+		state->last_sequences[i].last_sequence = 0;
+	}
 
-	state->can_read_sem = CreateSemaphore(NULL, 0, 0, EX3_READ_SEM);
+	state->can_read_sem = CreateSemaphore(NULL, 0, MAX_LOG_RECORDS, EX3_READ_SEM);
 	if (state->can_read_sem == NULL) {
+		print_last_error(_T("[v1] CreateSemaphore"));
 		return false;
 	}
 	if (GetLastError() != ERROR_ALREADY_EXISTS) {
 		return false;
 	}
 
-	state->can_write_sem = CreateSemaphore(NULL, 0, 0, EX3_WRITE_SEM);
+	state->can_write_sem = CreateSemaphore(NULL, 0, MAX_LOG_RECORDS, EX3_WRITE_SEM);
 	if (state->can_write_sem == NULL) {
+		print_last_error(_T("[v2] CreateSemaphore"));
 		return false;
 	}
 	if (GetLastError() != ERROR_ALREADY_EXISTS) {
@@ -104,6 +120,7 @@ bool init_program_state(program_state_t * state, _TCHAR * logfile, int num_of_wr
 
 	state->exit_evt = CreateEvent(NULL, TRUE, FALSE, EX3_EXIT_EVT);
 	if (state->exit_evt == NULL) {
+		print_last_error(_T("CreateEvent"));
 		return false;
 	}
 	if (GetLastError() != ERROR_ALREADY_EXISTS) {
@@ -112,6 +129,7 @@ bool init_program_state(program_state_t * state, _TCHAR * logfile, int num_of_wr
 
 	state->file_mtx = CreateMutex(NULL, FALSE, EX3_FILE_MTX);
 	if (state->file_mtx == NULL) {
+		print_last_error(_T("CreateMutex"));
 		return false;
 	}
 	if (GetLastError() != ERROR_ALREADY_EXISTS) {
@@ -121,14 +139,9 @@ bool init_program_state(program_state_t * state, _TCHAR * logfile, int num_of_wr
 	state->log_file = CreateFile(logfile, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
 		NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (state->log_file == INVALID_HANDLE_VALUE) {
+		print_last_error(_T("CreateFile"));
 		return false;
 	}
-
-	/*state->ctrl_file = CreateFile(ctrlfile, GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE,
-		NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (state->ctrl_file == INVALID_HANDLE_VALUE) {
-		return false;
-	}*/
 
 	return true;
 }
@@ -159,10 +172,6 @@ void fini_program_state(program_state_t * state)
 		CloseHandle(state->exit_evt);
 		state->exit_evt = NULL;
 	}
-	if (state->ctrl_file != INVALID_HANDLE_VALUE) {
-		CloseHandle(state->ctrl_file);
-		state->ctrl_file = INVALID_HANDLE_VALUE;
-	}
 	if (state->log_file != INVALID_HANDLE_VALUE) {
 		CloseHandle(state->log_file);
 		state->log_file = INVALID_HANDLE_VALUE;
@@ -179,9 +188,38 @@ bool read_log_entry(program_state_t * state)
 	}
 	state->next_read_slot++;
 
-	_tprintf(_T("Process id %08X produced entry number %08X at time %08X with checksum %08X"),
+	// remember last sequence for this pid
+	for (int i = 0; i < state->num_of_writers; i++) {
+		if (state->last_sequences[i].pid == record[0]) {
+			state->last_sequences[i].last_sequence = record[1];
+			break;
+		}
+		else if (state->last_sequences[i].pid == -1) {
+			state->last_sequences[i].pid = record[0];
+			state->last_sequences[i].last_sequence = record[1];
+			break;
+		}
+	}
+
+	_tprintf(_T("Process id %08X produced entry number %08X at time %08X with checksum %08X\n"),
 		record[0], record[1], record[2], record[3]);
 
+	return true;
+}
+
+bool collect_last_entries(program_state_t * state)
+{
+	// wait a little for all processes to die and get the file mutex 
+	Sleep(1000);
+	WaitForSingleObject(state->file_mtx, INFINITE);
+	state->file_mtx_owned = true;
+
+	// read all entries as long as the semaphore allows
+	while (WaitForSingleObject(state->can_read_sem, 0) == WAIT_OBJECT_0) {
+		if (!read_log_entry(state)) {
+			return false;
+		}
+	}
 	return true;
 }
 
@@ -204,7 +242,13 @@ bool consumer_loop(program_state_t * state)
 		// tell the writers that we've freed one write slot
 		ReleaseSemaphore(state->can_write_sem, 1, NULL);
 	}
-	return state->exit_evt_set;
+
+	if (state->exit_evt_set) {
+		return collect_last_entries(state);
+	}
+	else {
+		return false;
+	}
 }
 
 int _tmain(int argc, _TCHAR* argv[])
@@ -213,7 +257,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	program_state_t state;
 
 	if (argc != 4) {
-		_tprintf(_T("Error: wrong number of arguments"));
+		_tprintf(_T("Error: wrong number of arguments\n"));
 		return -1;
 	}
 
@@ -231,7 +275,11 @@ int _tmain(int argc, _TCHAR* argv[])
 		goto cleanup;
 	}
 
-	res = calc_XOR_of_last_sequences();
+	// calc xor of last sequence numbers
+	res = 0;
+	for (int i = 0; i < num_of_writers; i++) {
+		res ^= state.last_sequences[i].last_sequence;
+	}
 
 cleanup:
 	fini_program_state(&state);

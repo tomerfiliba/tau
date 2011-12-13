@@ -2,11 +2,6 @@
 #include <windows.h>
 #include "ex3_common.h"
 
-/////////////////////////////////////////////////////////////////////////////
-// note! we don't have a console so we don't print any error messages
-// if anything goes wrong, there's no way to know about it...
-// but these are the excercise requirements
-/////////////////////////////////////////////////////////////////////////////
 
 typedef struct {
 	int delay;
@@ -23,6 +18,24 @@ typedef struct {
 } program_state_t;
 
 
+void print_last_error(const _TCHAR * text)
+{
+	void * msg = NULL;
+	DWORD code = GetLastError();
+
+	FormatMessage(
+		FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+		NULL, code, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&msg, 0, NULL);
+
+	if (text != NULL && text[0] != '\0') {
+		_tprintf(_T("%s: %s (%d)\n"), text, (LPTSTR)msg, code);
+	}
+	else {
+		_tprintf(_T("%s (%d)\n"), (LPTSTR)msg, code);
+	}
+	LocalFree(msg);
+}
+
 bool wait_for_object(program_state_t * state, HANDLE hobj)
 {
 	HANDLE waitees[] = {state->exit_evt, hobj};
@@ -36,6 +49,7 @@ bool wait_for_object(program_state_t * state, HANDLE hobj)
 		return true;
 	}
 	else {
+		print_last_error(_T("WaitForMultipleObjects"));
 		return false;
 	}
 }
@@ -44,13 +58,16 @@ bool read_at(HANDLE hfile, DWORD pos, void * buf, DWORD count)
 {
 	DWORD actual;
 	if (SetFilePointer(hfile, pos, 0, FILE_BEGIN) == INVALID_SET_FILE_POINTER) {
+		print_last_error(_T("SetFilePointer"));
 		return false;
 	}
 	if (!ReadFile(hfile, buf, count, &actual, NULL)) {
+		print_last_error(_T("ReadFile"));
 		return false;
 	}
 	if (actual != count) {
 		// oops: actual read count != what we requested
+		_tprintf(_T("read_at: actual != count\n"));
 		return false;
 	}
 	return true;
@@ -60,13 +77,16 @@ bool write_at(HANDLE hfile, DWORD pos, const void * buf, DWORD count)
 {
 	DWORD actual;
 	if (SetFilePointer(hfile, pos, 0, FILE_BEGIN) == INVALID_SET_FILE_POINTER) {
+		print_last_error(_T("SetFilePointer"));
 		return false;
 	}
 	if (!WriteFile(hfile, buf, count, &actual, NULL)) {
+		print_last_error(_T("WriteFile"));
 		return false;
 	}
 	if (actual != count) {
 		// oops: actual write count != what we requested
+		_tprintf(_T("write_at: actual != count\n"));
 		return false;
 	}
 	return true;
@@ -86,47 +106,57 @@ bool init_program_state(program_state_t * state, _TCHAR * logfile, _TCHAR * ctrl
 	state->log_file = INVALID_HANDLE_VALUE;
 	state->log_sequence = 0;
 
-	state->can_read_sem = CreateSemaphore(NULL, 0, 0, EX3_READ_SEM);
+	state->can_read_sem = CreateSemaphore(NULL, 0, MAX_LOG_RECORDS, EX3_READ_SEM);
 	if (state->can_read_sem == NULL) {
+		print_last_error(_T("CreateSemaphore 1"));
 		return false;
 	}
 	if (GetLastError() != ERROR_ALREADY_EXISTS) {
+		_tprintf(_T("!ERROR_ALREADY_EXISTS 1\n"));
 		return false;
 	}
 
-	state->can_write_sem = CreateSemaphore(NULL, 0, 0, EX3_WRITE_SEM);
+	state->can_write_sem = CreateSemaphore(NULL, 0, MAX_LOG_RECORDS, EX3_WRITE_SEM);
 	if (state->can_write_sem == NULL) {
+		print_last_error(_T("CreateSemaphore 2"));
 		return false;
 	}
 	if (GetLastError() != ERROR_ALREADY_EXISTS) {
+		_tprintf(_T("!ERROR_ALREADY_EXISTS 2\n"));
 		return false;
 	}
 
 	state->exit_evt = CreateEvent(NULL, TRUE, FALSE, EX3_EXIT_EVT);
 	if (state->exit_evt == NULL) {
+		print_last_error(_T("CreateEvent"));
 		return false;
 	}
 	if (GetLastError() != ERROR_ALREADY_EXISTS) {
+		_tprintf(_T("!ERROR_ALREADY_EXISTS 3\n"));
 		return false;
 	}
 
 	state->file_mtx = CreateMutex(NULL, FALSE, EX3_FILE_MTX);
 	if (state->file_mtx == NULL) {
+		print_last_error(_T("CreateMutex"));
 		return false;
 	}
 	if (GetLastError() != ERROR_ALREADY_EXISTS) {
+		_tprintf(_T("!ERROR_ALREADY_EXISTS 4\n"));
 		return false;
 	}
 
 	state->log_file = CreateFile(logfile, GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
 		NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL , NULL);
 	if (state->log_file == INVALID_HANDLE_VALUE) {
+		print_last_error(_T("CreateFile 1"));
 		return false;
 	}
 
 	state->ctrl_file = CreateFile(ctrlfile, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
 		NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL , NULL);
 	if (state->ctrl_file == INVALID_HANDLE_VALUE) {
+		print_last_error(_T("CreateFile 2"));
 		return false;
 	}
 
@@ -184,9 +214,11 @@ bool write_log_record(program_state_t * state)
 	if (!read_at(state->ctrl_file, 0, &slot, sizeof(slot))) {
 		return false;
 	}
+	
 	if (!write_at(state->log_file, (slot % MAX_LOG_RECORDS) * sizeof(record), record, sizeof(record))) {
 		return false;
 	}
+	
 	slot++;
 	if (!write_at(state->ctrl_file, 0, &slot, sizeof(slot))) {
 		return false;
@@ -210,12 +242,12 @@ bool producer_loop(program_state_t * state)
 			break;
 		}
 		state->file_mtx_owned = true;
-		
+
 		// read index from ctrl file, write log and update ctrl file
 		if (!write_log_record(state)) {
 			break;
 		}
-		
+
 		// mark the write as successful
 		state->discard_last_write = false;
 		state->file_mtx_owned = false;
@@ -241,11 +273,13 @@ int _tmain(int argc, _TCHAR* argv[])
 	program_state_t state;
 
 	if (argc != 4) {
+		_tprintf(_T("Error: wrong number of parameters\n"));
 		return -1;
 	}
 
 	int delay_ms = _tstoi(argv[3]);
-	if (delay_ms <= 0) {
+	if (delay_ms < 0) {
+		_tprintf(_T("Error: delay_ms must be >= 0\n"));
 		return -1;
 	}
 
