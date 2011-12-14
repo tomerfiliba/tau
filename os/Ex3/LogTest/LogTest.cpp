@@ -194,7 +194,7 @@ bool startup(program_state_t * state)
 	_stprintf_s(cmdline, _T("LogWriter.exe %s %s %d"), state->logfile, 
 		state->ctrlfile, state->writer_delay_ms);
 	for (int i = 0; i < state->num_of_writers; i++) {
-		if (!spawn_proc(cmdline, CREATE_NO_WINDOW, &state->writer_hprocs[i])) {
+		if (!spawn_proc(cmdline, CREATE_NO_WINDOW, &state->writer_hprocs[i])) { 
 			// tell everyone who's already started to exit gracefully
 			SetEvent(state->exit_evt);
 			return false;

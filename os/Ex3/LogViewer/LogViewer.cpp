@@ -192,23 +192,23 @@ bool read_log_entry(program_state_t * state)
 	// so we don't lose any record
 	for (int i = 0; i < state->num_of_writers; i++) {
 		if (state->last_sequences[i].pid == record[0]) {
-			if (record[1] != state->last_sequences[i].last_sequence + 1) {
+			if (record[2] != state->last_sequences[i].last_sequence + 1) {
 				_tprintf(_T("ERROR! we missed a record. pid=%d, last known=%d, current=%d\n"),
-						record[0], state->last_sequences[i].last_sequence, record[1]);
+						record[0], state->last_sequences[i].last_sequence, record[2]);
 				return false;
 			}
-			state->last_sequences[i].last_sequence = record[1];
+			state->last_sequences[i].last_sequence = record[2];
 			break;
 		}
 		else if (state->last_sequences[i].pid == -1) {
 			state->last_sequences[i].pid = record[0];
-			state->last_sequences[i].last_sequence = record[1];
+			state->last_sequences[i].last_sequence = record[2];
 			break;
 		}
 	}
 
 	_tprintf(_T("Process id %08X produced entry number %08X at time %08X with checksum %08X\n"),
-		record[0], record[1], record[2], record[3]);
+		record[0], record[2], record[1], record[3]);
 
 	return true;
 }
