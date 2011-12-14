@@ -152,7 +152,14 @@ void fini_program_state(program_state_t * state)
 	DeleteFile(state->logfile);
 	DeleteFile(state->ctrlfile);
 
+	if (state->viewer_hproc != NULL) {
+		CloseHandle(state->viewer_hproc);
+		state->viewer_hproc = NULL;
+	}
 	if (state->writer_hprocs != NULL) {
+		for (int i = 0; i < state->num_of_writers; i++) {
+			CloseHandle(state->writer_hprocs[i]);
+		}
 		free(state->writer_hprocs);
 		state->writer_hprocs = NULL;
 	}
@@ -197,14 +204,32 @@ bool startup(program_state_t * state)
 	return true;
 }
 
+bool wait_all_viewers(program_state_t * state)
+{
+	int remaining = state->num_of_writers;
+
+	// windows sucks, so we have to use WaitForMultipleObjects repeatedly in chunks of 64
+	// processes each time. why are we learning an OS course on windows?!
+
+	for (int i = 0; remaining > 0; i += MAXIMUM_WAIT_OBJECTS) {
+		int count = (remaining > MAXIMUM_WAIT_OBJECTS) ? MAXIMUM_WAIT_OBJECTS : remaining;
+		if (WaitForMultipleObjects(count, &state->writer_hprocs[i], TRUE, INFINITE) == WAIT_FAILED) {
+			print_last_error(_T("WaitForMultipleObjects"));
+			return false;
+		}
+		remaining -= count;
+	}
+	return true;
+}
+
+
 bool wrapup(program_state_t * state)
 {
 	if (!SetEvent(state->exit_evt)) {
 		print_last_error(_T("SetEvent"));
 		return false;
 	}
-	if (WaitForMultipleObjects(state->num_of_writers, state->writer_hprocs, TRUE, INFINITE)) {
-		print_last_error(_T("WaitForMultipleObjects"));
+	if (!wait_all_viewers(state)) {
 		return false;
 	}
 	if (WaitForSingleObject(state->viewer_hproc, INFINITE) != WAIT_OBJECT_0) {

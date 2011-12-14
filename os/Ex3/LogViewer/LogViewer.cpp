@@ -188,9 +188,15 @@ bool read_log_entry(program_state_t * state)
 	}
 	state->next_read_slot++;
 
-	// remember last sequence for this pid
+	// remember last sequence for this pid, and make sure it's incremented by 1 each time
+	// so we don't lose any record
 	for (int i = 0; i < state->num_of_writers; i++) {
 		if (state->last_sequences[i].pid == record[0]) {
+			if (record[1] != state->last_sequences[i].last_sequence + 1) {
+				_tprintf(_T("ERROR! we missed a record. pid=%d, last known=%d, current=%d\n"),
+						record[0], state->last_sequences[i].last_sequence, record[1]);
+				return false;
+			}
 			state->last_sequences[i].last_sequence = record[1];
 			break;
 		}
