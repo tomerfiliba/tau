@@ -207,7 +207,7 @@ bool read_log_entry(program_state_t * state)
 		}
 	}
 
-	_tprintf(_T("Process id %08X produced entry number %08X at time %08X with checksum %08X\n"),
+	_tprintf(_T("Process id 0x%08X produced entry number 0x%08X at time 0x%08X with checksum 0x%08X\n"),
 		record[0], record[2], record[1], record[3]);
 
 	return true;

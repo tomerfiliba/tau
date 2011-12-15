@@ -243,7 +243,7 @@ bool wrapup(program_state_t * state)
 		if (!GetExitCodeProcess(state->writer_hprocs[i], &ec)) {
 			ec = -1;
 		}
-		_tprintf(_T("Process id %08X, last log entry: %08X\n"), 
+		_tprintf(_T("Process id 0x%08X, last log entry: 0x%08X\n"),
 			GetProcessId(state->writer_hprocs[i]), ec);
 	}
 
