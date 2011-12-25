@@ -82,6 +82,20 @@ public class Importer
 			if (lines == null) {
 				break;
 			}
+			String name = null;
+			for (String line : lines) {
+				String role;
+				if (name == null) {
+					String parts[] = line.split("\t+");
+					name = parts[0];
+					role = parts[1];
+				}
+				else {
+					String parts[] = line.split("\t+");
+					role = parts[0];
+				}
+			}
+			
 		}
 	}
 
