@@ -163,6 +163,10 @@
 		</Configuration>
 	</Configurations>
 	<References>
+		<ProjectReference
+			ReferencedProjectIdentifier="{E181DEAE-80E6-44BF-A1D5-5F33F7A1B159}"
+			RelativePathToProject=".\g_log\g_log.vcproj"
+		/>
 	</References>
 	<Files>
 		<Filter
