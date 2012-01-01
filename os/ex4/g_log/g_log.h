@@ -42,10 +42,6 @@ typedef struct {
 
 } glogger_t;
 
-/*typedef struct {
-	glogger_t * parent;
-} specific_logger_t;*/
-
 template <size_t SIZE> void make_obj_name(_TCHAR (&buf)[SIZE], const _TCHAR * first, const _TCHAR * second)
 {
 	_tcscpy_s(buf, first);

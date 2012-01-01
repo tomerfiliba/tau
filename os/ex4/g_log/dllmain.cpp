@@ -103,14 +103,14 @@ GLHANDLE GLStartLogging(LPCTSTR log_name, DWORD dwLogSize, DWORD dwTimeout, BOOL
 	// create semaphores, etc.
 	//
 	make_obj_name(buf, _T("tomerfiliba.ex4.readsem-"), log_name);
-	logger->can_read_sem = CreateSemaphore(NULL, dwLogSize, dwLogSize, buf);
+	logger->can_read_sem = CreateSemaphore(NULL, 0, dwLogSize, buf);
 	if (logger->can_read_sem == NULL) {
 		//print_last_error(_T("CreateSemaphore 1"));
 		goto cleanup;
 	}
 
 	make_obj_name(buf, _T("tomerfiliba.ex4.writesem-"), log_name);
-	logger->can_write_sem = CreateSemaphore(NULL, 0, dwLogSize, buf);
+	logger->can_write_sem = CreateSemaphore(NULL, dwLogSize, dwLogSize, buf);
 	if (logger->can_write_sem == NULL) {
 		//print_last_error(_T("CreateSemaphore 2"));
 		goto cleanup;
@@ -124,13 +124,9 @@ GLHANDLE GLStartLogging(LPCTSTR log_name, DWORD dwLogSize, DWORD dwTimeout, BOOL
 	}
 
 	logger->specific_logger = logger->dll_StartLogging(log_name, dwLogSize, dwTimeout);
-	if (logger->specific_logger == NULL) {
+	if (logger->specific_logger == (LHANDLE)-1) {
 		goto cleanup;
 	}
-	// i need to pass this to the specific logger somehow... wtf do you specify the
-	// signature of the implementation-specific DLL function? let me specify it.
-	// arrrrghh.
-	//((specific_logger_t*)logger->specific_logger)->parent = logger;
 
 	return logger;
 
@@ -192,7 +188,7 @@ BOOL GLPopLogEntry(GLHANDLE hLog, LOG_ENTRY * pLogEntry)
 	ReleaseMutex(logger->file_mtx);
 
 	if (succ) {
-		ReleaseSemaphore(state->can_write_sem, 1, NULL);
+		ReleaseSemaphore(logger->can_write_sem, 1, NULL);
 	}
 	return succ;
 }
