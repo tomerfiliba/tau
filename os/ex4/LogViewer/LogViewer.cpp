@@ -101,6 +101,7 @@ int _tmain(int argc, _TCHAR* argv[])
 
 	if (argc != 6) {
 		_tprintf(_T("Usage: %s <logname> <num-of-writers> <logsize> <timeout> <mmf 0/1>\n"));
+		return -1;
 	}
 	state.num_of_writers = _tstoi(argv[2]);
 	if (state.num_of_writers <= 0) {

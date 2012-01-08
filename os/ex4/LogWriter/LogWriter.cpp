@@ -24,6 +24,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	int ret = -1;
 	if (argc != 6) {
 		_tprintf(_T("Usage: %s <logname> <logsize> <timeout> <mmf 1/0> <delay ms>\n"));
+		return -1;
 	}
 	int logsize = _tstoi(argv[2]);
 	if (logsize <= 0) {

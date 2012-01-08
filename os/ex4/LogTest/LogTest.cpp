@@ -128,6 +128,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	if (argc != 6) {
 		_tprintf(_T("Usage: %s <num-of-writers> <log-name> <mmf 0/1> <writer-delay-ms> <lifespan-sec>\n"), 
 			argv[0]);
+		return -1;
 	}
 	state.num_of_writers = _tstoi(argv[1]);
 	if (state.num_of_writers <= 0) {

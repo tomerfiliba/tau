@@ -1,0 +1,26 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tpchecksum", "tpchecksum\tpchecksum.vcproj", "{779272BE-64ED-49F3-A0EB-BFE7138B6F00}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "mythreadpool", "mythreadpool\mythreadpool.vcproj", "{5713F4FB-27A6-4B58-8755-FC84FBA04728}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{779272BE-64ED-49F3-A0EB-BFE7138B6F00}.Debug|Win32.ActiveCfg = Debug|Win32
+		{779272BE-64ED-49F3-A0EB-BFE7138B6F00}.Debug|Win32.Build.0 = Debug|Win32
+		{779272BE-64ED-49F3-A0EB-BFE7138B6F00}.Release|Win32.ActiveCfg = Release|Win32
+		{779272BE-64ED-49F3-A0EB-BFE7138B6F00}.Release|Win32.Build.0 = Release|Win32
+		{5713F4FB-27A6-4B58-8755-FC84FBA04728}.Debug|Win32.ActiveCfg = Debug|Win32
+		{5713F4FB-27A6-4B58-8755-FC84FBA04728}.Debug|Win32.Build.0 = Debug|Win32
+		{5713F4FB-27A6-4B58-8755-FC84FBA04728}.Release|Win32.ActiveCfg = Release|Win32
+		{5713F4FB-27A6-4B58-8755-FC84FBA04728}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
