@@ -14,7 +14,7 @@ public class Main {
 		Schema db = new Schema("localhost:3306", "root", "root");
 		Importer importer = new Importer(db);
 		
-		importer.import_all();
+		//importer.import_all();
 		
 		
 	}

@@ -6,10 +6,26 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
+//import javax.naming.InitialContext;
+//import javax.naming.NamingException;
+import javax.sql.DataSource;
+
 
 public class Schema {
 	private Connection conn;
+	private DataSource dataSource;
 	private final String SCHEMA = "imdb";
+	
+	/*public Connection getConnection(String host, String username, String password) 
+			throws NamingException, SQLException
+	{
+		if (conn == null) {
+			InitialContext ctx = new InitialContext();
+			dataSource = (DataSource)ctx.lookup("java:comp/env/jdbc/MySQLDB");
+			conn = dataSource.getConnection("jdbc:mysql://" + host + "/", username, password);
+		}
+		return conn;
+	}*/
 	
 	public Schema(String host, String username, String password) throws SQLException, ClassNotFoundException
 	{
@@ -57,6 +73,7 @@ public class Schema {
 			"`character` VARCHAR(100) NULL ," +
 			"`movieid` INT NULL ," +
 			"`personid` INT NULL ," +
+			"`credit_position` INT NULL ," +
 			"PRIMARY KEY (`idrole`) ," +
 			"INDEX `personid` (`personid` ASC) ," +
 			"INDEX `movieid` (`movieid` ASC) ," +
@@ -109,6 +126,28 @@ public class Schema {
 		
 		stmt.close();
 	}
+	
+	public enum MovieType
+	{
+		TV("tv"),
+		FILM("film");
+		
+		public String id;
+		private MovieType(String id)
+		{
+			this.id = id;
+		}
+	}
+	
+	public void addMovie(String full_name, String name, MovieType type, Integer year, 
+			String country, String language) throws SQLException
+	{
+		Statement stmt = conn.createStatement();
+		stmt.executeUpdate("INSERT (" + full_name +"," + name + "," + type.id + "," + year + 
+				"," + country + "," + language + ") INTO `" + SCHEMA + "`.`movies`");
+		stmt.close();
+	}
+	
 	
 	public ResultSet executeQuery(String sql) throws SQLException
 	{
