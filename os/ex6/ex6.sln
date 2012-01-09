@@ -1,11 +1,9 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 10.00
 # Visual Studio 2008
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CallDetectorHelper", "CallDetectorHelper\CallDetectorHelper.vcproj", "{D0F43215-DC7F-4402-9CC4-AE0EEFCE528A}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CallDetector", "CallDetector\CallDetector.vcproj", "{D0F43215-DC7F-4402-9CC4-AE0EEFCE528A}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "mydll", "mydll\mydll.vcproj", "{9F90E26E-3B4F-4090-80DA-54C61204881C}"
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CallDetector", "CallDetector\CallDetector.vcproj", "{2AD55230-0F46-4AD4-8B0D-35B89BE60838}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,10 +19,6 @@ Global
 		{9F90E26E-3B4F-4090-80DA-54C61204881C}.Debug|Win32.Build.0 = Debug|Win32
 		{9F90E26E-3B4F-4090-80DA-54C61204881C}.Release|Win32.ActiveCfg = Release|Win32
 		{9F90E26E-3B4F-4090-80DA-54C61204881C}.Release|Win32.Build.0 = Release|Win32
-		{2AD55230-0F46-4AD4-8B0D-35B89BE60838}.Debug|Win32.ActiveCfg = Debug|Win32
-		{2AD55230-0F46-4AD4-8B0D-35B89BE60838}.Debug|Win32.Build.0 = Debug|Win32
-		{2AD55230-0F46-4AD4-8B0D-35B89BE60838}.Release|Win32.ActiveCfg = Release|Win32
-		{2AD55230-0F46-4AD4-8B0D-35B89BE60838}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

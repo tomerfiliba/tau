@@ -3,8 +3,8 @@
 	ProjectType="Visual C++"
 	Version="9.00"
 	Name="CallDetector"
-	ProjectGUID="{2AD55230-0F46-4AD4-8B0D-35B89BE60838}"
-	RootNamespace="CallDetector"
+	ProjectGUID="{D0F43215-DC7F-4402-9CC4-AE0EEFCE528A}"
+	RootNamespace="ex6"
 	Keyword="Win32Proj"
 	TargetFrameworkVersion="196613"
 	>

@@ -1,4 +1,6 @@
 #include <windows.h>
+#include <tchar.h>
+
 
 extern "C" 
 {
@@ -15,7 +17,7 @@ void Run(DWORD i)
 
 void SecretFunction()
 {
-	Beep(480, 100);
+	MessageBox(NULL, _T("I'm the secret"), _T("Shshshs"), MB_OK);
 }
 
 
