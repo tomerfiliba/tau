@@ -33,7 +33,6 @@ bool found_breakpoint = false;
 
 int exception_filter(DWORD code, void * ptr, BYTE orig, int i)
 {
-	_tprintf(_T("FOOOO\n"));
 	if (code == EXCEPTION_BREAKPOINT) {
 		unpatch_function(ptr, orig);
 		_tprintf(_T("The SecretCode function was called using parameter value=%d\n"),i);
@@ -82,6 +81,8 @@ int _tmain(int argc, TCHAR *argv[])
 		}
 	}
 	if (!found_breakpoint) {
+		// unpatch the function anyway
+		unpatch_function(secret_func, orig);
 		_tprintf(_T("No call to SecretFunction was detected\n"));
 	}
 

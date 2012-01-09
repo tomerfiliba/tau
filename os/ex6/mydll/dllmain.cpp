@@ -1,6 +1,10 @@
 #include <windows.h>
 #include <tchar.h>
 
+/*
+NOTE: optimization must be disabled in this dll, or the SecretFunction 
+will be inlined...
+*/
 
 extern "C" 
 {
