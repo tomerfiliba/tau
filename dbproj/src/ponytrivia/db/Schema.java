@@ -1,4 +1,4 @@
-package dbcourse2011.db;
+package ponytrivia.db;
 
 import java.sql.Connection;
 import java.sql.DriverManager;

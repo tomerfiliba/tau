@@ -1,11 +1,12 @@
-package dbcourse2011.importer;
+package ponytrivia.importer;
 
 import java.io.IOException;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import dbcourse2011.db.Schema;
+import ponytrivia.db.Schema;
+
 
 
 public class Importer
@@ -17,7 +18,7 @@ public class Importer
 		this.schema = schema;
 	}
 	
-	public void import_all() throws IOException
+	public void import_all(String directory) throws IOException
 	{
 		import_movies("lists/movies.short");
 		//import_actors("lists/actors.short");

@@ -1,4 +1,4 @@
-package dbcourse2011.importer;
+package ponytrivia.importer;
 
 import java.io.BufferedReader;
 import java.io.EOFException;
