@@ -1,4 +1,4 @@
-package pony.gui;
+package ponytrivia.gui;
 
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Shell;
@@ -10,8 +10,13 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.layout.FillLayout;
+import org.eclipse.swt.layout.FormLayout;
+import org.eclipse.swt.layout.FormData;
+import org.eclipse.swt.layout.FormAttachment;
+import org.eclipse.swt.custom.StackLayout;
 
-public class Gui {
+public class MainScreen {
 
 	protected Shell shlPonyTrivia;
 
@@ -21,7 +26,7 @@ public class Gui {
 	 */
 	public static void main(String[] args) {
 		try {
-			Gui window = new Gui();
+			MainScreen window = new MainScreen();
 			window.open();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -49,10 +54,13 @@ public class Gui {
 	protected void createContents() {
 		shlPonyTrivia = new Shell();
 		shlPonyTrivia.setImage(null);
-		shlPonyTrivia.setSize(647, 373);
+		shlPonyTrivia.setSize(386, 331);
 		shlPonyTrivia.setText("Pony Trivia");
-		shlPonyTrivia.setLayout(new GridLayout(1, false));
-		new Label(shlPonyTrivia, SWT.NONE);
+		FillLayout fl_shlPonyTrivia = new FillLayout(SWT.VERTICAL);
+		fl_shlPonyTrivia.spacing = 10;
+		fl_shlPonyTrivia.marginHeight = 5;
+		fl_shlPonyTrivia.marginWidth = 5;
+		shlPonyTrivia.setLayout(fl_shlPonyTrivia);
 		
 		Button btnPlayGame = new Button(shlPonyTrivia, SWT.NONE);
 		btnPlayGame.addSelectionListener(new SelectionAdapter() {
@@ -60,26 +68,15 @@ public class Gui {
 			public void widgetSelected(SelectionEvent arg0) {
 			}
 		});
-		GridData gd_btnPlayGame = new GridData(SWT.LEFT, SWT.CENTER, false, false, 1, 1);
-		gd_btnPlayGame.heightHint = 94;
-		gd_btnPlayGame.widthHint = 248;
-		btnPlayGame.setLayoutData(gd_btnPlayGame);
-		btnPlayGame.setImage(SWTResourceManager.getImage(Gui.class, "/pony/gui/kitty.gif"));
+		btnPlayGame.setImage(SWTResourceManager.getImage(MainScreen.class, "/pony/gui/kitty.gif"));
 		btnPlayGame.setText("Play Game");
 		
 		Button btnImportImdbFiles = new Button(shlPonyTrivia, SWT.NONE);
-		GridData gd_btnImportImdbFiles = new GridData(SWT.LEFT, SWT.CENTER, false, false, 1, 1);
-		gd_btnImportImdbFiles.heightHint = 71;
-		gd_btnImportImdbFiles.widthHint = 247;
-		btnImportImdbFiles.setLayoutData(gd_btnImportImdbFiles);
-		btnImportImdbFiles.setImage(SWTResourceManager.getImage(Gui.class, "/pony/gui/IMDB-logo.gif"));
+		btnImportImdbFiles.setImage(SWTResourceManager.getImage(MainScreen.class, "/pony/gui/IMDB-logo.gif"));
 		btnImportImdbFiles.setText("Import IMDB Files");
 		
 		Button btnEditDb = new Button(shlPonyTrivia, SWT.NONE);
-		GridData gd_btnEditDb = new GridData(SWT.LEFT, SWT.CENTER, false, false, 1, 1);
-		gd_btnEditDb.widthHint = 248;
-		btnEditDb.setLayoutData(gd_btnEditDb);
-		btnEditDb.setImage(SWTResourceManager.getImage(Gui.class, "/pony/gui/mysql-logo.gif"));
+		btnEditDb.setImage(SWTResourceManager.getImage(MainScreen.class, "/pony/gui/mysql-logo.gif"));
 		btnEditDb.setText("Edit DB");
 
 	}
