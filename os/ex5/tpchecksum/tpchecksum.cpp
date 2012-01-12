@@ -13,6 +13,7 @@ typedef struct {
 	int num_of_threads;
 	int num_of_chunks;
 	DWORD chunk_size;
+	CRITICAL_SECTION checksum_guard;
 	unsigned char checksum;
 } program_state_t;
 
@@ -39,6 +40,7 @@ bool init_state(program_state_t * state)
 	state->dll = NULL;
 	state->completion_sem = NULL;
 	state->checksum = 0;
+	InitializeCriticalSection(&state->checksum_guard);
 
 	state->dll = LoadLibrary(_T("mythreadpool.dll"));
 	if (state->dll == NULL) {
@@ -87,6 +89,7 @@ bool init_state(program_state_t * state)
 
 void fini_state(program_state_t * state)
 {
+	DeleteCriticalSection(&state->checksum_guard);
 	if (state->dll != NULL) {
 		FreeLibrary(state->dll);
 		state->dll = NULL;
@@ -113,7 +116,7 @@ typedef struct
 	int size;
 	bool succ;
 	HANDLE completion_sem;
-	unsigned char * pChecksum;
+	program_state_t * state;
 } queue_func_params_t;
 
 
@@ -165,7 +168,10 @@ DWORD queue_callback_func(BYTE* pParam, DWORD param_size, DWORD dwExitCode)
 	if (params->succ) {
 		_tprintf(_T("Byte Range from %d till %d has checksum %d\n"),
 			params->offset, params->offset + params->size, dwExitCode);
-		InterlockedXor8(params->pChecksum, (char)dwExitCode);
+		// update checksum so far
+		EnterCriticalSection(&params->state->checksum_guard);
+		params->state->checksum ^= (unsigned char)dwExitCode;
+		LeaveCriticalSection(&params->state->checksum_guard);
 	}
 	else {
 		_tprintf(_T("Error computing checksum for range %d-%d\n"),
@@ -192,7 +198,7 @@ bool compute_checksums(program_state_t * state)
 		queue_func_params_t params;
 		params.completion_sem = state->completion_sem;
 		params.succ = false;
-		params.pChecksum = &state->checksum;
+		params.state = state;
 		params.filename = state->filename;
 		params.offset = offset;
 		DWORD remaining = state->filesize - offset;
@@ -237,7 +243,9 @@ int _tmain(int argc, TCHAR *argv[])
 		goto cleanup;
 	}
 	if (compute_checksums(&state)) {
-		res = 0;
+		// return checksum
+		_tprintf(_T("Total checksum: %d"), (unsigned int)state.checksum);
+		res = (unsigned int)state.checksum;
 	}
 
 cleanup:
