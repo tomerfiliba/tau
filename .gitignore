@@ -24,3 +24,4 @@ Debug/
 *.manifest
 *.idb
 *.zip
+Release/

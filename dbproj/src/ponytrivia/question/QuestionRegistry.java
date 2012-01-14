@@ -1,5 +1,6 @@
-package ponytrivia.questions;
+package ponytrivia.question;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -7,12 +8,12 @@ import java.util.Random;
 import java.util.Set;
 
 import ponytrivia.db.Schema;
+import ponytrivia.question.impl.Question2;
 
 
 public class QuestionRegistry {
-	protected Schema schema;
-	protected List<QuestionGenerator> questionRegistry;
 	protected Random rand;
+	protected List<QuestionGenerator> questionRegistry;
 	protected Set<String> questionHistory;
 	
 	public QuestionRegistry(Schema schema) {
@@ -20,10 +21,10 @@ public class QuestionRegistry {
 		rand = new Random();
 		questionHistory = new HashSet<String>();
 		
-		questionRegistry.add(new Question1(schema));
+		questionRegistry.add(new Question2(schema));
 	}
 	
-	public QuestionInfo getQuestion()
+	public QuestionInfo getQuestion() throws SQLException
 	{
 		QuestionInfo qi = null;
 		for (int i = 0; i < 5; i++) {

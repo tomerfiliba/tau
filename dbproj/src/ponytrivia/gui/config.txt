@@ -1,0 +1,3 @@
+user    root
+pass    root
+host    localhost:3306

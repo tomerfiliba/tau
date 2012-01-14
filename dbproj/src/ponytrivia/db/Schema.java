@@ -13,8 +13,8 @@ import javax.sql.DataSource;
 
 public class Schema {
 	private Connection conn;
-	private DataSource dataSource;
-	private final String SCHEMA = "imdb";
+	//private DataSource dataSource;
+	private final String SCHEMA = "test_imdb";
 	
 	/*public Connection getConnection(String host, String username, String password) 
 			throws NamingException, SQLException
@@ -33,14 +33,16 @@ public class Schema {
 
 		conn = DriverManager.getConnection("jdbc:mysql://" + host + "/", username, password);
 		Statement stmt = conn.createStatement();
-		stmt.executeUpdate("CREATE SCHEMA IF NOT EXISTS imdb");
+		stmt.executeUpdate("CREATE SCHEMA IF NOT EXISTS " + SCHEMA);
 		stmt.close();
 		conn.close();
 
 		conn = DriverManager.getConnection("jdbc:mysql://" + host + "/" + SCHEMA, username, password);
 		stmt = conn.createStatement();
 		
-		stmt.executeUpdate("CREATE TABLE IF NOT EXISTS `" + SCHEMA + "`.`movies` (" +
+		stmt.executeUpdate("CREATE OR REPLACE VIEW `" + SCHEMA + "`.`filtered_movie` AS SELECT * FROM movie");
+		
+		/*stmt.executeUpdate("CREATE TABLE IF NOT EXISTS `" + SCHEMA + "`.`movies` (" +
 			"`idmovie` INT NOT NULL AUTO_INCREMENT ," +
 			"`full_name` VARCHAR(200) NOT NULL ," +
 			"`name` VARCHAR(200) NULL ," +
@@ -124,7 +126,7 @@ public class Schema {
 			"ENGINE = InnoDB"
 		);
 		
-		stmt.close();
+		stmt.close();*/
 	}
 	
 	public enum MovieType
@@ -139,6 +141,20 @@ public class Schema {
 		}
 	}
 	
+	public String getMovie(int movie_id) throws SQLException 
+	{
+		ResultSet rs = executeQuery("select M.name from movie as M where m.idmovie = " + movie_id);
+		rs.next();
+		return rs.getString(1);
+	}
+
+	public String getPerson(int person_id) throws SQLException 
+	{
+		ResultSet rs = executeQuery("select P.first_name, P.last_name from person as P where p.idperson = " + person_id);
+		rs.next();
+		return rs.getString(1) + " " + rs.getString(2);
+	}
+
 	public void addMovie(String full_name, String name, MovieType type, Integer year, 
 			String country, String language) throws SQLException
 	{
@@ -153,7 +169,7 @@ public class Schema {
 	{
 		Statement stmt = conn.createStatement();
 		ResultSet res = stmt.executeQuery(sql);
-		stmt.close();
+		//stmt.close();
 		return res;
 	}
 	
