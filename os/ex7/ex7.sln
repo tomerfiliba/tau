@@ -1,0 +1,32 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "http_stress", "http_stress\http_stress.vcproj", "{8707CCFE-5BE2-4DD3-B6B2-9F9B82E29D28}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "http_srv", "http_srv\http_srv.vcproj", "{BA3FFEBD-6824-4B76-A525-44146503EC97}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "mythreadpool", "mythreadpool\mythreadpool.vcproj", "{FEF9351C-ABBC-4B57-9246-17AF9FD16AC9}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8707CCFE-5BE2-4DD3-B6B2-9F9B82E29D28}.Debug|Win32.ActiveCfg = Debug|Win32
+		{8707CCFE-5BE2-4DD3-B6B2-9F9B82E29D28}.Debug|Win32.Build.0 = Debug|Win32
+		{8707CCFE-5BE2-4DD3-B6B2-9F9B82E29D28}.Release|Win32.ActiveCfg = Release|Win32
+		{8707CCFE-5BE2-4DD3-B6B2-9F9B82E29D28}.Release|Win32.Build.0 = Release|Win32
+		{BA3FFEBD-6824-4B76-A525-44146503EC97}.Debug|Win32.ActiveCfg = Debug|Win32
+		{BA3FFEBD-6824-4B76-A525-44146503EC97}.Debug|Win32.Build.0 = Debug|Win32
+		{BA3FFEBD-6824-4B76-A525-44146503EC97}.Release|Win32.ActiveCfg = Release|Win32
+		{BA3FFEBD-6824-4B76-A525-44146503EC97}.Release|Win32.Build.0 = Release|Win32
+		{FEF9351C-ABBC-4B57-9246-17AF9FD16AC9}.Debug|Win32.ActiveCfg = Debug|Win32
+		{FEF9351C-ABBC-4B57-9246-17AF9FD16AC9}.Debug|Win32.Build.0 = Debug|Win32
+		{FEF9351C-ABBC-4B57-9246-17AF9FD16AC9}.Release|Win32.ActiveCfg = Release|Win32
+		{FEF9351C-ABBC-4B57-9246-17AF9FD16AC9}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

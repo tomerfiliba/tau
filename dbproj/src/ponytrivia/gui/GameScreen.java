@@ -96,22 +96,22 @@ public class GameScreen {
 		lblPony.setLayoutData(fd_lblPony);
 		lblPony.setImage(SWTResourceManager.getImage(GameScreen.class, "/ponytrivia/gui/kitty.gif"));
 		
-		Label lblNewLabel_1 = new Label(shlPonyTrivia, SWT.NONE);
-		fd_lblPony.left = new FormAttachment(lblNewLabel_1, 184);
-		fd_lblPony.bottom = new FormAttachment(lblNewLabel_1, 0, SWT.BOTTOM);
-		FormData fd_lblNewLabel_1 = new FormData();
-		fd_lblNewLabel_1.left = new FormAttachment(0, 10);
-		fd_lblNewLabel_1.top = new FormAttachment(0, 34);
-		lblNewLabel_1.setLayoutData(fd_lblNewLabel_1);
-		lblNewLabel_1.setImage(SWTResourceManager.getImage(GameScreen.class, "/ponytrivia/gui/flower.gif"));
+		final Label lblFlower = new Label(shlPonyTrivia, SWT.NONE);
+		fd_lblPony.left = new FormAttachment(lblFlower, 184);
+		fd_lblPony.bottom = new FormAttachment(lblFlower, 0, SWT.BOTTOM);
+		FormData fd_lblFlower = new FormData();
+		fd_lblFlower.left = new FormAttachment(0, 10);
+		fd_lblFlower.top = new FormAttachment(0, 34);
+		lblFlower.setLayoutData(fd_lblFlower);
+		lblFlower.setImage(SWTResourceManager.getImage(GameScreen.class, "/ponytrivia/gui/flower.gif"));
 		
-		Label label_1 = new Label(shlPonyTrivia, SWT.NONE);
-		fd_lblPony.right = new FormAttachment(label_1, -191);
-		FormData fd_label_1 = new FormData();
-		fd_label_1.right = new FormAttachment(100, -10);
-		fd_label_1.top = new FormAttachment(lblPony, 0, SWT.TOP);
-		label_1.setLayoutData(fd_label_1);
-		label_1.setImage(SWTResourceManager.getImage(GameScreen.class, "/ponytrivia/gui/hell_boy.gif"));
+		final Label lblDevil = new Label(shlPonyTrivia, SWT.NONE);
+		fd_lblPony.right = new FormAttachment(lblDevil, -191);
+		FormData fd_lblDevil = new FormData();
+		fd_lblDevil.right = new FormAttachment(100, -10);
+		fd_lblDevil.top = new FormAttachment(lblPony, 0, SWT.TOP);
+		lblDevil.setLayoutData(fd_lblDevil);
+		lblDevil.setImage(SWTResourceManager.getImage(GameScreen.class, "/ponytrivia/gui/hell_boy.gif"));
 		
 		Composite composite = new Composite(shlPonyTrivia, SWT.NONE);
 		composite.setLocation(10, -227);
@@ -193,7 +193,7 @@ public class GameScreen {
 		
 		final Label label = new Label(shlPonyTrivia, SWT.SEPARATOR | SWT.HORIZONTAL);
 		fd_composite.top = new FormAttachment(label, 6);
-		fd_lblNewLabel_1.bottom = new FormAttachment(100, -306);
+		fd_lblFlower.bottom = new FormAttachment(100, -306);
 		FormData fd_label = new FormData();
 		fd_label.top = new FormAttachment(lblPony, 6);
 		fd_label.bottom = new FormAttachment(100, -298);
@@ -205,7 +205,7 @@ public class GameScreen {
 		lblTime.setText("Remaining Time: 30");
 		FormData fd_lblTime = new FormData();
 		fd_lblTime.top = new FormAttachment(0, 10);
-		fd_lblTime.left = new FormAttachment(lblNewLabel_1, 0, SWT.LEFT);
+		fd_lblTime.left = new FormAttachment(lblFlower, 0, SWT.LEFT);
 		lblTime.setLayoutData(fd_lblTime);
 		
 		////////////////////////////////////////////////////////////////////////////////////////////
@@ -285,13 +285,17 @@ public class GameScreen {
 					private int cnt;
 					private int timeout;
 					private final int steps = 20;
-					private Point orig;
+					private Point origPony;
+					private Point origFlower;
+					private Point origDevil;
 					
 					public AnimatePony(int delta, int timeout) {
 						this.delta = delta;
 						this.timeout = timeout;
 						cnt = 0;
-						orig = lblPony.getLocation();
+						origPony = lblPony.getLocation();
+						origFlower = lblFlower.getLocation();
+						origDevil = lblDevil.getLocation();
 					}
 
 					@Override
@@ -299,7 +303,7 @@ public class GameScreen {
 						cnt++;
 						Point p = lblPony.getLocation();
 						double height = Math.abs(Math.sin(((double)cnt / steps) * 3 * Math.PI));
-						lblPony.setLocation(p.x + delta / steps, orig.y - (int)(10 * height));
+						lblPony.setLocation(p.x + delta / steps, origPony.y - (int)(10 * height));
 						if (cnt < steps) {
 							display.timerExec(timeout / steps, this);
 						}
