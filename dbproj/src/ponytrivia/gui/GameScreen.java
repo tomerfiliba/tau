@@ -24,6 +24,7 @@ import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Font;
+import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
 
@@ -85,6 +86,9 @@ public class GameScreen {
 	/**
 	 * Create contents of the window.
 	 */
+	private final Image imgKitty1 = SWTResourceManager.getImage(GameScreen.class, "/ponytrivia/gui/kitty1.gif");
+	private final Image imgKitty2 = SWTResourceManager.getImage(GameScreen.class, "/ponytrivia/gui/kitty2.gif");
+	
 	protected void createContents() {
 		shlPonyTrivia = new Shell();
 		shlPonyTrivia.setSize(645, 481);
@@ -94,7 +98,7 @@ public class GameScreen {
 		final Label lblPony = new Label(shlPonyTrivia, SWT.NONE);
 		FormData fd_lblPony = new FormData();
 		lblPony.setLayoutData(fd_lblPony);
-		lblPony.setImage(SWTResourceManager.getImage(GameScreen.class, "/ponytrivia/gui/kitty.gif"));
+		lblPony.setImage(imgKitty1);
 		
 		final Label lblFlower = new Label(shlPonyTrivia, SWT.NONE);
 		fd_lblPony.left = new FormAttachment(lblFlower, 184);
@@ -267,11 +271,13 @@ public class GameScreen {
 					gameinfo.total_score += 10 + (gameinfo.remaining_time < 0 ? 0 : gameinfo.remaining_time);
 					delta = -delta;
 					correct.setBackground(new Color(Display.getCurrent(), 150, 250, 150));
+					lblPony.setImage(imgKitty1);
 				}
 				else {
 					gameinfo.total_score -= 10;
 					correct.setBackground(new Color(Display.getCurrent(), 250, 150, 150));
 					timeout = 1500;
+					lblPony.setImage(imgKitty2);
 				}
 				if (gameinfo.total_score < 0) {
 					gameinfo.total_score = 0;
@@ -310,7 +316,7 @@ public class GameScreen {
 					}
 				}
 
-				display.timerExec(0, new AnimatePony(delta, timeout));
+				display.timerExec(0, new AnimatePony(delta, (int)(timeout * 0.9)));
 
 				display.timerExec(timeout, new Runnable() {
 					@Override

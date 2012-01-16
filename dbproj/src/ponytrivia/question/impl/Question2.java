@@ -31,9 +31,12 @@ public class Question2 extends QuestionGenerator {
 		String right_answer = schema.getMovie(movie_id);
 		String person = schema.getPerson(person_id);
 
-		rs = schema.executeQuery("select distinct(M.idmovie) from filtered_movie as M, role as R " + 
-				"where R.movie_id = M.idmovie and R.person_id != " + movie_id + " " +
-				"ORDER BY RAND() LIMIT 3");
+		rs = schema.executeQuery("select M.idmovie from filtered_movie as M " +
+				"where M.idmovie not in ( " +
+				"   select M.idmovie from movie as M, role as R, Person as P " +
+				"    where M.idmovie = R.movie_id and R.person_id = " + person_id + ") " +
+				"order by rand() " +
+				"limit 3");
 		ArrayList<String> wrong_answers = new ArrayList<String>();
 		while (rs.next()) {
 			movie_id = rs.getInt(1);
