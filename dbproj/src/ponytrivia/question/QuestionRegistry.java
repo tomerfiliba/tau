@@ -9,6 +9,7 @@ import java.util.Set;
 
 import ponytrivia.db.Schema;
 import ponytrivia.question.impl.Question2;
+import ponytrivia.question.impl.Question3;
 
 
 public class QuestionRegistry {
@@ -22,13 +23,14 @@ public class QuestionRegistry {
 		questionHistory = new HashSet<String>();
 		
 		questionRegistry.add(new Question2(schema));
+		questionRegistry.add(new Question3(schema));
 	}
 	
 	public QuestionInfo getQuestion() throws SQLException
 	{
 		QuestionInfo qi = null;
 		for (int i = 0; i < 5; i++) {
-			int ind = rand.nextInt() % questionRegistry.size();
+			int ind = Math.abs(rand.nextInt()) % questionRegistry.size();
 			QuestionGenerator qg = questionRegistry.get(ind);
 			qi = qg.generate();
 			if (!questionHistory.contains(qi.questionText)) {
