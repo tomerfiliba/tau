@@ -3,6 +3,7 @@ package ponytrivia.question.impl;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
@@ -21,12 +22,13 @@ public class Question3 extends QuestionGenerator {
 		super(schema);
 	}
 	
-	protected Set<Integer> getRands(int min, int max)
+	protected Set<Integer> getRands(int year, int min, int max)
 	{
 		HashSet<Integer> s = new HashSet<Integer>();
+		int currYear = Calendar.getInstance().get(Calendar.YEAR);
 		while (s.size() < 3) {
-			int r = (Math.abs(rand.nextInt()) % (max - min)) + min;
-			if (r != 0) {
+			int r = year + (Math.abs(rand.nextInt()) % (max - min)) + min;
+			if (r != year && r <= currYear) {
 				s.add(r);
 			}
 		}
@@ -47,8 +49,8 @@ public class Question3 extends QuestionGenerator {
 		
 		String movie_name = schema.getMovie(movie_id);
 		ArrayList<String> wrong_answers = new ArrayList<String>();
-		for (int r : getRands(-10, 10)) {
-			wrong_answers.add(new Integer(year + r).toString());
+		for (Integer r : getRands(year, -6, 6)) {
+			wrong_answers.add(r.toString());
 		}
 		
 		return new QuestionInfo("What year was " + movie_name + " released?", 
