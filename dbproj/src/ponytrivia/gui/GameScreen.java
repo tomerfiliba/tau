@@ -53,13 +53,14 @@ public class GameScreen {
 	protected static class GameInfo
 	{
 		public int question_number = 1;
-		public final int alotted_time = 20;
+		public final int alotted_time = 5;
 		public int remaining_time = alotted_time;
 		public int total_score = 0;
 		public int correctAnswerIndex = -1;
 		public int questions_to_win = 10;
 		public int pony_pos = 0;
 		protected int turnsBeforeEnablingFiftyFifty;
+		protected boolean enabled = true;
 	}
 	
 	protected final GameInfo gameinfo = new GameInfo();
@@ -242,10 +243,10 @@ public class GameScreen {
 		lblPony.setImage(imgKitty1);
 		lblGrass.setBackground(SWTResourceManager.getColor(SWT.COLOR_DARK_GREEN));
 		
-		Scale scale = new Scale(composite_4, SWT.NONE);
+		/*Scale scale = new Scale(composite_4, SWT.NONE);
 		scale.setEnabled(false);
 		scale.setSelection(50);
-		scale.setBounds(10, 101, 589, 48);
+		scale.setBounds(10, 101, 589, 48);*/
 		
 		//////////////////////////////////////////////////////////////////////////////////0/////////
 
@@ -267,7 +268,7 @@ public class GameScreen {
 			@Override
 			public void run()
 			{
-				lblTime.setText("Remaining time: " + gameinfo.remaining_time);
+				lblTime.setText("Remaining time: " + Math.max(0, gameinfo.remaining_time));
 				if (gameinfo.remaining_time <= gameinfo.alotted_time / 3) {
 					lblTime.setForeground(display.getSystemColor(SWT.COLOR_RED));
 				}
@@ -309,6 +310,7 @@ public class GameScreen {
 			public void widgetSelected(SelectionEvent arg0) {
 				int delta = lblGrass.getBounds().width / (2 * gameinfo.questions_to_win);
 				int timeout = 1000;
+				gameinfo.enabled = false;
 				btnNext.setEnabled(false);
 				
 				final Button correct = answerButtons[gameinfo.correctAnswerIndex];
@@ -390,7 +392,8 @@ public class GameScreen {
 						}
 						updateTimeLabel.run();
 						updateQuestion.run();
-						gameinfo.remaining_time = gameinfo.alotted_time;					
+						gameinfo.remaining_time = gameinfo.alotted_time;
+						gameinfo.enabled = true;
 					}
 				});
 			}
@@ -423,7 +426,10 @@ public class GameScreen {
 				gameinfo.remaining_time -= 1;
 				display.timerExec(1000, this);
 				updateTimeLabel.run();
-				if (gameinfo.remaining_time < 0) {
+				if (gameinfo.remaining_time <= 0 && gameinfo.enabled ) {
+					for (Button btn : answerButtons) {
+						btn.setSelection(false);
+					}
 					answerQuestion.widgetSelected(null);
 				}
 			}
@@ -441,7 +447,7 @@ public class GameScreen {
 		{
 			InputStream ins = GameScreen.class.getResourceAsStream("res/nyan.wav");
 			AudioInputStream audioIn;
-			System.out.println(ins);
+			//System.out.println(ins);
 			
 			try {
 				clip = AudioSystem.getClip();
@@ -460,7 +466,7 @@ public class GameScreen {
 				e.printStackTrace();
 				return;
 			}
-			System.out.println("woohoo");
+			//System.out.println("woohoo");
 
 			clip.loop(Clip.LOOP_CONTINUOUSLY);
 		}

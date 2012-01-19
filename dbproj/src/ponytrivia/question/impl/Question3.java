@@ -44,8 +44,6 @@ public class Question3 extends QuestionGenerator {
 		rs.next();
 		int movie_id =  rs.getInt(1);
 		Integer year = rs.getInt(2);
-		System.out.println("year = " + year);
-		System.out.println("movie id = " + movie_id);
 		
 		String movie_name = schema.getMovie(movie_id);
 		ArrayList<String> wrong_answers = new ArrayList<String>();
