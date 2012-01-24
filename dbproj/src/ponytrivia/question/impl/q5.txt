@@ -1,0 +1,10 @@
+select M.movie_id from filtered_movies as M, Movies_directors as D
+where M.movie_id = D.movie and D.director in (select A.person from actors as A
+											where A.movie = M.movie_id) 
+order by rand() limit 1
+
+select M.movie_id from filtered_movies as M, Movies_directors as D
+where M.movie_id = D.movie and D.director not in (select A.person from actors as A
+												where A.movie = M.movie_id)
+order by rand() limit 3
+
