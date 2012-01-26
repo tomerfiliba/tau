@@ -1,10 +1,7 @@
-select M.movie_id from filtered_movies as M, Movies_directors as D
-where M.movie_id = D.movie and D.director in (select A.person from actors as A
-											where A.movie = M.movie_id) 
+select M.movie_id, M.year from filtered_movies as M
+where M.year is not null
 order by rand() limit 1
 
-select M.movie_id from filtered_movies as M, Movies_directors as D
-where M.movie_id = D.movie and D.director not in (select A.person from actors as A
-												where A.movie = M.movie_id)
+select M.movie_id from filtered_movies as M
+where M.year != $$movie_year$$ and abs(M.year - $$move_year$$) < 5
 order by rand() limit 3
-

@@ -53,7 +53,7 @@ public class GameScreen {
 	protected static class GameInfo
 	{
 		public int question_number = 1;
-		public final int alotted_time = 5;
+		public final int alotted_time = 20;
 		public int remaining_time = alotted_time;
 		public int total_score = 0;
 		public int correctAnswerIndex = -1;

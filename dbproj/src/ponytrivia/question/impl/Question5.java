@@ -39,13 +39,16 @@ public class Question5 extends QuestionGenerator {
 											"where A.movie = M.movie_id) " +
 				"order by rand() limit 3");
 
-		rs.next();
-		movie_id =  rs.getInt(1);
+		ArrayList<String> wrongAnswers = new ArrayList<String>();
+		for (int i = 0; i < 3; i++) {
+			rs.next();
+			movie_id =  rs.getInt(1);
+			wrongAnswers.add(schema.getMovie(movie_id));
+		}
 		rs.close();
 
-		
-		return new QuestionInfo("Who is the director of " + movie_name + "?", 
-				schema.getPerson(director_id), wrongAnswers); 
+		return new QuestionInfo("In which of the following movies, did the director also play?", 
+				movie_name, wrongAnswers); 
 	}
 
 }
