@@ -3,9 +3,6 @@ package ponytrivia.question.impl;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Random;
-import java.util.Set;
 
 import ponytrivia.db.Schema;
 import ponytrivia.question.QuestionGenerator;

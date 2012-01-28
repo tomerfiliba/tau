@@ -3,9 +3,6 @@ package ponytrivia.question.impl;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Random;
-import java.util.Set;
 
 import ponytrivia.db.Schema;
 import ponytrivia.question.QuestionGenerator;
@@ -15,10 +12,8 @@ import ponytrivia.question.QuestionInfo;
  * Which of the following actors played in the most movies?
  * Choose 4 actors so that no two actors have the same number of movies
  */
-public class Question6 extends QuestionGenerator {
-	protected Random rand = new Random();
-
-	public Question6(Schema schema) {
+public class Question06 extends QuestionGenerator {
+	public Question06(Schema schema) {
 		super(schema);
 	}
 

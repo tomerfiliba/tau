@@ -3,9 +3,6 @@ package ponytrivia.question.impl;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Random;
-import java.util.Set;
 
 import ponytrivia.db.Schema;
 import ponytrivia.question.QuestionGenerator;
@@ -15,10 +12,8 @@ import ponytrivia.question.QuestionInfo;
  * In which of the following movies, the director is also an actor?
  * Choose 3 movies in which the director did not participate
  */
-public class Question5 extends QuestionGenerator {
-	protected Random rand = new Random();
-
-	public Question5(Schema schema) {
+public class Question05 extends QuestionGenerator {
+	public Question05(Schema schema) {
 		super(schema);
 	}
 

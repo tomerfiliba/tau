@@ -3,9 +3,6 @@ package ponytrivia.question.impl;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Random;
-import java.util.Set;
 
 import ponytrivia.db.Schema;
 import ponytrivia.question.QuestionGenerator;
@@ -15,10 +12,8 @@ import ponytrivia.question.QuestionInfo;
  * Which of the following is the latest movie in which <actor X> played?
  * Choose 4 movies in which actor X has played, from different years
  */
-public class Question9 extends QuestionGenerator {
-	protected Random rand = new Random();
-
-	public Question9(Schema schema) {
+public class Question09 extends QuestionGenerator {
+	public Question09(Schema schema) {
 		super(schema);
 	}
 

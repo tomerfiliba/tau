@@ -13,19 +13,7 @@ import javax.sql.DataSource;
 
 public class Schema {
 	private Connection conn;
-	//private DataSource dataSource;
 	private final String SCHEMA = "test_imdb";
-	
-	/*public Connection getConnection(String host, String username, String password) 
-			throws NamingException, SQLException
-	{
-		if (conn == null) {
-			InitialContext ctx = new InitialContext();
-			dataSource = (DataSource)ctx.lookup("java:comp/env/jdbc/MySQLDB");
-			conn = dataSource.getConnection("jdbc:mysql://" + host + "/", username, password);
-		}
-		return conn;
-	}*/
 	
 	public Schema(String host, String username, String password) throws SQLException, ClassNotFoundException
 	{
@@ -155,15 +143,32 @@ public class Schema {
 		return rs.getString(1) + " " + rs.getString(2);
 	}
 
-	public void addMovie(String full_name, String name, MovieType type, Integer year, 
+	/*public void addMovie(String full_name, String name, MovieType type, Integer year, 
 			String country, String language) throws SQLException
 	{
 		Statement stmt = conn.createStatement();
 		stmt.executeUpdate("INSERT (" + full_name +"," + name + "," + type.id + "," + year + 
 				"," + country + "," + language + ") INTO `" + SCHEMA + "`.`movies`");
 		stmt.close();
+	}*/
+
+	public Statement createStatement() throws SQLException
+	{
+		return conn.createStatement();
 	}
 	
+	public int getForeignKey(String sql) throws SQLException
+	{
+		Statement stmt = createStatement();
+		ResultSet rs = stmt.executeQuery(sql);
+		if (!rs.next()) {
+			throw new SQLException("expected one match");
+		}
+		int id = rs.getInt(1);
+		rs.close();
+		stmt.close();
+		return id;
+	}
 	
 	public ResultSet executeQuery(String sql) throws SQLException
 	{
@@ -172,12 +177,17 @@ public class Schema {
 		//stmt.close();
 		return res;
 	}
-	
-	public void executeUpdate(String sql) throws SQLException
+
+	public Batch createBatch() throws SQLException
 	{
-		Statement stmt = conn.createStatement();
-		stmt.executeUpdate(sql);
-		stmt.close();
+		return createBatch(5000);
 	}
+
+	public Batch createBatch(int threshold) throws SQLException
+	{
+		return new Batch(createStatement(), threshold);
+	}
+	
+
 	
 }

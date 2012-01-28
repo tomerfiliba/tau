@@ -3,9 +3,6 @@ package ponytrivia.question.impl;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Random;
-import java.util.Set;
 
 import ponytrivia.db.Schema;
 import ponytrivia.question.QuestionGenerator;
@@ -15,10 +12,8 @@ import ponytrivia.question.QuestionInfo;
  * Which of the following movies has the highest rating on IMDB?
  * Choose 4 movies so that no two movies have the same rating in IMDB
  */
-public class Question7 extends QuestionGenerator {
-	protected Random rand = new Random();
-
-	public Question7(Schema schema) {
+public class Question07 extends QuestionGenerator {
+	public Question07(Schema schema) {
 		super(schema);
 	}
 

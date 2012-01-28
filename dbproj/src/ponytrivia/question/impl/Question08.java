@@ -3,9 +3,6 @@ package ponytrivia.question.impl;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Random;
-import java.util.Set;
 
 import ponytrivia.db.Schema;
 import ponytrivia.question.QuestionGenerator;
@@ -15,10 +12,8 @@ import ponytrivia.question.QuestionInfo;
  * Which of the following is the latest movie directed by <director X>?
  * Choose 4 movies by director X
  */
-public class Question8 extends QuestionGenerator {
-	protected Random rand = new Random();
-
-	public Question8(Schema schema) {
+public class Question08 extends QuestionGenerator {
+	public Question08(Schema schema) {
 		super(schema);
 	}
 

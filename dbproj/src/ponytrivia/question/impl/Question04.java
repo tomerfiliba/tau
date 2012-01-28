@@ -2,10 +2,6 @@ package ponytrivia.question.impl;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Random;
-import java.util.Set;
 
 import ponytrivia.db.Schema;
 import ponytrivia.question.QuestionGenerator;
@@ -15,10 +11,8 @@ import ponytrivia.question.QuestionInfo;
  * Who of the following is the director of <movie X>?
  * Choose 3 directors of movies from the same year as X
  */
-public class Question4 extends QuestionGenerator {
-	protected Random rand = new Random();
-
-	public Question4(Schema schema) {
+public class Question04 extends QuestionGenerator {
+	public Question04(Schema schema) {
 		super(schema);
 	}
 

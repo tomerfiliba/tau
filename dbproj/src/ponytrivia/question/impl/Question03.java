@@ -15,10 +15,10 @@ import ponytrivia.question.QuestionInfo;
 /*
  * What year was <movie X> produced?
  */
-public class Question3 extends QuestionGenerator {
+public class Question03 extends QuestionGenerator {
 	protected Random rand = new Random();
 
-	public Question3(Schema schema) {
+	public Question03(Schema schema) {
 		super(schema);
 	}
 	

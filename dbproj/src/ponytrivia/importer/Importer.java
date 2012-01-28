@@ -1,4 +1,4 @@
-//package ponytrivia.importer;
+package ponytrivia.importer;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -7,8 +7,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import ponytrivia.db.Schema;
-
-//import ponytrivia.db.Schema;
 
 public class Importer {
 	public Schema schema;

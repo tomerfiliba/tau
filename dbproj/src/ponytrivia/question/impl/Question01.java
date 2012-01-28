@@ -9,17 +9,33 @@ import ponytrivia.question.QuestionGenerator;
 import ponytrivia.question.QuestionInfo;
 
 /*
- * In which of the following movies did <actor X> play?
- * (Choose 3 movies in which X did not play)
+ * Which of the following actors played in <movie X> and <movie Y>?
+ * Choose 3 actors, some of which played in X and some in Y, but not in both
  */
-public class Question2 extends QuestionGenerator {
-
-	public Question2(Schema schema) {
+public class Question01 extends QuestionGenerator {
+	public Question01(Schema schema) {
 		super(schema);
 	}
 	
 	@Override
 	public QuestionInfo generate() throws SQLException {
+		/*
+		 * mid = select M.movie_id from filtered_movie as M order by rand() limit 1
+		 * 
+		 * pid = select A.person_id from famous_actors as A, roles as R
+		 *       where R.movie_id = $$mid$$ and R.person_id = P.person_id
+		 *       order by rand() limit 1 
+		 * 
+		 * mid2 = select M.movie_id from filtered_movie as M, roles as R
+		 *        where M.movie_id <> $$mid$$ and R.movie_id = M.movie_id and R.person_id = $$pid$$
+		 *        order by rand() limit 1
+		 * 
+		 * wrong = select A.person_id from famous_actors as A
+		 *         where A.person_id not in (select R.person_id from roles as R 
+		 *                                   where R.movie_id = $$mid$$ or R.movie_id = $$mid2$$)
+		 *         order by rand() limit 3
+		 */
+		
 		ResultSet rs = schema.executeQuery("select P.idperson, M.idmovie from person as P, role as R, filtered_movie as M " +
 			"WHERE P.idperson = R.person_id and R.movie_id = M.idmovie " +
 			"ORDER BY RAND() LIMIT 1");
