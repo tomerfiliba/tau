@@ -2,10 +2,13 @@ package ponytrivia.importer;
 
 import java.io.EOFException;
 import java.io.IOException;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import ponytrivia.db.Batch;
 import ponytrivia.db.Schema;
 
 public class Importer {
@@ -15,22 +18,18 @@ public class Importer {
 		this.schema = schema;
 	}
 
-	public void import_all(String directory) throws IOException {
-		// import_movies("lists/movies.short");
-		// import_actors("lists/actors.short");
-		// import_actresses("C:\Documents and
-		// Settings\Matan\Desktop\matan-tau\cpu\databases\lists")
+	public void import_all(String directory) throws IOException, SQLException {
+		import_movies(directory);
+		import_roles(directory);
 	}
 
-	private static void import_movies(String filename) throws IOException {
-		ListFileParser parser = new ListFileParser(filename);
+	protected void import_movies(String directory) throws IOException, SQLException {
+		final Pattern line_pat = Pattern.compile("(.+?)\\s+\\((\\d+)\\)\\s+(?:\\{(.*?)\\})??");
+		ListFileParser parser = new ListFileParser(directory + "/movies.list");
 		parser.skipUntil("^MOVIES\\s+LIST\\s*$");
 		parser.skipUntil("^=+\\s*$");
 
-		Pattern line_pat = Pattern
-				.compile("(.+?)\\s+(?:\\{(.*?)\\})??(?:\t+(.*))??");
-		Pattern name_pat = Pattern.compile("(.+?)\\s+\\((\\d+)\\)");
-		Matcher m;
+		Batch batch = schema.createBatch();
 
 		for (int i = 0; i < 10; i++) {
 			String line = parser.readLine();
@@ -40,63 +39,79 @@ public class Importer {
 			if (line.trim().isEmpty()) {
 				continue;
 			}
-			m = line_pat.matcher(line);
+			Matcher m = line_pat.matcher(line);
 			if (!m.matches()) {
 				continue;
 			}
 			String name = m.group(1);
-			String episode = m.group(2);
-			String s_year = m.group(3);
-			boolean tvshow = false;
+			String year_s = m.group(2);
+			String episode = m.group(3);
+			boolean tvshow = name.startsWith("\"");
 			int year = -1;
+			String full_name = name + "/" + year + "/" + episode;
 
 			try {
-				year = Integer.parseInt(s_year);
+				year = Integer.parseInt(year_s);
 			} catch (NumberFormatException ex) {
-				s_year = null;
 			}
-			if (s_year == null) {
-				m = name_pat.matcher(name);
-				if (m.matches()) {
-					year = Integer.parseInt(m.group(2));
-				}
-			}
-			if (name.startsWith("\"")) {
-				tvshow = true;
-			}
-
-			System.out.println(name + " | " + year);
+			
+			batch.add("INSERT IGNORE INTO Movies (imdb_name, type, name, year) " +
+					"VALUES (" + full_name + ", " + (tvshow ? "true" : "false") + ", " + 
+					name + ", " + (year > 1900 ? year : "NULL") + ")");
 		}
+		batch.close();
 	}
 
-	private static void import_actors(String filename) throws IOException {
-		ListFileParser parser = new ListFileParser(filename);
-		parser.skipUntil("^Name\\s+Titles\\s*$");
-		parser.skipUntil("^-*\\s+-*\\s*$");
+	protected void _import_actors(ListFileParser parser) 
+	{
+		Pattern title_pat = Pattern.compile("(.+)\\s+\\((\\d+)\\)\\s*(\\<(\d+)\\>)??\\s*(\\[(.+)\\])??");
 
 		while (true) {
 			List<String> lines = parser.readUntil("^\\s*$");
 			if (lines == null) {
 				break;
 			}
-			String name = null;
+			String imdb_name = null;
+			int pid;
 			for (String line : lines) {
-				String role;
-				if (name == null) {
+				String title;
+				if (imdb_name == null) {
 					String parts[] = line.split("\t+");
-					name = parts[0];
-					role = parts[1];
+					imdb_name = parts[0];
+					title = parts[1];
+					schema.executeStatement("INSERT IGNORE INTO People (imdb_name) VALUES (" + name + ")");
+					pid = schema.getForeignKey("SELECT P.id FROM People as P where P.imdb_name = " + name);
 				} else {
 					String parts[] = line.split("\t+");
-					role = parts[0];
+					title = parts[0];
 				}
+				Matcher m = title_pat.matcher(title);
+				String movie_name = m.group(1);
+				
+				String character = m.group(4);
+						
+				String year = m.group(2);
+				int mid = schema.getForeignKey("SELECT M.movie_id from movies as M where " +
+						"M.imdb_name = '" + imdb_name + "'");
+				batch.add("INSERT IGNORE INTO Roles (actor, movie, character) VALUES ("+pid + ", " + mid + ", " + character);
 			}
-
 		}
 	}
+	
+	protected void import_roles(String directory) throws IOException {
+		ListFileParser parser = new ListFileParser(directory + "/actor.list");
+		parser.skipUntil("^Name\\s+Titles\\s*$");
+		parser.skipUntil("^-*\\s+-*\\s*$");
+		_import_actors(parser);
 
-	static void import_genres(String filename) throws IOException {
-		ListFileParser parser = new ListFileParser(filename);
+		parser = new ListFileParser(directory + "/actor.list");
+		parser.skipUntil("^Name\\s+Titles\\s*$");
+		parser.skipUntil("^-*\\s+-*\\s*$");
+		_import_actors(parser);
+	}
+
+	protected void import_genres(String directory) throws IOException {
+		ListFileParser parser = new ListFileParser(directory + "/genres.list");
 		parser.skipUntil("^8:\\s+THE\\s+GENRES\\s+LIST\\s*$");
 		parser.skipUntil("^=+\\s*$");
 		parser.readLine();
@@ -158,44 +173,6 @@ public class Importer {
 						movie_name = movie_name.trim();
 					}
 					System.out.println(name + "   " + movie_name);
-				}
-			} catch (EOFException e) {
-				break;
-			}
-		}
-	}
-
-	public static void import_countries(String filename) throws IOException {
-		ListFileParser parser = new ListFileParser(filename);
-		parser.skipUntil("^COUNTRIES\\s+LIST\\s*$");
-		parser.skipUntil("^=+\\s*$");
-
-		Pattern P = Pattern.compile("(.*\\d{4}\\))(.*$)");
-		while (true) {
-			try {
-				List<String> lines = parser.readUntil("^\\s*$");
-				if (lines == null)
-					break;
-
-				String movie_name = null;
-
-				for (String line : lines) {
-					String country = null;
-					String[] helper = null;
-					Matcher M = P.matcher(line);
-
-					if (M.matches()) {
-						movie_name = M.group(1);
-						country = M.group(2);
-						country = country.trim();
-						if ((country.startsWith("{"))
-								|| ((country.startsWith("-")))) {
-							helper = country.split("\\}");
-							country = helper[1];
-							country = country.trim();
-						}
-					}
-					System.out.println(movie_name + " " + country);
 				}
 			} catch (EOFException e) {
 				break;
@@ -276,38 +253,36 @@ public class Importer {
 		return -1;
 	}
 
-	public static void import_ratings(String filename) throws IOException {
+	public void import_ratings(String filename) throws IOException, SQLException {
+		final Pattern line_pat = Pattern
+				.compile("\\s+(\\d+)\\s+(\\d+)\\s+(.*\\d+\\s+)\\s+(.*)$");
 		ListFileParser parser = new ListFileParser(filename);
 		parser.skipUntil("^New\\s+Distribution\\s+Votes\\s+Rank\\s+Title*$");
-
-		Pattern P = Pattern
-				.compile("\\s+(\\d+)\\s+(\\d+)\\s+(.*\\d+\\s+)\\s+(\\b+.*$)");
+		Batch batch = schema.createBatch();
+		
 		while (true) {
-			try {
-				List<String> lines = parser.readUntil("^\\s*$");
-				if (lines == null)
-					break;
-
-				String movie_name = null;
-
-				for (String line : lines) {
-					long votes = 0;
-					double rank = 0;
-
-					Matcher M = P.matcher(line);
-
-					if (M.matches()) {
-						movie_name = M.group(4);
-						votes = Long.parseLong(M.group(2));
-						rank = Double.parseDouble(M.group(3));
-					}
-
-					System.out.println(movie_name + " " + votes + " " + rank);
-				}
-			} catch (EOFException e) {
+			String line = parser.readLine();
+			if (line == null) {
 				break;
 			}
+			Matcher m = line_pat.matcher(line);
+			if (!m.matches()) {
+				continue;
+			}
+			String full_name = m.group(4);
+			int votes = Integer.parseInt(m.group(2));
+			double rating = Double.parseDouble(m.group(3));
+			int mid;
+			try {
+				mid = schema.getForeignKey("select M.movie_id from Movies as M " +
+								"where M.imdb_name = '" + full_name + "'");
+			} catch (SQLException e) {
+				continue;
+			}
+			batch.add("UPDATE Movies SET rating = " + rating + ", votes = " + votes + 
+					" WHERE movie_id = " + mid);
 		}
+		batch.close();
 	}
 
 	public static void import_actresses(String filename) throws IOException {

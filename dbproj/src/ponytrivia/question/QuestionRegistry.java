@@ -33,7 +33,7 @@ public class QuestionRegistry {
 		
 		questionRegistry.add(new Question02(schema));
 		questionRegistry.add(new Question03(schema));
-		questionRegistry.add(new Question04(schema));
+		/*questionRegistry.add(new Question04(schema));
 		questionRegistry.add(new Question05(schema));
 		questionRegistry.add(new Question06(schema));
 		questionRegistry.add(new Question07(schema));
@@ -41,7 +41,7 @@ public class QuestionRegistry {
 		questionRegistry.add(new Question09(schema));
 		questionRegistry.add(new Question12(schema));
 		questionRegistry.add(new Question13(schema));
-		questionRegistry.add(new Question14(schema));
+		questionRegistry.add(new Question14(schema));*/
 	}
 	
 	public QuestionInfo getQuestion() throws SQLException

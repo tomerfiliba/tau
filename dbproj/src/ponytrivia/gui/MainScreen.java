@@ -16,10 +16,14 @@ import org.eclipse.swt.layout.FormData;
 import org.eclipse.swt.layout.FormAttachment;
 import org.eclipse.swt.custom.StackLayout;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Group;
+import org.eclipse.swt.widgets.Text;
+import org.eclipse.swt.widgets.Combo;
 
 public class MainScreen {
 
 	protected Shell shlPonyTrivia;
+	private Text text;
 
 	/**
 	 * Launch the application.
@@ -55,44 +59,52 @@ public class MainScreen {
 	protected void createContents() {
 		shlPonyTrivia = new Shell();
 		shlPonyTrivia.setImage(null);
-		shlPonyTrivia.setSize(460, 240);
+		shlPonyTrivia.setSize(623, 272);
 		shlPonyTrivia.setText("Pony Trivia");
-		/*btnPlayGame.addSelectionListener(new SelectionAdapter() {
-			@Override
-			public void widgetSelected(SelectionEvent arg0) {
-				shlPonyTrivia.close();
-				GameScreen gs = new GameScreen();
-				gs.open();
-			}
-		});*/
-		shlPonyTrivia.setLayout(new FormLayout());
-		
-		Button btnPlayGame = new Button(shlPonyTrivia, SWT.NONE);
-		FormData fd_btnPlayGame = new FormData();
-		fd_btnPlayGame.top = new FormAttachment(0, 10);
-		fd_btnPlayGame.left = new FormAttachment(0, 10);
-		btnPlayGame.setLayoutData(fd_btnPlayGame);
-		btnPlayGame.setImage(SWTResourceManager.getImage(MainScreen.class, "/ponytrivia/gui/kitty.gif"));
-		btnPlayGame.setText("Play Game");
+		shlPonyTrivia.setLayout(null);
 		
 		Button btnImportImdbFiles = new Button(shlPonyTrivia, SWT.NONE);
-		FormData fd_btnImportImdbFiles = new FormData();
-		fd_btnImportImdbFiles.top = new FormAttachment(btnPlayGame, 7);
-		fd_btnImportImdbFiles.left = new FormAttachment(btnPlayGame, 0, SWT.LEFT);
-		btnImportImdbFiles.setLayoutData(fd_btnImportImdbFiles);
-		btnImportImdbFiles.setImage(SWTResourceManager.getImage(MainScreen.class, "/ponytrivia/gui/IMDB-logo.gif"));
+		btnImportImdbFiles.setBounds(10, 150, 239, 66);
+		btnImportImdbFiles.setImage(SWTResourceManager.getImage(MainScreen.class, "/ponytrivia/gui/res/IMDB-logo.gif"));
 		btnImportImdbFiles.setText("Import IMDB Files");
 		
 		Button btnEditDb = new Button(shlPonyTrivia, SWT.NONE);
-		fd_btnImportImdbFiles.bottom = new FormAttachment(btnEditDb, 0, SWT.BOTTOM);
-		fd_btnPlayGame.bottom = new FormAttachment(btnEditDb, -6);
-		fd_btnPlayGame.right = new FormAttachment(btnEditDb, 0, SWT.RIGHT);
-		FormData fd_btnEditDb = new FormData();
-		fd_btnEditDb.left = new FormAttachment(0, 255);
-		fd_btnEditDb.top = new FormAttachment(0, 112);
-		btnEditDb.setLayoutData(fd_btnEditDb);
-		btnEditDb.setImage(SWTResourceManager.getImage(MainScreen.class, "/ponytrivia/gui/mysql-logo.gif"));
+		btnEditDb.setBounds(255, 150, 189, 67);
+		btnEditDb.setImage(SWTResourceManager.getImage(MainScreen.class, "/ponytrivia/gui/res/mysql-logo.gif"));
 		btnEditDb.setText("Edit DB");
+		
+		Group group = new Group(shlPonyTrivia, SWT.NONE);
+		group.setBounds(10, 10, 582, 134);
+		
+		Button btnPlayGame = new Button(group, SWT.NONE);
+		btnPlayGame.setBounds(321, 20, 251, 96);
+		btnPlayGame.setImage(SWTResourceManager.getImage(MainScreen.class, "/ponytrivia/gui/res/kitty1.gif"));
+		btnPlayGame.setText("Play Game");
+		
+		text = new Text(group, SWT.BORDER);
+		text.setBounds(110, 20, 126, 24);
+		
+		Label lblNewLabel = new Label(group, SWT.NONE);
+		lblNewLabel.setBounds(10, 23, 94, 18);
+		lblNewLabel.setText("Username:");
+		
+		Label lblGenre = new Label(group, SWT.NONE);
+		lblGenre.setText("Genre:");
+		lblGenre.setBounds(10, 55, 94, 18);
+		
+		Combo combo = new Combo(group, SWT.NONE);
+		combo.setBounds(110, 55, 126, 26);
+		
+		Label lblDecade = new Label(group, SWT.NONE);
+		lblDecade.setText("Decade:");
+		lblDecade.setBounds(10, 90, 94, 18);
+		
+		Combo combo_1 = new Combo(group, SWT.NONE);
+		combo_1.setBounds(110, 87, 126, 26);
+		
+		Button btnHighscores = new Button(shlPonyTrivia, SWT.NONE);
+		btnHighscores.setBounds(450, 150, 142, 67);
+		btnHighscores.setText("Highscores");
 
 	}
 }

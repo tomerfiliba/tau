@@ -41,11 +41,7 @@ public class ListFileParser
 	
 	public String readLine() throws IOException
 	{
-		String line = reader.readLine();
-		if (line == null) {
-			throw new EOFException();
-		}
-		return line;
+		return reader.readLine();
 	}
 
 	public void skipUntil(String regex) throws IOException
@@ -65,11 +61,10 @@ public class ListFileParser
 		Pattern p = Pattern.compile(regex);
 		
 		while (true) {
-			try {
-				line = readLine();
-			} catch (EOFException ex) {
+			line = readLine();
+			if (line == null) {
 				if (lines.isEmpty()) {
-					throw ex;
+					throw new EOFException("Not found");
 				}
 				break;
 			}

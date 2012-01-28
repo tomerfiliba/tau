@@ -2,6 +2,7 @@ package ponytrivia.question.impl;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 
 import ponytrivia.db.Schema;
 import ponytrivia.question.QuestionGenerator;
