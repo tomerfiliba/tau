@@ -1,0 +1,32 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 10.00
+# Visual Studio 2008
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LogTest", "LogTest\LogTest.vcproj", "{E533C0B8-3EB8-4D1D-A259-B2EBEFC88565}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LogWriter", "LogWriter\LogWriter.vcproj", "{02240EB7-0839-4306-8403-CC2CDF784B57}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LogViewer", "LogViewer\LogViewer.vcproj", "{A578B8FD-C4FA-4AF8-90F9-CB9CA442856B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E533C0B8-3EB8-4D1D-A259-B2EBEFC88565}.Debug|Win32.ActiveCfg = Debug|Win32
+		{E533C0B8-3EB8-4D1D-A259-B2EBEFC88565}.Debug|Win32.Build.0 = Debug|Win32
+		{E533C0B8-3EB8-4D1D-A259-B2EBEFC88565}.Release|Win32.ActiveCfg = Release|Win32
+		{E533C0B8-3EB8-4D1D-A259-B2EBEFC88565}.Release|Win32.Build.0 = Release|Win32
+		{02240EB7-0839-4306-8403-CC2CDF784B57}.Debug|Win32.ActiveCfg = Debug|Win32
+		{02240EB7-0839-4306-8403-CC2CDF784B57}.Debug|Win32.Build.0 = Debug|Win32
+		{02240EB7-0839-4306-8403-CC2CDF784B57}.Release|Win32.ActiveCfg = Release|Win32
+		{02240EB7-0839-4306-8403-CC2CDF784B57}.Release|Win32.Build.0 = Release|Win32
+		{A578B8FD-C4FA-4AF8-90F9-CB9CA442856B}.Debug|Win32.ActiveCfg = Debug|Win32
+		{A578B8FD-C4FA-4AF8-90F9-CB9CA442856B}.Debug|Win32.Build.0 = Debug|Win32
+		{A578B8FD-C4FA-4AF8-90F9-CB9CA442856B}.Release|Win32.ActiveCfg = Release|Win32
+		{A578B8FD-C4FA-4AF8-90F9-CB9CA442856B}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
