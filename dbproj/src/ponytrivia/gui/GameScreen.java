@@ -109,6 +109,7 @@ public class GameScreen {
 	
 	protected void createContents() {
 		shlPonyTrivia = new Shell();
+		shlPonyTrivia.setBackground(SWTResourceManager.getColor(255, 240, 245));
 		shlPonyTrivia.setSize(800, 600);
 		shlPonyTrivia.setText("Pony Trivia");
 		shlPonyTrivia.setLayout(new FormLayout());
@@ -117,12 +118,14 @@ public class GameScreen {
 		bgMusicThread.start();
 		
 		final Label lblFlower = new Label(shlPonyTrivia, SWT.NONE);
+		lblFlower.setBackground(SWTResourceManager.getColor(255, 240, 245));
 		FormData fd_lblFlower = new FormData();
 		fd_lblFlower.left = new FormAttachment(0, 10);
 		lblFlower.setLayoutData(fd_lblFlower);
 		lblFlower.setImage(SWTResourceManager.getImage(GameScreen.class, "/ponytrivia/gui/res/flower.gif"));
 		
 		final Label lblDevil = new Label(shlPonyTrivia, SWT.NONE);
+		lblDevil.setBackground(SWTResourceManager.getColor(255, 240, 245));
 		FormData fd_lblDevil = new FormData();
 		fd_lblDevil.right = new FormAttachment(100, -10);
 		fd_lblDevil.top = new FormAttachment(lblFlower, 0, SWT.TOP);
@@ -130,6 +133,7 @@ public class GameScreen {
 		lblDevil.setImage(SWTResourceManager.getImage(GameScreen.class, "/ponytrivia/gui/res/hell_boy.gif"));
 		
 		Composite composite = new Composite(shlPonyTrivia, SWT.NONE);
+		composite.setBackground(SWTResourceManager.getColor(255, 240, 245));
 		composite.setLocation(10, -227);
 		composite.setLayout(new FormLayout());
 		FormData fd_composite = new FormData();
@@ -154,6 +158,7 @@ public class GameScreen {
 		btnFiftyFifty.setImage(SWTResourceManager.getImage(GameScreen.class, "/ponytrivia/gui/res/lifebelt.gif"));
 		
 		Composite composite_1 = new Composite(composite, SWT.NONE);
+		composite_1.setBackground(SWTResourceManager.getColor(255, 240, 245));
 		fd_btnNext.top = new FormAttachment(composite_1, 4);
 		fd_btnFiftyFifty.bottom = new FormAttachment(composite_1, -6);
 		composite_1.setLayout(new FillLayout(SWT.VERTICAL));
@@ -174,18 +179,22 @@ public class GameScreen {
 		final Button btnAnswer_1 = new Button(composite_1, SWT.RADIO);
 		btnAnswer_1.addSelectionListener(enableNext);
 		btnAnswer_1.setText("Answer 1");
+		btnAnswer_1.setBackground(SWTResourceManager.getColor(255, 240, 245));
 		
 		final Button btnAnswer_2 = new Button(composite_1, SWT.RADIO);
 		btnAnswer_2.addSelectionListener(enableNext);
 		btnAnswer_2.setText("Answer 2");
+		btnAnswer_2.setBackground(SWTResourceManager.getColor(255, 240, 245));
 		
 		final Button btnAnswer_3 = new Button(composite_1, SWT.RADIO);
 		btnAnswer_3.addSelectionListener(enableNext);
 		btnAnswer_3.setText("Answer 3");
+		btnAnswer_3.setBackground(SWTResourceManager.getColor(255, 240, 245));
 		
 		final Button btnAnswer_4 = new Button(composite_1, SWT.RADIO);
 		btnAnswer_4.addSelectionListener(enableNext);
 		btnAnswer_4.setText("Answer 4");
+		btnAnswer_4.setBackground(SWTResourceManager.getColor(255, 240, 245));
 		
 		Composite composite_2 = new Composite(composite, SWT.NONE);
 		FormData fd_composite_2 = new FormData();
@@ -197,9 +206,11 @@ public class GameScreen {
 		composite_2.setLayout(new FillLayout(SWT.HORIZONTAL));
 		
 		final Label lblQuestionText = new Label(composite_2, SWT.NONE);
+		lblQuestionText.setBackground(SWTResourceManager.getColor(255, 240, 245));
 		lblQuestionText.setText("Question Text");
 		
 		Composite composite_3 = new Composite(shlPonyTrivia, SWT.NONE);
+		composite_3.setBackground(SWTResourceManager.getColor(255, 240, 245));
 		fd_lblFlower.top = new FormAttachment(composite_3, 37);
 		composite_3.setLayout(new FormLayout());
 		FormData fd_composite_3 = new FormData();
@@ -210,6 +221,7 @@ public class GameScreen {
 		composite_3.setLayoutData(fd_composite_3);
 		
 		final Label lblTime = new Label(composite_3, SWT.NONE);
+		lblTime.setBackground(SWTResourceManager.getColor(255, 240, 245));
 		FormData fd_lblTime = new FormData();
 		fd_lblTime.top = new FormAttachment(0, 10);
 		fd_lblTime.left = new FormAttachment(0, 10);
@@ -217,6 +229,7 @@ public class GameScreen {
 		lblTime.setText("Remaining Time: 30");
 		
 		final Label lblScore = new Label(composite_3, SWT.NONE);
+		lblScore.setBackground(SWTResourceManager.getColor(255, 240, 245));
 		FormData fd_lblScore = new FormData();
 		fd_lblScore.left = new FormAttachment(100, -89);
 		fd_lblScore.top = new FormAttachment(lblTime, 0, SWT.TOP);
@@ -225,6 +238,7 @@ public class GameScreen {
 		lblScore.setText("Score: 0");
 		
 		final Composite composite_4 = new Composite(shlPonyTrivia, SWT.NONE);
+		composite_4.setBackground(SWTResourceManager.getColor(255, 240, 245));
 		fd_composite.top = new FormAttachment(0, 222);
 		composite_4.setLayout(null);
 		FormData fd_composite_4 = new FormData();
@@ -238,6 +252,7 @@ public class GameScreen {
 		lblGrass.setBounds(10, 129, 589, 20);
 
 		final Label lblPony = new Label(composite_4, SWT.NONE);
+		lblPony.setBackground(SWTResourceManager.getColor(255, 240, 245));
 		lblPony.setBounds(260, 37, 84, 86);
 		lblPony.setAlignment(SWT.CENTER);
 		lblPony.setImage(imgKitty1);
