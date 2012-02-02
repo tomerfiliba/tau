@@ -256,7 +256,7 @@ public class GameScreen {
 		lblPony.setBounds(260, 37, 84, 86);
 		lblPony.setAlignment(SWT.CENTER);
 		lblPony.setImage(imgKitty1);
-		lblGrass.setBackground(SWTResourceManager.getColor(SWT.COLOR_DARK_GREEN));
+		lblGrass.setBackground(SWTResourceManager.getColor(0, 204, 102));
 		
 		/*Scale scale = new Scale(composite_4, SWT.NONE);
 		scale.setEnabled(false);
