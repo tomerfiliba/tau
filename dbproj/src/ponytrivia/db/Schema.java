@@ -145,7 +145,11 @@ public class Schema {
 	public Batch createBatch() throws SQLException {
 		Statement stmt = conn.createStatement();
 		// TODO Auto-generated method stub
+<<<<<<< HEAD
 		return new Batch(stmt, 100);
+=======
+		return new Batch(stmt, 1);
+>>>>>>> e50c4f3af7dcb5caf5ee1dc99d9dd725885dade8
 	}
 
 	public int getForeignKey(String sql) throws SQLException {
@@ -154,8 +158,12 @@ public class Schema {
 		int FK;
 
 		res = executeQuery(sql);
+<<<<<<< HEAD
 		res.next();
 		FK = res.getInt(1);
+=======
+		FK = res.getInt(0);
+>>>>>>> e50c4f3af7dcb5caf5ee1dc99d9dd725885dade8
 
 		return FK;
 	}
