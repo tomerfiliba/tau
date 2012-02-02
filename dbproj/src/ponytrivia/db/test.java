@@ -3,8 +3,8 @@ package ponytrivia.db;
 import java.io.IOException;
 import java.sql.SQLException;
 
-import ponytrivia.Importer.Importer;
 
+import ponytrivia.importer.*;
 public class test {
 
 	/**
@@ -25,7 +25,13 @@ public class test {
 		"cpu\\" +
 		"databases\\" +
 		"lists\\";
-		import1.import_all(directory);
+		String directory1="C:"+ 
+		"\\"+ "Documents and Settings\\" +
+		"matan\\" +
+		"workspace\\" +
+		"dbproj\\" +
+		"lists\\";
+		import1.import_all(directory1);
 //		s.executeUpdate(sql);
 //		s.executeUpdate(wish);
 	}
