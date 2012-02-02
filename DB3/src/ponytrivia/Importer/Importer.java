@@ -21,16 +21,17 @@ public class Importer {
 
 	public void import_all(String directory) throws IOException, SQLException {
 		import_movies(directory);
-	//	import_roles(directory);
+		// import_roles(directory);
 	}
 
 	protected void import_movies(String directory) throws IOException,
 			SQLException {
-		//final Pattern line_pat = Pattern
-			//	.compile("(.+?)\\s+\\((\\d+)\\)\\s+(?:\\{(.*?)\\})??");
+		// final Pattern line_pat = Pattern
+		// .compile("(.+?)\\s+\\((\\d+)\\)\\s+(?:\\{(.*?)\\})??");
 		final Pattern line_pat = Pattern
-		.compile("(.+?)\\s+\\((\\d+)\\)\\s+(\\{(.*?)\\})??(.*)??");
-		ListFileParser parser = new ListFileParser(directory + "/movies_short.txt");
+				.compile("(.+?)\\s+\\((\\d+)\\)\\s+(\\{(.*?)\\})??(.*)??");
+		ListFileParser parser = new ListFileParser(directory
+				+ "/movies_short.txt");
 		parser.skipUntil("^MOVIES\\s+LIST\\s*$");
 		parser.skipUntil("^=+\\s*$");
 
@@ -73,8 +74,9 @@ public class Importer {
 		batch.close();
 	}
 
-	//gender: 0 - f, 1 - m 
-	protected void _import_actors(ListFileParser parser,int gender) throws IOException {
+	// gender: 0 - f, 1 - m
+	protected void _import_actors(ListFileParser parser, int gender)
+			throws IOException, SQLException {
 		Pattern title_pat = Pattern
 				.compile("(.+)\\s+\\((\\d+)\\)\\s+(\\[(.+)\\])??\\s*(\\<(\\d+)\\>)??");
 
@@ -152,16 +154,16 @@ public class Importer {
 		}
 	}
 
-	protected void import_roles(String directory) throws IOException {
+	protected void import_roles(String directory) throws IOException, SQLException {
 		ListFileParser parser = new ListFileParser(directory + "/actor.list");
 		parser.skipUntil("^Name\\s+Titles\\s*$");
 		parser.skipUntil("^-*\\s+-*\\s*$");
-		_import_actors(parser,1);
+		_import_actors(parser, 1);
 
 		parser = new ListFileParser(directory + "/actresses.list");
 		parser.skipUntil("^Name\\s+Titles\\s*$");
 		parser.skipUntil("^-*\\s+-*\\s*$");
-		_import_actors(parser,0);
+		_import_actors(parser, 0);
 	}
 
 	protected void import_genres(String directory) throws IOException,
@@ -205,7 +207,8 @@ public class Importer {
 		batch.close();
 	}
 
-	protected void import_directors(String directory) throws IOException, SQLException {
+	protected void import_directors(String directory) throws IOException,
+			SQLException {
 		ListFileParser parser = new ListFileParser(directory
 				+ "/directors.list");
 		Pattern title_pat = Pattern
@@ -224,7 +227,7 @@ public class Importer {
 			String last_name;
 			for (String line : lines) {
 				String title;
-				
+
 				if (imdb_name == null) {
 					String parts[] = line.split("\t+");
 					imdb_name = parts[0];
@@ -261,10 +264,7 @@ public class Importer {
 									+ "M.imdb_name = '" + movie_name + "'");
 
 					batch.add("INSERT IGNORE INTO directors (preson_id,movie_id) VALUES ("
-							+ pid
-							+ ", "
-							+ mid
-							);
+							+ pid + ", " + mid);
 				} catch (SQLException e) {
 					// TODO Auto-generated catch block
 					continue;
