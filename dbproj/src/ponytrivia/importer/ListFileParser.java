@@ -1,4 +1,4 @@
-package ponytrivia.Importer;
+package ponytrivia.importer;
 
 import java.io.BufferedReader;
 import java.io.EOFException;

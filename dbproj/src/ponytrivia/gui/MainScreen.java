@@ -59,7 +59,7 @@ public class MainScreen {
 	protected void createContents() {
 		shlPonyTrivia = new Shell();
 		shlPonyTrivia.setImage(null);
-		shlPonyTrivia.setSize(623, 272);
+		shlPonyTrivia.setSize(623, 269);
 		shlPonyTrivia.setText("Pony Trivia");
 		shlPonyTrivia.setLayout(null);
 		
@@ -100,9 +100,21 @@ public class MainScreen {
 		lblDecade.setBounds(10, 90, 94, 18);
 		
 		Combo combo_1 = new Combo(group, SWT.NONE);
+		combo_1.setItems(new String[] {"1950's", "1960's", "1970's", "1980's", "1990's", "2000's"});
 		combo_1.setBounds(110, 87, 126, 26);
+		combo_1.select(5);
 		
 		Button btnHighscores = new Button(shlPonyTrivia, SWT.NONE);
+		btnHighscores.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent arg0) {
+				shlPonyTrivia.setEnabled(false);
+				Highscores hs = new Highscores();
+				hs.open();
+				
+			}
+		});
+		btnHighscores.setImage(SWTResourceManager.getImage(MainScreen.class, "/ponytrivia/gui/res/grail.gif"));
 		btnHighscores.setBounds(450, 150, 142, 67);
 		btnHighscores.setText("Highscores");
 

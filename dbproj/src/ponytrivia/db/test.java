@@ -3,7 +3,7 @@ package ponytrivia.db;
 import java.io.IOException;
 import java.sql.SQLException;
 
-import ponytrivia.Importer.Importer;
+import ponytrivia.importer.Importer;
 
 public class test {
 

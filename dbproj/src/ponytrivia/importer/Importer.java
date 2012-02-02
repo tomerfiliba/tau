@@ -1,4 +1,4 @@
-package ponytrivia.Importer;
+package ponytrivia.importer;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -78,7 +78,13 @@ public class Importer {
 		Pattern title_pat = Pattern
 				.compile("(.+)\\s+\\((\\d+)\\)\\s+(\\[(.+)\\])??\\s*(\\<(\\d+)\\>)??");
 
-		Batch batch = schema.createBatch();
+		Batch batch;
+		try {
+			batch = schema.createBatch();
+		} catch (SQLException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
 
 		while (true) {
 			List<String> lines = parser.readUntil("^\\s*$");
