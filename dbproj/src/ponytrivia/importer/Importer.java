@@ -13,15 +13,39 @@ import ponytrivia.db.Batch;
 import ponytrivia.db.Schema;
 
 public class Importer {
-	public Schema schema;
+	protected Schema schema;
+	protected String currFilename;
+	protected int currLinenum;
+
+	public static class ImportStatus {
+		public final String filename;
+		public final int linenum;
+		public ImportStatus(String filename, int linenum) {
+			this.filename = filename;
+			this.linenum = linenum;
+		}
+	}
+	
+	protected ImportStatus status;
 
 	public Importer(Schema schema) {
 		this.schema = schema;
+		this.currFilename = null;
+		this.currLinenum = -1;
+	}
+	
+	public ImportStatus getStatus()
+	{
+		if (currFilename == null) {
+			return null;
+		}
+		return new ImportStatus(currFilename, currLinenum);
 	}
 
 	public void import_all(String directory) throws IOException, SQLException {
 		import_movies(directory);
-	//	import_roles(directory);
+		//import_
+		import_roles(directory);
 	}
 
 	protected void import_movies(String directory) throws IOException,
@@ -73,8 +97,7 @@ public class Importer {
 		batch.close();
 	}
 
-	//gender: 0 - f, 1 - m 
-	protected void _import_actors(ListFileParser parser,int gender) throws IOException {
+	protected void _import_actors(ListFileParser parser, int gender) throws IOException {
 		Pattern title_pat = Pattern
 				.compile("(.+)\\s+\\((\\d+)\\)\\s+(\\[(.+)\\])??\\s*(\\<(\\d+)\\>)??");
 
