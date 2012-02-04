@@ -14,6 +14,7 @@ public class Batch extends Prepared {
 		super(pstmt);
 		this.threshold = threshold;
 		this.count = 0;
+		this.conn = conn;
 	}
 	
 	@Override
@@ -31,7 +32,7 @@ public class Batch extends Prepared {
 		}
 		int res[] = pstmt.executeBatch();
 		for (int i = 0; i < res.length; i++) {
-			if (res[i] != 0) {
+			if (res[i] == PreparedStatement.EXECUTE_FAILED) {
 				conn.rollback();
 				throw new SQLException("Batch operation " + i
 						+ " has failed with code " + res[i]);

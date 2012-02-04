@@ -47,12 +47,15 @@ public class Importer {
 	public void import_all(File directory) throws IOException, SQLException 
 	{
 		reader = null;
+		System.out.println("movies");
 		import_movies(directory);
+		System.out.println("ratings");
 		import_ratings(directory);
+		System.out.println("genres");
 		import_genres(directory);
-		import_actors(directory);
-		import_biographies(directory);
-		import_directors(directory);
+		//import_actors(directory);
+		//import_directors(directory);
+		//import_biographies(directory);
 		reader = null;
 	}
 
@@ -67,7 +70,7 @@ public class Importer {
         final Pattern filmPattern = Pattern.compile("(.+?)\\s\\(\\d+\\)");
         
         Batch batch = schema.createBatch(
-        	"INSERT IGNORE INTO movies VALUES (imdb_name, type, name, episode, year)" +
+        	"INSERT IGNORE INTO movies (imdb_name, type, name, episode, year) " +
         	"VALUES (?, ?, ?, ?, ?)");
         
         while (true) {
@@ -109,7 +112,7 @@ public class Importer {
             	}
             	name = m.group(1);
             }
-            batch.add(imdb_name, tvshow, name, episode, (year > 1900) ? year : null);
+            batch.add(imdb_name, tvshow ? "tv" : "film", name, episode, (year > 1900) ? year : null);
         }
         batch.close();
 	}
@@ -316,13 +319,15 @@ public class Importer {
         reader.skipUntil("^Name\\s+Titles\\s*$");
         reader.skipUntil("^-*\\s+-*\\s*$");
         ActorsImporterHelper helper = new ActorsImporterHelper();
-        helper.doImport("male");
+        helper.doImport("m");
+        helper.close();
 
         reader = new ListFileReader(new File(directory, "actresses.list"));
         reader.skipUntil("^Name\\s+Titles\\s*$");
         reader.skipUntil("^-*\\s+-*\\s*$");
         helper = new ActorsImporterHelper();
-        helper.doImport("female");
+        helper.doImport("f");
+        helper.close();
 	}
 
 	private void import_directors(File directory) throws IOException, SQLException 
@@ -332,12 +337,13 @@ public class Importer {
         reader.skipUntil("^\\s*-+\\s+-+\\s*$");
         DirectorsImporterHelper helper = new DirectorsImporterHelper();
         helper.doImport(null);
+        helper.close();
 	}
 	
-    private final Pattern datePattern = Pattern.compile("(\\d{1,2})??\\s+(\\w+)??\\s+(\\d{4})");
+    private static final Pattern datePattern = Pattern.compile("(\\d{1,2})??\\s+(\\w+)??\\s+(\\d{4})");
 	
     @SuppressWarnings("deprecation")
-	private Date strToDate(String str) {
+	private static Date strToDate(String str) {
         Matcher m = datePattern.matcher(str);
 		if (!m.matches()) {
 			return null;
@@ -471,35 +477,15 @@ public class Importer {
         }
 	}
 
-
 	static public void main(String[] args) throws IOException, SQLException, ClassNotFoundException
 	{
-		Schema schema = new Schema("localhost:3306", "pony-imdb", "root", "root");
+		Schema schema = new Schema("localhost:3306", "pony_imdb", "root", "root");
 		
 		Importer imp = new Importer(schema);
 		imp.import_all(new File("C:\\Users\\sebulba\\Desktop\\db"));
 		
 	}
-	
-
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
