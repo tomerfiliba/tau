@@ -1,0 +1,463 @@
+
+-------------------------------------------------------------------------------
+NM: 'La Veneno', Cristina
+
+RN: Jos<E9> Antonio Ortiz Rodr<ED>guez
+
+DB: 19 March 1964, Almer<ED>a, Andaluc<ED>a, Spain
+
+-------------------------------------------------------------------------------
+NM: 'Neill, Mark o
+
+TR: * Played bass guitar with the 'Thai Brides' until April 2007.
+
+-------------------------------------------------------------------------------
+NM: 't Hart, Maarten
+
+DB: 25 November 1944, Maassluis, Zuid-Holland, Netherlands
+
+OW: * (book) (2002) De zonnewijzer
+OW: * (book) (2002) De bril van God
+OW: * (book) (2000) Johann Sebastian Bach
+OW: * (book) (2000) Een deerne in lokkend postuur
+OW: * (book) (2000) De stiefdochters van Stoof
+OW: * (book) (1999) De gevaren van joggen
+OW: * (book) (1998) De vlieger
+OW: * (book) (1997) Wie God verlaat heeft niets te vrezen
+OW: * (book) (1996) Het gebergte
+OW: * (book) (1996) De nakomer
+
+
+
+"Friends" (1994) {The One After Joey and Rachel Kiss (#10.1)}   2003
+"Friends" (1994) {The One After Ross Says Rachel (#5.1)}        1998
+"Friends" (1994) {The One After the Superbowl: Part 1 (#2.12)}  1996
+"Friends" (1994) {The One After the Superbowl: Part 2 (#2.13)}  ????
+"Friends" (1994) {The One After Vegas (#6.1)}           1999
+"Friends" (1994) {The One at the Beach (#3.25)}         1997
+"Friends" (1994) {The One Hundredth (#5.3)}             1998
+"Friends" (1994) {The One in Barbados: Part 1 (#9.23)}  2003
+"Friends" (1994) {The One in Barbados: Part 2 (#9.24)}  2003
+"Friends" (1994) {The One in Massapequa (#8.18)}        2002
+"Friends" (1994) {The One in Vegas: Part 1 (#5.23)}     1999
+"Friends" (1994) {The One in Vegas: Part 2 (#5.24)}     ????
+"Friends" (1994) {The One on the Last Night (#6.6)}     1999
+"Friends" (1994) {The One That Could Have Been: Part 1 (#6.15)} 2000
+"Friends" (1994) {The One That Could Have Been: Part 2 (#6.16)} 2000
+"Friends" (1994) {The One the Morning After (#3.16)}    1997
+"Friends" (1994) {The One Where Chandler Can't Cry (#6.14)}     2000
+"Friends" (1994) {The One Where Chandler Can't Remember Which Sister (#3.11)}   1997
+"Friends" (1994) {The One Where Chandler Crosses the Line (#4.7)}       1997
+"Friends" (1994) {The One Where Chandler Doesn't Like Dogs (#7.8)}      2000
+"Friends" (1994) {The One Where Chandler Gets Caught (#10.10)}  2004
+"Friends" (1994) {The One Where Chandler Takes a Bath (#8.13)}  2002
+
+Big Feet (2003)                                         2003
+Big Feet (2010)                                         2010
+Big Feet, Little Shoes (2007)                           2007
+Big Fella (1937)                                        1937
+Big Fellas (2007)                                       2007
+Big Finish Talks Back: Paul McGann (2002) (V)           2002
+Big Fish (2003)                                         2003
+Big Fish in Middlesex (2006) (V)                        2006
+Big Fish, Little Fish (1971) (TV)                       1971
+Big Fish/Small Fry: Urban Angling in New York (2005) (V)        2005
+Big Fist (1976)                                         1976
+Big Fitzy and the Oul Lad Muldoon (2010) (V)            2010
+Big Font. Large Spacing (2009)                          2009
+Big for His Age (2001) (V)                              2001
+Big Fucking Titties (2005) (V)                          2005
+Big Game (1913)                                         1913
+Big Game (1921/I)                                       1921
+Big Game (1921/II)                                      1921
+Big Game (1928)                                         1928
+Big Game (1931)                                         1931
+Big Game (1988/I)                                       1988
+Big Game (1990)                                         1990
+BIg Game (1997) (V)                                     1997
+Big Game (2008)                                         2008
+
+Aalam, Steve            30:e november (1995)  [Nabil]  <9>
+                        9 millimeter (1997)  (as Abou-Bakre Aalam)  [Rico]  <3>
+                        Blodsbr<F6>der (2005)  [Police officer]  <11>
+                        D<F6>dsdoktorn (2002)  (as Abou-Bakre Aalam)  [Jonas Teor<E9>n]  <1>
+                        Gangster (2007)  [Romello]  <16>
+                        It's All About Love (2003)  (uncredited)  [Managers Assistant]
+                        Mellan himmel och h<E4>stben (2001)  [Carlos]  <6>
+                        M<FC>nsters fall (2005) (V)  [Chad]  <19>
+                        R<E5>narna (2003)  [Tommy]  <7>
+                        S<F6>karna - <C5>terkomsten (2006) (V)
+                        "Aspiranterna" (1998) {Passion och samvete (#1.6)}  (as Steve Abou-Bakre Aalam)  [Cred]
+                        "Aspiranterna" (1998) {R<E4>tt sida gr<E4>nsen (#1.2)}  (as Steve Abou-Bakre Aalam)  [Cred]
+                        "Nyhetsmorgon" (1992) {Om filmen '9 Millimeter'}  [Himself - regis<F6>r/Rico]
+                        "Nyhetsmorgon" (1992) {Om filmen 'Gangster' (#29.110)}  [Himself]
+
+Aalami                  Romancero marroqu<ED> (1939)  [El esposo]
+
+Aalami, Ali Reza        Shenasayi (1987)
+
+
+    protected void import_movies(String directory) throws IOException,
+            SQLException {
+        //final Pattern line_pat = Pattern
+            //  .compile("(.+?)\\s+\\((\\d+)\\)\\s+(?:\\{(.*?)\\})??");
+        final Pattern line_pat = Pattern
+        .compile("(.+?)\\s+\\((\\d+)\\)\\s+(\\{(.*?)\\})??(.*)??");
+        ListFileParser parser = new ListFileParser(directory + "/movies_short.txt");
+        parser.skipUntil("^MOVIES\\s+LIST\\s*$");
+        parser.skipUntil("^=+\\s*$");
+
+        Batch batch = schema.createBatch();
+
+        for (int i = 0; i < 10; i++) {
+            String line = parser.readLine();
+            if (line == null) {
+                break;
+            }
+            if (line.trim().isEmpty()) {
+                continue;
+            }
+            Matcher m = line_pat.matcher(line);
+            if (!m.matches()) {
+                continue;
+            }
+            String name = m.group(1);
+            String year_s = m.group(2);
+            String episode = m.group(3);
+            boolean tvshow = name.startsWith("\"");
+            int year = -1;
+            String full_name = name + "/" + year + "/" + episode;
+
+            try {
+                year = Integer.parseInt(year_s);
+            } catch (NumberFormatException ex) {
+            }
+
+            batch.add("INSERT IGNORE INTO Movies (imdb_name, type, name, year) "
+                    + "VALUES ("
+                    + full_name
+                    + ", "
+                    + (tvshow ? "true" : "false")
+                    + ", "
+                    + name
+                    + ", "
+                    + (year > 1900 ? year : "NULL") + ")");
+        }
+        batch.close();
+    }
+
+    protected void _import_actors(ListFileParser parser, int gender) throws IOException {
+        Pattern title_pat = Pattern
+                .compile("(.+)\\s+\\((\\d+)\\)\\s+(\\[(.+)\\])??\\s*(\\<(\\d+)\\>)??");
+
+        Batch batch;
+        try {
+            batch = schema.createBatch();
+        } catch (SQLException e1) {
+            // TODO Auto-generated catch block
+            e1.printStackTrace();
+        }
+
+        while (true) {
+            List<String> lines = parser.readUntil("^\\s*$");
+            if (lines == null) {
+                break;
+            }
+            String imdb_name = null;
+            int pid = 0;
+            String first_name;
+            String last_name;
+            for (String line : lines) {
+                String title;
+                String character = null;
+                int credits = 0;
+                if (imdb_name == null) {
+                    String parts[] = line.split("\t+");
+                    imdb_name = parts[0];
+                    title = parts[1];
+                    String names[] = imdb_name.split(",");
+                    first_name = names[1];
+                    last_name = names[0];
+                    try {
+                        schema.executeUpdate("INSERT IGNORE INTO People (imdb_name,first_name,last_name,gender)"
+                                + " VALUES ("
+                                + imdb_name
+                                + ", "
+                                + first_name
+                                + ", " + last_name + ")");
+
+                        pid = schema
+                                .getForeignKey("SELECT P.id FROM People as P where P.imdb_name = "
+                                        + imdb_name);
+                    } catch (SQLException e) {
+                        // TODO Auto-generated catch block
+                        continue;
+                    }
+
+                } else {
+                    String parts[] = line.split("\t+");
+                    title = parts[0];
+                }
+                Matcher m = title_pat.matcher(title);
+                String movie_name = m.group(1);
+                String year = m.group(2);
+                try {
+
+                    character = m.group(4);
+                    credits = Integer.parseInt(m.group(6));
+                } catch (IndexOutOfBoundsException e) {
+                    // if (character==null)
+                }
+
+                try {
+                    int mid = schema
+                            .getForeignKey("SELECT M.movie_id from movies as M where "
+                                    + "M.imdb_name = '" + movie_name + "'");
+
+                    batch.add("INSERT IGNORE INTO Roles (actor, movie,character,credit_pos) VALUES ("
+                            + pid
+                            + ", "
+                            + mid
+                            + ", "
+                            + character
+                            + ", "
+                            + credits);
+                } catch (SQLException e) {
+                    // TODO Auto-generated catch block
+                    continue;
+                }
+            }
+        }
+    }
+
+    protected void import_roles(String directory) throws IOException {
+        ListFileParser parser = new ListFileParser(directory + "/actor.list");
+        parser.skipUntil("^Name\\s+Titles\\s*$");
+        parser.skipUntil("^-*\\s+-*\\s*$");
+        _import_actors(parser,1);
+
+        parser = new ListFileParser(directory + "/actresses.list");
+        parser.skipUntil("^Name\\s+Titles\\s*$");
+        parser.skipUntil("^-*\\s+-*\\s*$");
+        _import_actors(parser,0);
+    }
+
+    protected void import_genres(String directory) throws IOException,
+            SQLException {
+        ListFileParser parser = new ListFileParser(directory + "/genres.list");
+        parser.skipUntil("^8:\\s+THE\\s+GENRES\\s+LIST\\s*$");
+        parser.skipUntil("^=+\\s*$");
+        parser.readLine();
+        Batch batch = schema.createBatch();
+        while (true) {
+
+            String line = parser.readLine();
+            if (line == null) {
+                break;
+            }
+            int gid;
+
+            String[] parts = line.split("\\t");
+            String genre = parts[1];
+            String imdb_name = parts[0];
+            try {
+                schema.executeUpdate("INSERT IGNORE INTO genre (genre)"
+                        + " VALUES (" + genre + ")");
+
+                gid = schema
+                        .getForeignKey("SELECT genre.id FROM genre as G where G.genre = "
+                                + genre);
+
+                int mid = schema
+                        .getForeignKey("SELECT M.movie_id from movies as M where "
+                                + "M.imdb_name = '" + imdb_name + "'");
+
+                batch.add("INSERT IGNORE INTO movie_genre (movie_id,genre_id) VALUES ("
+                        + mid + ", " + gid + ")");
+            } catch (SQLException e) {
+                // TODO Auto-generated catch block
+                continue;
+            }
+        }
+
+        batch.close();
+    }
+
+    protected void import_directors(String directory) throws IOException, SQLException {
+        ListFileParser parser = new ListFileParser(directory
+                + "/directors.list");
+        Pattern title_pat = Pattern
+                .compile("(.+)\\s+\\((\\d+)\\)\\s+(\\[(.+)\\])??\\s*(\\<(\\d+)\\>)??");
+
+        Batch batch = schema.createBatch();
+
+        while (true) {
+            List<String> lines = parser.readUntil("^\\s*$");
+            if (lines == null) {
+                break;
+            }
+            String imdb_name = null;
+            int pid = 0;
+            String first_name;
+            String last_name;
+            for (String line : lines) {
+                String title;
+                
+                if (imdb_name == null) {
+                    String parts[] = line.split("\t+");
+                    imdb_name = parts[0];
+                    title = parts[1];
+                    String names[] = imdb_name.split(",");
+                    first_name = names[1];
+                    last_name = names[0];
+                    try {
+                        schema.executeUpdate("INSERT IGNORE INTO People (imdb_name,first_name,last_name)"
+                                + " VALUES ("
+                                + imdb_name
+                                + ", "
+                                + first_name
+                                + ", " + last_name + ")");
+
+                        pid = schema
+                                .getForeignKey("SELECT P.id FROM People as P where P.imdb_name = "
+                                        + imdb_name);
+                    } catch (SQLException e) {
+                        // TODO Auto-generated catch block
+                        continue;
+                    }
+
+                } else {
+                    String parts[] = line.split("\t+");
+                    title = parts[0];
+                }
+                Matcher m = title_pat.matcher(title);
+                String movie_name = m.group(1);
+
+                try {
+                    int mid = schema
+                            .getForeignKey("SELECT M.movie_id from movies as M where "
+                                    + "M.imdb_name = '" + movie_name + "'");
+
+                    batch.add("INSERT IGNORE INTO directors (preson_id,movie_id) VALUES ("
+                            + pid
+                            + ", "
+                            + mid
+                            );
+                } catch (SQLException e) {
+                    // TODO Auto-generated catch block
+                    continue;
+                }
+            }
+        }
+        batch.close();
+    }
+
+    public void import_bios(String filename) throws IOException, SQLException {
+        ListFileParser parser = new ListFileParser(filename);
+        parser.skipUntil("^BIOGRAPHY\\s+LIST\\s*$");
+        // parser.skipUntil("^-*\\s+-*\\s*$");
+        parser.skipUntil("^=+\\s*$");
+        parser.readLine();
+
+        while (true) {
+            int pid;
+            try {
+                List<String> lines = parser.readUntil("^\\s*$");
+                ;
+                // List<String> lines =
+                // parser.readUntil("---------------------------");
+                // parser.readUntil("^\\s*$");
+                if (lines == null)
+                    break;
+                int i = 0;
+                // System.out.println(lines.get(0));
+                // System.out.println(lines);
+                // String paragraph =
+                for (String line : lines) {
+                    int b_year = 0;
+                    int d_year = 0;
+                    String NM = null;
+                    String RN = null;
+                    String DD = null;
+                    String DB = null;
+                    String NK = null;
+
+                    if (line.startsWith("\\s\\s") || (line.startsWith("--")))
+                        continue;
+
+                    if (line.startsWith("NM")) {
+                        NM = line.substring(3);
+                        pid = schema
+                                .getForeignKey("SELECT P.id FROM People as P where P.imdb_name = "
+                                        + NM);
+                    }
+                    if (line.startsWith("RN")) {
+                        RN = line.substring(3);
+
+                    }
+                    if (line.startsWith("DB")) {
+                        DB = line.substring(3);
+                        b_year = search_in_line(DB);
+
+                    }
+                    if (line.startsWith("NK")) {
+                        NK = line.substring(3);
+
+                    }
+                    if (line.startsWith("DD")) {
+                        DD = line.substring(3);
+                        d_year = search_in_line(DD);
+                    }
+
+                    System.out.println(NM + " " + RN + " " + NK + " " + b_year
+                            + " " + d_year);
+                    // System.out.println(year);
+                }
+
+            } catch (EOFException e) {
+                break;
+            }
+        }
+    }
+
+    private int search_in_line(String line) {
+        Pattern p = Pattern.compile("(.*\\w+)\\s(\\d{4})(.*$)");
+        Matcher m = p.matcher(line);
+        if (m.matches())
+            return Integer.parseInt(m.group(2));
+        return -1;
+    }
+
+    public void import_ratings(String filename) throws IOException,
+            SQLException {
+        final Pattern line_pat = Pattern
+                .compile("\\s+(\\d+)\\s+(\\d+)\\s+(.*\\d+\\s+)\\s+(.*)$");
+        ListFileParser parser = new ListFileParser(filename);
+        parser.skipUntil("^New\\s+Distribution\\s+Votes\\s+Rank\\s+Title*$");
+        Batch batch = schema.createBatch();
+
+        while (true) {
+            String line = parser.readLine();
+            if (line == null) {
+                break;
+            }
+            Matcher m = line_pat.matcher(line);
+            if (!m.matches()) {
+                continue;
+            }
+            String full_name = m.group(4);
+            int votes = Integer.parseInt(m.group(2));
+            double rating = Double.parseDouble(m.group(3));
+            int mid;
+            try {
+                mid = schema
+                        .getForeignKey("select M.movie_id from Movies as M "
+                                + "where M.imdb_name = '" + full_name + "'");
+            } catch (SQLException e) {
+                continue;
+            }
+            batch.add("UPDATE Movies SET rating = " + rating + ", votes = "
+                    + votes + " WHERE movie_id = " + mid);
+        }
+        batch.close();
+    }

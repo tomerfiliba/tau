@@ -2,161 +2,122 @@ package ponytrivia.db;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 
-//import javax.naming.InitialContext;
-//import javax.naming.NamingException;
-import javax.sql.DataSource;
+import ponytrivia.db.exceptions.MovieNotFound;
+import ponytrivia.db.exceptions.PersonNotFound;
+
 
 public class Schema {
-	private Connection conn;
-	// private DataSource dataSource;
-	private final String SCHEMA = "test_imdb";
+	protected Connection conn;
 
-	/*
-	 * public Connection getConnection(String host, String username, String
-	 * password) throws NamingException, SQLException { if (conn == null) {
-	 * InitialContext ctx = new InitialContext(); dataSource =
-	 * (DataSource)ctx.lookup("java:comp/env/jdbc/MySQLDB"); conn =
-	 * dataSource.getConnection("jdbc:mysql://" + host + "/", username,
-	 * password); } return conn; }
-	 */
-
-	public Schema(String host, String username, String password)
+	public Schema(String host, String schema, String username, String password)
 			throws SQLException, ClassNotFoundException {
 		Class.forName("com.mysql.jdbc.Driver");
 
-		conn = DriverManager.getConnection("jdbc:mysql://" + host + "/",
-				username, password);
-		Statement stmt = conn.createStatement();
-		stmt.executeUpdate("CREATE SCHEMA IF NOT EXISTS " + SCHEMA);
-		stmt.close();
-		conn.close();
-
 		conn = DriverManager.getConnection("jdbc:mysql://" + host + "/"
-				+ SCHEMA, username, password);
-		stmt = conn.createStatement();
-
-		// stmt.executeUpdate("CREATE OR REPLACE VIEW `" + SCHEMA +
-		// "`.`filtered_movie` AS SELECT * FROM movie");
-
-		/*
-		 * stmt.executeUpdate("CREATE TABLE IF NOT EXISTS `" + SCHEMA +
-		 * "`.`movies` (" + "`idmovie` INT NOT NULL AUTO_INCREMENT ," +
-		 * "`full_name` VARCHAR(200) NOT NULL ," + "`name` VARCHAR(200) NULL ,"
-		 * + "`type` ENUM('tv', 'film') NULL ," + "`year` INT NULL ," +
-		 * "`country` VARCHAR(45) NULL ," + "`language` VARCHAR(45) NULL ," +
-		 * "PRIMARY KEY (`idmovie`) ," +
-		 * "UNIQUE INDEX `name_UNIQUE` (`full_name` ASC) )" + "ENGINE = InnoDB"
-		 * ); stmt.executeUpdate("CREATE TABLE IF NOT EXISTS `" + SCHEMA +
-		 * "`.`persons` (" + "`idperson` INT NOT NULL AUTO_INCREMENT," +
-		 * "`full_name` VARCHAR(200) NOT NULL ," +
-		 * "`real_name` VARCHAR(200) NULL ," + "`nick_name` VARCHAR(200) NULL ,"
-		 * + "`sex` ENUM('male', 'female') NULL ," + "`height` INT NULL ," +
-		 * "`background` TEXT NULL ," + "`birthdate` DATE NULL ," +
-		 * "`deathdate` DATE NULL ," + "PRIMARY KEY (`idperson`) ," +
-		 * "UNIQUE INDEX `full_name_UNIQUE` (`full_name` ASC) )" +
-		 * "ENGINE = InnoDB" );
-		 * 
-		 * stmt.executeUpdate("CREATE TABLE IF NOT EXISTS `" + SCHEMA +
-		 * "`.`roles` (" + "`idrole` INT NOT NULL AUTO_INCREMENT," +
-		 * "`character` VARCHAR(100) NULL ," + "`movieid` INT NULL ," +
-		 * "`personid` INT NULL ," + "`credit_position` INT NULL ," +
-		 * "PRIMARY KEY (`idrole`) ," + "INDEX `personid` (`personid` ASC) ," +
-		 * "INDEX `movieid` (`movieid` ASC) ," + "CONSTRAINT `roles_movieid`" +
-		 * " FOREIGN KEY (`movieid` )" + " REFERENCES `" + SCHEMA +
-		 * "`.`movies` (`idmovie` )" + " ON DELETE CASCADE" +
-		 * " ON UPDATE NO ACTION," + "CONSTRAINT `roles_personid`" +
-		 * " FOREIGN KEY (`personid` )" + " REFERENCES `" + SCHEMA +
-		 * "`.`persons` (`idperson` )" + " ON DELETE CASCADE" +
-		 * " ON UPDATE NO ACTION)" + "ENGINE = InnoDB" );
-		 * 
-		 * stmt.executeUpdate("CREATE TABLE IF NOT EXISTS `" + SCHEMA +
-		 * "`.`quotes` (" + "`idquote` INT NOT NULL AUTO_INCREMENT," +
-		 * "`text` TEXT NULL ," + "`speaker` INT NULL ," +
-		 * "PRIMARY KEY (`idquote`) ," + "INDEX `speaker` (`speaker` ASC) ," +
-		 * "CONSTRAINT `quotes_speaker`" + " FOREIGN KEY (`speaker` )" +
-		 * " REFERENCES `" + SCHEMA + "`.`persons` (`idperson` )" +
-		 * " ON DELETE CASCADE" + " ON UPDATE NO ACTION)" + "ENGINE = InnoDB" );
-		 * 
-		 * stmt.executeUpdate("CREATE TABLE IF NOT EXISTS `" + SCHEMA +
-		 * "`.`directors` (" + "`iddirector` INT NOT NULL AUTO_INCREMENT," +
-		 * "`movieid` INT NULL ," + "`director` INT NULL ," +
-		 * "PRIMARY KEY (`iddirector`) ," + "INDEX `movieid` (`movieid` ASC) ,"
-		 * + "INDEX `director` (`director` ASC), " +
-		 * "CONSTRAINT `directors_movieid`" + " FOREIGN KEY (`movieid` )" +
-		 * " REFERENCES `" + SCHEMA + "`.`movies` (`idmovie` )" +
-		 * " ON DELETE CASCADE" + " ON UPDATE NO ACTION," +
-		 * "CONSTRAINT `directors_director`" + " FOREIGN KEY (`director` )" +
-		 * " REFERENCES `" + SCHEMA + "`.`persons` (`idperson` )" +
-		 * " ON DELETE CASCADE" + " ON UPDATE NO ACTION)" + "ENGINE = InnoDB" );
-		 * stmt.close();
-		 */
+				+ schema, username, password);
+		conn.setAutoCommit(false);
 	}
 
-	public enum MovieType {
-		TV("tv"), FILM("film");
+	public Statement createStatement() throws SQLException {
+		return conn.createStatement();
+	}
+	public PreparedStatement prepareStatement(String sql) throws SQLException {
+		return conn.prepareStatement(sql);
+	}
+	
+	public Batch createBatch(String sql) throws SQLException {
+		return new Batch(conn, conn.prepareStatement(sql), 2000);
+	}
 
-		public String id;
+	public SimpleInsert createInsert(String table, boolean ignoreErrors, String... columns) throws SQLException {
+		String cols = "";
+		String temp = "";
+		for (int i = 0; i < columns.length; i++) {
+			cols += columns[0].toString();
+			temp += "?";
+			if (i != columns.length - 1) {
+				cols += ", ";
+				temp += ", ";
+			}
+		}
+		return new SimpleInsert(conn.prepareStatement("INSERT " + (ignoreErrors ? "IGNORE" : "") + " INTO " + 
+				table + " (" + cols + ") VALUES (" + temp +")", 
+				Statement.RETURN_GENERATED_KEYS));
+	}
 
-		private MovieType(String id) {
-			this.id = id;
+	public SimpleQuery createQuery(String columns, String tables, String where) throws SQLException {
+		return new SimpleQuery(conn.prepareStatement("SELECT " + columns + " FROM " + tables + 
+				" WHERE " + where));
+	}
+	public SimpleQuery createQuery(String columns, String tables, String where, String orderby) throws SQLException {
+		return new SimpleQuery(conn.prepareStatement("SELECT " + columns + " FROM " + tables + 
+				" WHERE " + where + " ORDER BY " + orderby));
+	}
+	public SimpleQuery createQuery(String columns, String tables, String where, int limit) throws SQLException {
+		return new SimpleQuery(conn.prepareStatement("SELECT " + columns + " FROM " + tables + 
+				" WHERE " + where + " LIMIT " + limit));
+	}
+	public SimpleQuery createQuery(String columns, String tables, String where, String orderby, int limit) throws SQLException {
+		return new SimpleQuery(conn.prepareStatement("SELECT " + columns + " FROM " + tables + 
+				" WHERE " + where + " ORDER BY " + orderby + " LIMIT " + limit));
+	}
+	
+	public SimpleUpdate createUpdate(String table, boolean ignoreErrors, String sets, String where) throws SQLException {
+		return new SimpleUpdate(conn.prepareStatement("UPDATE " + (ignoreErrors ? "IGNORE" : "") + 
+				" SET " + sets + " WHERE " + where));
+	}
+	
+	private SimpleQuery qGetMovieByName = null;
+	public int getMovieByName(String movieName) throws SQLException {
+		if (qGetMovieByName == null) {
+			qGetMovieByName = createQuery("movie_id", "movies", "imdb_name = ?");
+		}
+		ResultSet rs = qGetMovieByName.query(movieName);
+		try {
+			if (!rs.next()) {
+				throw new MovieNotFound(movieName);
+			}
+			return rs.getInt(1);
+		} finally {
+			rs.close();
 		}
 	}
 
-	public String getMovie(int movie_id) throws SQLException {
-		ResultSet rs = executeQuery("select M.name from movie as M where m.idmovie = "
-				+ movie_id);
-		rs.next();
-		return rs.getString(1);
+	private SimpleQuery qGetPersonByName = null;
+	public int getPersonByName(String personName) throws SQLException {
+		if (qGetPersonByName == null) {
+			qGetPersonByName = createQuery("person_id", "movies", "imdb_name = ?");
+		}
+		ResultSet rs = qGetMovieByName.query(personName);
+		try {
+			if (!rs.next()) {
+				throw new PersonNotFound(personName);
+			}
+			return rs.getInt(1);
+		} finally {
+			rs.close();
+		}
 	}
-
-	public String getPerson(int person_id) throws SQLException {
-		ResultSet rs = executeQuery("select P.first_name, P.last_name from person as P where p.idperson = "
-				+ person_id);
-		rs.next();
-		return rs.getString(1) + " " + rs.getString(2);
-	}
-
-	public void addMovie(String full_name, String name, MovieType type,
-			Integer year, String country, String language) throws SQLException {
-		Statement stmt = conn.createStatement();
-		stmt.executeUpdate("INSERT (" + full_name + "," + name + "," + type.id
-				+ "," + year + "," + country + "," + language + ") INTO `"
-				+ SCHEMA + "`.`movies`");
-		stmt.close();
-	}
-
-	public ResultSet executeQuery(String sql) throws SQLException {
-		Statement stmt = conn.createStatement();
-		ResultSet res = stmt.executeQuery(sql);
-		// stmt.close();
-		return res;
-	}
-
-	public void executeUpdate(String sql) throws SQLException {
-		Statement stmt = conn.createStatement();
-		stmt.executeUpdate(sql);
-		stmt.close();
-	}
-
-	public Batch createBatch() throws SQLException {
-		Statement stmt = conn.createStatement();
-		// TODO Auto-generated method stub
-		return new Batch(stmt, 1);
-	}
-
-	public int getForeignKey(String sql) throws SQLException {
-		// TODO Auto-generated method stub
-		ResultSet res;
-		int FK;
-
-		res = executeQuery(sql);
-		FK = res.getInt(0);
-
-		return FK;
-	}
-
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -71,13 +71,13 @@ public class GameScreen {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-		try {
+		/*try {
 			Schema schema = new Schema("localhost:3306", "root", "root");
 			GameScreen window = new GameScreen(new QuestionRegistry(schema));
 			window.open();
 		} catch (Exception e) {
 			e.printStackTrace();
-		}
+		}*/
 	}
 	
 	public GameScreen(QuestionRegistry questionRegistry)

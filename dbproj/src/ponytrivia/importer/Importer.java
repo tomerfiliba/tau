@@ -1,415 +1,513 @@
 package ponytrivia.importer;
 
-import java.io.EOFException;
+import java.io.File;
 import java.io.IOException;
-import java.sql.PreparedStatement;
+import java.sql.Date;
 import java.sql.SQLException;
-import java.sql.Statement;
+import java.util.HashMap;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import ponytrivia.db.Batch;
 import ponytrivia.db.Schema;
+import ponytrivia.db.SimpleInsert;
+import ponytrivia.db.SimpleQuery;
+import ponytrivia.db.SimpleUpdate;
 
 public class Importer {
 	protected Schema schema;
-	protected String currFilename;
-	protected int currLinenum;
-
-	public static class ImportStatus {
-		public final String filename;
-		public final int linenum;
-		public ImportStatus(String filename, int linenum) {
-			this.filename = filename;
-			this.linenum = linenum;
-		}
-	}
-	
-	protected ImportStatus status;
+	protected ListFileReader reader;
 
 	public Importer(Schema schema) {
 		this.schema = schema;
-		this.currFilename = null;
-		this.currLinenum = -1;
+		this.reader = null;
 	}
-	
-	public ImportStatus getStatus()
+
+	public static class ImportStatus {
+		public final String filename;
+		public final long size;
+		public final long position;
+		
+		public ImportStatus(String filename, long size, long position) {
+			this.filename = filename;
+			this.size = size;
+			this.position = position;
+		}
+	}
+
+	public ImportStatus getStatus() throws IOException
 	{
-		if (currFilename == null) {
+		if (reader == null) {
 			return null;
 		}
-		return new ImportStatus(currFilename, currLinenum);
+		return new ImportStatus(reader.fileName, reader.getSize(), reader.getPosition());
 	}
 
-	public void import_all(String directory) throws IOException, SQLException {
+	public void import_all(File directory) throws IOException, SQLException 
+	{
+		reader = null;
 		import_movies(directory);
-		//import_
-		import_roles(directory);
+		import_ratings(directory);
+		import_genres(directory);
+		import_actors(directory);
+		import_biographies(directory);
+		import_directors(directory);
+		reader = null;
 	}
 
-	protected void import_movies(String directory) throws IOException,
-			SQLException {
-		//final Pattern line_pat = Pattern
-			//	.compile("(.+?)\\s+\\((\\d+)\\)\\s+(?:\\{(.*?)\\})??");
-		final Pattern line_pat = Pattern
-		.compile("(.+?)\\s+\\((\\d+)\\)\\s+(\\{(.*?)\\})??(.*)??");
-		ListFileParser parser = new ListFileParser(directory + "/movies_short.txt");
-		parser.skipUntil("^MOVIES\\s+LIST\\s*$");
-		parser.skipUntil("^=+\\s*$");
+	private void import_movies(File directory) throws IOException, SQLException 
+	{
+        reader = new ListFileReader(new File(directory, "movies.list"));
+        reader.skipUntil("^MOVIES\\s+LIST\\s*$");
+        reader.skipUntil("^=+\\s*$");
+        
+        final Pattern linePattern = Pattern.compile("^(.+?)\t\\s*(.+?)$");
+        final Pattern tvshowPattern = Pattern.compile("\"(.+?)\"\\s.*?\\{(.+?)\\}");
+        final Pattern filmPattern = Pattern.compile("(.+?)\\s\\(\\d+\\)");
+        
+        Batch batch = schema.createBatch(
+        	"INSERT IGNORE INTO movies VALUES (imdb_name, type, name, episode, year)" +
+        	"VALUES (?, ?, ?, ?, ?)");
+        
+        while (true) {
+        	String line = reader.readLine();
+            if (line == null) {
+                break;
+            }
+            line = line.trim();
+            if (line.isEmpty()) {
+                continue;
+            }
+            Matcher m = linePattern.matcher(line);
+            if (!m.matches()) {
+            	continue;
+            }
+            String imdb_name = m.group(1);
+            String name = null;
+            String episode = null;
+            boolean tvshow = false;
+            int year;
+            try {
+            	year = Integer.parseInt(m.group(2));
+            } catch(NumberFormatException ex) {
+            	year = -1;
+            }
+            if (imdb_name.charAt(0) == '"') {
+            	tvshow = true;
+            	m = tvshowPattern.matcher(imdb_name);
+            	if (!m.matches()) {
+            		continue;
+            	}
+            	name = m.group(1);
+            	episode = m.group(2);
+            }
+            else {
+            	m = filmPattern.matcher(imdb_name);
+            	if (!m.matches()) {
+            		continue;
+            	}
+            	name = m.group(1);
+            }
+            batch.add(imdb_name, tvshow, name, episode, (year > 1900) ? year : null);
+        }
+        batch.close();
+	}
 
-		Batch batch = schema.createBatch();
+	private void import_ratings(File directory) throws IOException, SQLException 
+	{
+        reader = new ListFileReader(new File(directory, "ratings.list"));
+        reader.skipUntil("^New\\s+Distribution\\s+Votes\\s+Rank\\s+Title\\*$");
+        
+        final Pattern linePattern = Pattern.compile("^.+?\\s+(\\d+)\\s+(\\d\\.\\d)\\s+(.+)$");
+        
+        Batch batch = schema.createBatch("UPDATE movies SET rating = ?, votes = ? WHERE id = ?");
+        
+        while (true) {
+        	String line = reader.readLine();
+            if (line == null) {
+                break;
+            }
+            line = line.trim();
+            if (line.isEmpty()) {
+                continue;
+            }
+            Matcher m = linePattern.matcher(line);
+            if (!m.matches()) {
+            	continue;
+            }
+            int votes = -1;
+            double rank = -1;
+            String imdb_name = m.group(3);
+            try {
+            	votes = Integer.parseInt(m.group(1));
+            } catch(NumberFormatException ex) {
+            }
+            try {
+            	rank = Double.parseDouble(m.group(2));
+            } catch(NumberFormatException ex) {
+            }
+            int movie_id = schema.getMovieByName(imdb_name);
+            batch.add(rank, votes, movie_id);
+        }
+        batch.close();
+	}
 
-		for (int i = 0; i < 10; i++) {
-			String line = parser.readLine();
-			if (line == null) {
-				break;
-			}
-			if (line.trim().isEmpty()) {
-				continue;
-			}
-			Matcher m = line_pat.matcher(line);
-			if (!m.matches()) {
-				continue;
-			}
-			String name = m.group(1);
-			String year_s = m.group(2);
-			String episode = m.group(3);
-			boolean tvshow = name.startsWith("\"");
-			int year = -1;
-			String full_name = name + "/" + year + "/" + episode;
-
-			try {
-				year = Integer.parseInt(year_s);
-			} catch (NumberFormatException ex) {
-			}
-
-			batch.add("INSERT IGNORE INTO Movies (imdb_name, type, name, year) "
-					+ "VALUES ("
-					+ full_name
-					+ ", "
-					+ (tvshow ? "true" : "false")
-					+ ", "
-					+ name
-					+ ", "
-					+ (year > 1900 ? year : "NULL") + ")");
+	private void import_genres(File directory) throws IOException, SQLException 
+	{
+        reader = new ListFileReader(new File(directory, "genres.list"));
+        reader.skipUntil("^8: THE GENRES LIST\\s*$");
+        
+        final Pattern linePattern = Pattern.compile("^(.+?)\\t\\s*(.+)$");
+        HashMap<String, Integer> genresMap = new HashMap<String, Integer>();
+        
+        Batch batch = schema.createBatch(
+        		"INSERT IGNORE movie_genres (movie_id, genre_id) VALUES (?, ?)");
+    	SimpleInsert insertGenre = schema.createInsert("genres", true, "name");
+    	SimpleQuery findGenre = schema.createQuery("genre_id", "genres", "name = ?");
+        
+        String prev_imdb_name = "";
+        int prev_movie_id = -1;
+        while (true) {
+        	String line = reader.readLine();
+            if (line == null) {
+                break;
+            }
+            line = line.trim();
+            if (line.isEmpty()) {
+                continue;
+            }
+            Matcher m = linePattern.matcher(line);
+            if (!m.matches()) {
+            	continue;
+            }
+            String imdb_name = m.group(1);
+            String genre = m.group(2);
+            int movie_id;
+            if (imdb_name.equals(prev_imdb_name)) {
+            	movie_id = prev_movie_id;
+            }
+            else {
+            	movie_id = schema.getMovieByName(imdb_name);
+            }
+            int genre_id;
+            if (genresMap.containsKey(genre)) {
+            	genre_id = genresMap.get(genre);
+            }
+            else {
+            	genre_id = insertGenre.insert(genre);
+            	if (genre_id < 0) {
+            		genre_id = findGenre.queryGetFirst(genre);
+            	}
+            	genresMap.put(genre, genre_id);
+            }
+            batch.add(movie_id, genre_id);
+            prev_imdb_name = imdb_name;
+            prev_movie_id = movie_id;
+        }
+        insertGenre.close();
+        findGenre.close();
+        batch.close();
+	}
+	
+	private abstract class ImporterHelper
+	{
+		protected SimpleInsert people;
+		
+		public ImporterHelper() throws SQLException {
+			people = schema.createInsert("people", true, "imdb_name", "gender");
 		}
-		batch.close();
+
+		public void close() throws SQLException {
+			people.close();
+		}
+
+		public void doImport(String gender) throws IOException, SQLException
+		{
+			while (true) {
+		        List<String> lines = reader.readUntil("^\\s*$");
+		        if (lines == null) {
+		        	break;
+		        }
+		        String line = lines.remove(0);
+		        String[] parts = line.split("\t\\s*");
+		        if (parts.length != 2) {
+		        	continue;
+		        }
+		        String person_name = parts[0];
+		        String movie_info = parts[1];
+		        lines.add(0, movie_info);
+		        int person_id;
+		        try {
+			        person_id = people.insert(person_name, gender);
+			        if (person_id < 0) {
+			        	person_id = schema.getPersonByName(person_name);
+			        }
+			        for (String ln : lines) {
+			        	addMovie(person_id, ln.trim());
+			        }
+		        } catch (SQLException ex) {
+		        	continue;
+		        }
+			}
+		}
+		
+		abstract protected void addMovie(int person_id, String movie_info) throws SQLException;
+	}
+	
+	private class ActorsImporterHelper extends ImporterHelper
+	{
+		private final Pattern moviePattern = Pattern.compile(
+				"(.+?)\\s+(:?\\[(.+?)\\])??\\s+(?:\\<(\\d+)\\>)??");
+		SimpleInsert roles = null;
+		
+		public ActorsImporterHelper() throws SQLException {
+			roles = schema.createInsert("roles", true, "person_id", "movie_id", "character", "credit_pos");
+		}
+		
+		@Override
+		public void close() throws SQLException {
+			roles.close();
+			super.close();
+		}
+
+		@Override
+		protected void addMovie(int person_id, String movie_info) throws SQLException {
+			Matcher m = moviePattern.matcher(movie_info);
+        	if (!m.matches()) {
+        		return;
+        	}
+        	String imdb_name = m.group(1);
+        	String character = m.group(2);
+        	int pos = -1;
+        	try {
+        		pos = Integer.parseInt(m.group(3));
+        	} catch (NumberFormatException ex) {
+        	}
+        	int movie_id = schema.getMovieByName(imdb_name);
+        	roles.insert(person_id, movie_id, character, (pos > 0) ? pos : null);
+		}
 	}
 
-	protected void _import_actors(ListFileParser parser, int gender) throws IOException {
-		Pattern title_pat = Pattern
-				.compile("(.+)\\s+\\((\\d+)\\)\\s+(\\[(.+)\\])??\\s*(\\<(\\d+)\\>)??");
+	private class DirectorsImporterHelper extends ImporterHelper
+	{
+		SimpleInsert directors = null;
+		
+		public DirectorsImporterHelper() throws SQLException {
+			directors = schema.createInsert("roles", true, "person_id", "movie_id", "character", "credit_pos");
+		}
+		
+		@Override
+		public void close() throws SQLException {
+			directors.close();
+			super.close();
+		}
 
-		Batch batch;
+		@Override
+		protected void addMovie(int person_id, String imdb_name) throws SQLException {
+        	int movie_id = schema.getMovieByName(imdb_name);
+        	directors.insert(person_id, movie_id);
+		}
+	}
+	
+	private void import_actors(File directory) throws IOException, SQLException 
+	{
+        reader = new ListFileReader(new File(directory, "actors.list"));
+        reader.skipUntil("^Name\\s+Titles\\s*$");
+        reader.skipUntil("^-*\\s+-*\\s*$");
+        ActorsImporterHelper helper = new ActorsImporterHelper();
+        helper.doImport("male");
+
+        reader = new ListFileReader(new File(directory, "actresses.list"));
+        reader.skipUntil("^Name\\s+Titles\\s*$");
+        reader.skipUntil("^-*\\s+-*\\s*$");
+        helper = new ActorsImporterHelper();
+        helper.doImport("female");
+	}
+
+	private void import_directors(File directory) throws IOException, SQLException 
+	{
+        reader = new ListFileReader(new File(directory, "directors.list"));
+        reader.skipUntil("^\\s*Name\\s+Titles\\s*$");
+        reader.skipUntil("^\\s*-+\\s+-+\\s*$");
+        DirectorsImporterHelper helper = new DirectorsImporterHelper();
+        helper.doImport(null);
+	}
+	
+    private final Pattern datePattern = Pattern.compile("(\\d{1,2})??\\s+(\\w+)??\\s+(\\d{4})");
+	
+    @SuppressWarnings("deprecation")
+	private Date strToDate(String str) {
+        Matcher m = datePattern.matcher(str);
+		if (!m.matches()) {
+			return null;
+		}
+		int day = 1;
 		try {
-			batch = schema.createBatch();
-		} catch (SQLException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-
-		while (true) {
-			List<String> lines = parser.readUntil("^\\s*$");
-			if (lines == null) {
-				break;
+			if (m.group(1) != null) {
+				day = Integer.parseInt(m.group(1));
 			}
-			String imdb_name = null;
-			int pid = 0;
-			String first_name;
-			String last_name;
-			for (String line : lines) {
-				String title;
-				String character = null;
-				int credits = 0;
-				if (imdb_name == null) {
-					String parts[] = line.split("\t+");
-					imdb_name = parts[0];
-					title = parts[1];
-					String names[] = imdb_name.split(",");
-					first_name = names[1];
-					last_name = names[0];
-					try {
-						schema.executeUpdate("INSERT IGNORE INTO People (imdb_name,first_name,last_name,gender)"
-								+ " VALUES ("
-								+ imdb_name
-								+ ", "
-								+ first_name
-								+ ", " + last_name + ")");
-
-						pid = schema
-								.getForeignKey("SELECT P.id FROM People as P where P.imdb_name = "
-										+ imdb_name);
-					} catch (SQLException e) {
-						// TODO Auto-generated catch block
-						continue;
-					}
-
-				} else {
-					String parts[] = line.split("\t+");
-					title = parts[0];
-				}
-				Matcher m = title_pat.matcher(title);
-				String movie_name = m.group(1);
-				String year = m.group(2);
-				try {
-
-					character = m.group(4);
-					credits = Integer.parseInt(m.group(6));
-				} catch (IndexOutOfBoundsException e) {
-					// if (character==null)
-				}
-
-				try {
-					int mid = schema
-							.getForeignKey("SELECT M.movie_id from movies as M where "
-									+ "M.imdb_name = '" + movie_name + "'");
-
-					batch.add("INSERT IGNORE INTO Roles (actor, movie,character,credit_pos) VALUES ("
-							+ pid
-							+ ", "
-							+ mid
-							+ ", "
-							+ character
-							+ ", "
-							+ credits);
-				} catch (SQLException e) {
-					// TODO Auto-generated catch block
-					continue;
-				}
+		} catch (NumberFormatException ex) {
+		}
+		int month = 1;
+		String monthStr = m.group(2);
+		if (monthStr != null) {
+			monthStr = monthStr.toLowerCase();
+			if (monthStr.startsWith("jan")) {
+				month = 1;
+			} else if (monthStr.startsWith("feb")) {
+				month = 2;
+			} else if (monthStr.startsWith("mar")) {
+				month = 3;
+			} else if (monthStr.startsWith("apr")) {
+				month = 4;
+			} else if (monthStr.startsWith("may")) {
+				month = 5;
+			} else if (monthStr.startsWith("jun")) {
+				month = 6;
+			} else if (monthStr.startsWith("jul")) {
+				month = 7;
+			} else if (monthStr.startsWith("aug")) {
+				month = 8;
+			} else if (monthStr.startsWith("sep")) {
+				month = 9;
+			} else if (monthStr.startsWith("oct")) {
+				month = 10;
+			} else if (monthStr.startsWith("nov")) {
+				month = 11;
+			} else if (monthStr.startsWith("dec")) {
+				month = 12;
 			}
 		}
-	}
-
-	protected void import_roles(String directory) throws IOException {
-		ListFileParser parser = new ListFileParser(directory + "/actor.list");
-		parser.skipUntil("^Name\\s+Titles\\s*$");
-		parser.skipUntil("^-*\\s+-*\\s*$");
-		_import_actors(parser,1);
-
-		parser = new ListFileParser(directory + "/actresses.list");
-		parser.skipUntil("^Name\\s+Titles\\s*$");
-		parser.skipUntil("^-*\\s+-*\\s*$");
-		_import_actors(parser,0);
-	}
-
-	protected void import_genres(String directory) throws IOException,
-			SQLException {
-		ListFileParser parser = new ListFileParser(directory + "/genres.list");
-		parser.skipUntil("^8:\\s+THE\\s+GENRES\\s+LIST\\s*$");
-		parser.skipUntil("^=+\\s*$");
-		parser.readLine();
-		Batch batch = schema.createBatch();
-		while (true) {
-
-			String line = parser.readLine();
-			if (line == null) {
-				break;
+		int year = -1;
+		try {
+			if (m.group(3) != null) {
+				year = Integer.parseInt(m.group(3));
 			}
-			int gid;
-
-			String[] parts = line.split("\\t");
-			String genre = parts[1];
-			String imdb_name = parts[0];
-			try {
-				schema.executeUpdate("INSERT IGNORE INTO genre (genre)"
-						+ " VALUES (" + genre + ")");
-
-				gid = schema
-						.getForeignKey("SELECT genre.id FROM genre as G where G.genre = "
-								+ genre);
-
-				int mid = schema
-						.getForeignKey("SELECT M.movie_id from movies as M where "
-								+ "M.imdb_name = '" + imdb_name + "'");
-
-				batch.add("INSERT IGNORE INTO movie_genre (movie_id,genre_id) VALUES ("
-						+ mid + ", " + gid + ")");
-			} catch (SQLException e) {
-				// TODO Auto-generated catch block
-				continue;
-			}
+		} catch (NumberFormatException ex) {
 		}
-
-		batch.close();
-	}
-
-	protected void import_directors(String directory) throws IOException, SQLException {
-		ListFileParser parser = new ListFileParser(directory
-				+ "/directors.list");
-		Pattern title_pat = Pattern
-				.compile("(.+)\\s+\\((\\d+)\\)\\s+(\\[(.+)\\])??\\s*(\\<(\\d+)\\>)??");
-
-		Batch batch = schema.createBatch();
-
-		while (true) {
-			List<String> lines = parser.readUntil("^\\s*$");
-			if (lines == null) {
-				break;
-			}
-			String imdb_name = null;
-			int pid = 0;
-			String first_name;
-			String last_name;
-			for (String line : lines) {
-				String title;
-				
-				if (imdb_name == null) {
-					String parts[] = line.split("\t+");
-					imdb_name = parts[0];
-					title = parts[1];
-					String names[] = imdb_name.split(",");
-					first_name = names[1];
-					last_name = names[0];
-					try {
-						schema.executeUpdate("INSERT IGNORE INTO People (imdb_name,first_name,last_name)"
-								+ " VALUES ("
-								+ imdb_name
-								+ ", "
-								+ first_name
-								+ ", " + last_name + ")");
-
-						pid = schema
-								.getForeignKey("SELECT P.id FROM People as P where P.imdb_name = "
-										+ imdb_name);
-					} catch (SQLException e) {
-						// TODO Auto-generated catch block
-						continue;
-					}
-
-				} else {
-					String parts[] = line.split("\t+");
-					title = parts[0];
-				}
-				Matcher m = title_pat.matcher(title);
-				String movie_name = m.group(1);
-
-				try {
-					int mid = schema
-							.getForeignKey("SELECT M.movie_id from movies as M where "
-									+ "M.imdb_name = '" + movie_name + "'");
-
-					batch.add("INSERT IGNORE INTO directors (preson_id,movie_id) VALUES ("
-							+ pid
-							+ ", "
-							+ mid
-							);
-				} catch (SQLException e) {
-					// TODO Auto-generated catch block
-					continue;
-				}
-			}
+		if (year < 0) {
+			return null;
 		}
-		batch.close();
+		return new Date(year - 1900, month, day);
+	}
+	
+	private void import_biographies(File directory) throws IOException, SQLException 
+	{
+        reader = new ListFileReader(new File(directory, "biographies.list"));
+        reader.skipUntil("^---*$");
+        final Pattern namePattern = Pattern.compile("(.+?)\\s*(:?,\\s+(.+?))??(?:\\s+(.+))??");
+        
+        SimpleUpdate people = schema.createUpdate("people", false, 
+        		"first_name = ?, middle_name = ?, last_name = ?, real_name = ?, nick_name = ?, " +
+        		"birthdate = ?, deathdate = ?", "imdb_name = ?");
+
+        SimpleInsert newPeople = schema.createInsert("people", false, 
+        		"imdb_name", "first_name", "middle_name", "last_name", "real_name", "nick_name", 
+        		"birthdate", "deathdate");
+
+        while (true) {
+        	List<String> lines = reader.readUntil("^---*$");
+        	if (lines == null) {
+        		break;
+        	}
+    		int person_id = -1;
+    		String imdb_name = null;
+    		String first_name = null;
+    		String last_name = null;
+    		String nick_name = null;
+    		String middle_name = null;
+    		String real_name = null;
+    		Date bdate = null;
+    		Date ddate = null;
+    		
+        	for (String ln : lines) {
+        		ln = ln.trim();
+        		if (ln.isEmpty()) {
+        			continue;
+        		}
+        		String[] parts = ln.split(":", 1);
+        		if (parts.length != 2) {
+        			continue;
+        		}
+        		
+        		if (parts[0].equals("NM")) {
+        			imdb_name = parts[1].trim();
+        			try {
+        				person_id = schema.getPersonByName(imdb_name);
+        			} catch (SQLException ex) {
+        			}
+        			Matcher m = namePattern.matcher(imdb_name);
+        			if (m.matches()) {
+        				last_name = m.group(1);
+        				first_name = m.group(2);
+        				middle_name = m.group(3);
+        			}
+        		}
+        		else if (parts[0].equals("RN")) {
+        			real_name = parts[1].trim();
+        		}        		
+        		else if (parts[0].equals("NK")) {
+        			nick_name = parts[1].trim();
+        		}
+        		else if (parts[0].equals("DB")) {
+        			bdate = strToDate(parts[1].trim());
+        		}
+        		else if (parts[0].equals("DD")) {
+        			ddate = strToDate(parts[1].trim());
+        		}
+        	}
+    		if (imdb_name == null) {
+    			continue;
+    		}
+    		if (person_id < 0) {
+    			newPeople.insert(imdb_name, first_name, middle_name, last_name, real_name, 
+    					nick_name, bdate, ddate, person_id);
+    		}
+    		else {
+    			people.update(first_name, middle_name, last_name, real_name, nick_name, bdate, 
+    					ddate, person_id);
+    		}
+        }
 	}
 
-	public void import_bios(String filename) throws IOException, SQLException {
-		ListFileParser parser = new ListFileParser(filename);
-		parser.skipUntil("^BIOGRAPHY\\s+LIST\\s*$");
-		// parser.skipUntil("^-*\\s+-*\\s*$");
-		parser.skipUntil("^=+\\s*$");
-		parser.readLine();
 
-		while (true) {
-			int pid;
-			try {
-				List<String> lines = parser.readUntil("^\\s*$");
-				;
-				// List<String> lines =
-				// parser.readUntil("---------------------------");
-				// parser.readUntil("^\\s*$");
-				if (lines == null)
-					break;
-				int i = 0;
-				// System.out.println(lines.get(0));
-				// System.out.println(lines);
-				// String paragraph =
-				for (String line : lines) {
-					int b_year = 0;
-					int d_year = 0;
-					String NM = null;
-					String RN = null;
-					String DD = null;
-					String DB = null;
-					String NK = null;
-
-					if (line.startsWith("\\s\\s") || (line.startsWith("--")))
-						continue;
-
-					if (line.startsWith("NM")) {
-						NM = line.substring(3);
-						pid = schema
-								.getForeignKey("SELECT P.id FROM People as P where P.imdb_name = "
-										+ NM);
-					}
-					if (line.startsWith("RN")) {
-						RN = line.substring(3);
-
-					}
-					if (line.startsWith("DB")) {
-						DB = line.substring(3);
-						b_year = search_in_line(DB);
-
-					}
-					if (line.startsWith("NK")) {
-						NK = line.substring(3);
-
-					}
-					if (line.startsWith("DD")) {
-						DD = line.substring(3);
-						d_year = search_in_line(DD);
-					}
-
-					System.out.println(NM + " " + RN + " " + NK + " " + b_year
-							+ " " + d_year);
-					// System.out.println(year);
-				}
-
-			} catch (EOFException e) {
-				break;
-			}
-		}
+	static public void main(String[] args) throws IOException, SQLException, ClassNotFoundException
+	{
+		Schema schema = new Schema("localhost:3306", "pony-imdb", "root", "root");
+		
+		Importer imp = new Importer(schema);
+		imp.import_all(new File("C:\\Users\\sebulba\\Desktop\\db"));
+		
 	}
+	
 
-	private int search_in_line(String line) {
-		Pattern p = Pattern.compile("(.*\\w+)\\s(\\d{4})(.*$)");
-		Matcher m = p.matcher(line);
-		if (m.matches())
-			return Integer.parseInt(m.group(2));
-		return -1;
-	}
-
-	public void import_ratings(String filename) throws IOException,
-			SQLException {
-		final Pattern line_pat = Pattern
-				.compile("\\s+(\\d+)\\s+(\\d+)\\s+(.*\\d+\\s+)\\s+(.*)$");
-		ListFileParser parser = new ListFileParser(filename);
-		parser.skipUntil("^New\\s+Distribution\\s+Votes\\s+Rank\\s+Title*$");
-		Batch batch = schema.createBatch();
-
-		while (true) {
-			String line = parser.readLine();
-			if (line == null) {
-				break;
-			}
-			Matcher m = line_pat.matcher(line);
-			if (!m.matches()) {
-				continue;
-			}
-			String full_name = m.group(4);
-			int votes = Integer.parseInt(m.group(2));
-			double rating = Double.parseDouble(m.group(3));
-			int mid;
-			try {
-				mid = schema
-						.getForeignKey("select M.movie_id from Movies as M "
-								+ "where M.imdb_name = '" + full_name + "'");
-			} catch (SQLException e) {
-				continue;
-			}
-			batch.add("UPDATE Movies SET rating = " + rating + ", votes = "
-					+ votes + " WHERE movie_id = " + mid);
-		}
-		batch.close();
-	}
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
