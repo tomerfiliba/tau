@@ -19,10 +19,9 @@
 -- Table structure for table `gameplayers`
 --
 
-DROP SCHEMA IF EXISTS `pony_imdb2`;
-CREATE SCHEMA `pony_imdb2`;
-
-USE `pony_imdb2`;
+DROP SCHEMA IF EXISTS `pony_imdb`;
+CREATE SCHEMA `pony_imdb`;
+USE `pony_imdb`;
 
 DROP TABLE IF EXISTS `gameplayers`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -81,7 +80,7 @@ CREATE TABLE `highscores` (
   `score` int(11) NOT NULL,
   PRIMARY KEY (`highscore_id`),
   KEY `highscore_user` (`user`),
-  CONSTRAINT `highscore_user` FOREIGN KEY (`user`) REFERENCES `gameplayers` (`user_id`) ON DELETE CASCADE ON UPDATE NO ACTION
+  CONSTRAINT `highscores_user` FOREIGN KEY (`user`) REFERENCES `gameplayers` (`user_id`) ON DELETE CASCADE ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -110,7 +109,7 @@ CREATE TABLE `moviedirectors` (
   KEY `md_movie` (`movie`),
   KEY `md_director` (`director`),
   CONSTRAINT `md_movie` FOREIGN KEY (`movie`) REFERENCES `movies` (`movie_id`) ON DELETE CASCADE ON UPDATE NO ACTION,
-  CONSTRAINT `md_director` FOREIGN KEY (`director`) REFERENCES `people` (`person_id`) ON DELETE CASCADE ON UPDATE NO ACTION
+  CONSTRAINT `md_people` FOREIGN KEY (`director`) REFERENCES `people` (`person_id`) ON DELETE CASCADE ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -232,8 +231,8 @@ CREATE TABLE `roles` (
   UNIQUE KEY `movie` (`movie`,`actor`),
   KEY `role_movie` (`movie`),
   KEY `role_actor` (`actor`),
-  CONSTRAINT `role_movie` FOREIGN KEY (`movie`) REFERENCES `movies` (`movie_id`) ON DELETE CASCADE ON UPDATE NO ACTION,
-  CONSTRAINT `role_actor` FOREIGN KEY (`actor`) REFERENCES `people` (`person_id`) ON DELETE CASCADE ON UPDATE NO ACTION
+  CONSTRAINT `roles_movie` FOREIGN KEY (`movie`) REFERENCES `movies` (`movie_id`) ON DELETE CASCADE ON UPDATE NO ACTION,
+  CONSTRAINT `roles_person` FOREIGN KEY (`actor`) REFERENCES `people` (`person_id`) ON DELETE CASCADE ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

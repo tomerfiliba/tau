@@ -6,7 +6,7 @@ import java.sql.SQLException;
 import java.sql.Types;
 
 public abstract class Prepared {
-	public PreparedStatement pstmt;
+	protected PreparedStatement pstmt;
 	protected boolean autoCommit;
 	
 	protected Prepared(PreparedStatement pstmt) {

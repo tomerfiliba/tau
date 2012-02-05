@@ -5,6 +5,7 @@ import java.sql.SQLException;
 import java.util.ArrayList;
 
 import ponytrivia.db.Schema;
+import ponytrivia.db.SimpleQuery;
 import ponytrivia.question.QuestionGenerator;
 import ponytrivia.question.QuestionInfo;
 
@@ -17,17 +18,23 @@ public class Question02 extends QuestionGenerator {
 		super(schema);
 	}
 	
+	private SimpleQuery chooseActor = null;
+	
 	@Override
 	public QuestionInfo generate() throws SQLException {
-		ResultSet rs = schema.executeQuery("select P.idperson, M.idmovie from person as P, role as R, filtered_movie as M " +
-			"WHERE P.idperson = R.person_id and R.movie_id = M.idmovie " +
-			"ORDER BY RAND() LIMIT 1");
-
+		if (chooseActor == null) {
+			chooseActor = schema.createQuery("P.person_id, M.movie_id", 
+				"People as P, Roles as R, FilteredMovie as M", 
+				"P.person_id = R.actor and R.movie = M.movie_id", "rand()", 1);
+		}
+		
+		ResultSet rs = chooseActor.query();
 		rs.next();
 		int person_id = rs.getInt(1);
-		int movie_id =  rs.getInt(2);
+		int movie_id = rs.getInt(2);
+		String right_answer = 
 		
-		String right_answer = schema.getMovie(movie_id);
+		String right_answer = schema.getMovieNameByID(movie_id);
 		String person = schema.getPerson(person_id);
 
 		rs = schema.executeQuery("select M.idmovie from filtered_movie as M " +

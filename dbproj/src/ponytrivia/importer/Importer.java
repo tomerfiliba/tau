@@ -15,6 +15,7 @@ import ponytrivia.db.Schema;
 import ponytrivia.db.SimpleInsert;
 import ponytrivia.db.SimpleQuery;
 
+
 /**
  * A utility class used to import IMDB list files into a MySQL DB, that will be used by the game.
  * The API of this class includes 
@@ -61,6 +62,10 @@ public class Importer {
 		return new ImportStatus(reader.fileName, reader.getSize(), reader.getPosition());
 	}
 
+	public void importLists(String directory) throws IOException, SQLException {
+		importLists(new File(directory));
+	}
+
 	/**
 	 * Imports all lists files from a given directory into the DB
 	 * @param directory A File object representing the directory that contains all of the list 
@@ -72,79 +77,25 @@ public class Importer {
 	{
 		reader = null;
 		System.out.printf("%s >> importing movies\n", (new java.util.Date()));
-		import_movies(directory);
+		//import_movies(directory);
 		
-		System.out.printf("%s >> importing ratings\n", (new java.util.Date()));
-		import_ratings(directory);
+		System.out.printf("\n%s >> importing ratings\n", (new java.util.Date()));
+		//import_ratings(directory);
 		
-		System.out.printf("%s >> importing genres\n", (new java.util.Date()));
-		import_genres(directory);
+		System.out.printf("\n%s >> importing genres\n", (new java.util.Date()));
+		// import_genres(directory);
 		
-		System.out.printf("%s >> importing actors\n", (new java.util.Date()));
+		System.out.printf("\n%s >> importing actors\n", (new java.util.Date()));
 		import_actors(directory);
 		
-		System.out.printf("%s >> importing directors\n", (new java.util.Date()));
+		System.out.printf("\n%s >> importing directors\n", (new java.util.Date()));
 		import_directors(directory);
 		
-		System.out.printf("%s >> importing bios\n", (new java.util.Date()));
+		System.out.printf("\n%s >> importing bios\n", (new java.util.Date()));
 		import_biographies(directory);
 		reader = null;
 		
-		//System.out.printf("%s >> normalizing tables\n", (new java.util.Date()));
-		//normalizeTables();
-
-		System.out.printf("%s >> done\n", (new java.util.Date()));
-	}
-
-	private void normalizeTables() throws SQLException {
-		Statement stmt = schema.createStatement();
-		
-		stmt.executeUpdate("DELETE FROM Roles WHERE movie = 0");
-		stmt.executeUpdate("DELETE FROM MovieGenres WHERE movie = 0");
-		stmt.executeUpdate("DELETE FROM MovieDirectors WHERE movie = 0");
-
-		/* this takes way too long -- disabling it. we won't have real foreign keys,
-		 * but what's the difference anyway? we'll just check that we don't break the
-		 * db's invariants before insert/update */
-		
-//		stmt.executeUpdate("ALTER TABLE Movies ENGINE = InnoDB");
-//		stmt.executeUpdate("ALTER TABLE People ENGINE = InnoDB");
-//		stmt.executeUpdate("ALTER TABLE Genres ENGINE = InnoDB");
-//		stmt.executeUpdate("ALTER TABLE MovieGenres ENGINE = InnoDB");
-//		stmt.executeUpdate("ALTER TABLE Roles ENGINE = InnoDB");
-//		stmt.executeUpdate("ALTER TABLE MovieDirectors ENGINE = InnoDB");
-//
-//		stmt.executeUpdate("ALTER TABLE MovieGenres ADD CONSTRAINT mg_movie " + 
-//				"  FOREIGN KEY (movie) REFERENCES Movies (movie_id) " +
-//				"  ON DELETE CASCADE ON UPDATE NO ACTION, " +
-//				"ADD INDEX mg_movie (movie ASC)");
-//
-//		stmt.executeUpdate("ALTER TABLE MovieGenres ADD CONSTRAINT mg_genre " + 
-//				"  FOREIGN KEY (genre) REFERENCES Genres (genre_id) " +
-//				"  ON DELETE CASCASE ON UPDATE NO ACTION, " +
-//				"ADD INDEX mg_genre (genre ASC)");
-//
-//		stmt.executeUpdate("ALTER TABLE Roles ADD CONSTRAINT role_movie " + 
-//				"  FOREIGN KEY (movie) REFERENCES Movies (movie_id) " +
-//				"  ON DELETE CASCADE ON UPDATE NO ACTION, " +
-//				"ADD INDEX role_movie (movie ASC)");
-//
-//		stmt.executeUpdate("ALTER TABLE Roles ADD CONSTRAINT role_actor " + 
-//				"  FOREIGN KEY (actor) REFERENCES People (person_id) " +
-//				"  ON DELETE CASCADE ON UPDATE NO ACTION, " +
-//				"ADD INDEX role_actor (actor ASC)");
-//
-//		stmt.executeUpdate("ALTER TABLE MovieDirectors ADD CONSTRAINT md_movie " + 
-//				"  FOREIGN KEY (movie) REFERENCES Movies (movie_id) " +
-//				"  ON DELETE CASCADE ON UPDATE NO ACTION, " +
-//				"ADD INDEX md_movie (movie ASC)");
-//
-//		stmt.executeUpdate("ALTER TABLE MovieDirectors ADD CONSTRAINT md_movie " + 
-//				"  FOREIGN KEY (director) REFERENCES People (person_id) " +
-//				"  ON DELETE CASCADE ON UPDATE NO ACTION, " +
-//				"ADD INDEX md_movie (director ASC)");
-
-		stmt.close();
+		System.out.printf("\n%s >> done\n", (new java.util.Date()));
 	}
 
 	private void import_movies(File directory) throws IOException, SQLException 
@@ -161,6 +112,7 @@ public class Importer {
         	"INSERT IGNORE INTO movies (imdb_name, type, name, episode, year) " +
         	"VALUES (?, ?, ?, ?, ?)");
         
+        int i = 0;
         while (true) {
         	String line = reader.readLine();
             if (line == null) {
@@ -200,9 +152,17 @@ public class Importer {
             	}
             	name = m.group(1);
             }
+            i++;
+            if (i % 5000 == 0) {
+        		System.out.print(i + ", ");
+        		if (i % 50000 == 0) {
+        			System.out.println();
+        		}
+	        }
             batch.add(imdb_name, tvshow ? "tv" : "film", name, episode, (year > 1900) ? year : null);
         }
         batch.close();
+        reader.close();
 	}
 
 	private void import_ratings(File directory) throws IOException, SQLException 
@@ -242,6 +202,7 @@ public class Importer {
         	batch.add(rank, votes, imdb_name);
         }
         batch.close();
+        reader.close();
 	}
 
 	private void import_genres(File directory) throws IOException, SQLException 
@@ -254,9 +215,23 @@ public class Importer {
         
         Batch batch = schema.createBatch("INSERT IGNORE MovieGenres (movie, genre) VALUES " +
         		"((SELECT movie_id FROM Movies WHERE imdb_name = ? LIMIT 1), ?)");
+        
     	SimpleInsert insertGenre = schema.createInsert("genres", true, "name");
     	SimpleQuery findGenre = schema.createQuery("genre_id", "genres", "name = ?");
         
+    	Statement stmt = schema.createStatement();
+    	try {
+    		stmt.executeUpdate("ALTER TABLE MovieGenres DROP FOREIGN KEY `mg_genre`");
+    	} catch (SQLException ex) {
+    	}
+    	try {
+    		stmt.executeUpdate("ALTER TABLE MovieGenres DROP FOREIGN KEY `mg_movie`");
+		} catch (SQLException ex) {
+		}
+    	stmt.getConnection().commit();
+    	stmt.close();
+        
+    	int i = 0;
         while (true) {
         	String line = reader.readLine();
             if (line == null) {
@@ -285,11 +260,32 @@ public class Importer {
             	}
             	genresMap.put(genre, genre_id);
             }
+            i++;
+            if (i % 5000 == 0) {
+            	insertGenre.commit();
+        		System.out.print(i + ", ");
+        		if (i % 50000 == 0) {
+        			System.out.println();
+        		}
+	        }
             batch.add(imdb_name, genre_id);
         }
         insertGenre.close();
         findGenre.close();
         batch.close();
+        
+    	stmt = schema.createStatement();
+    	stmt.executeUpdate("DELETE FROM MovieGenres WHERE movie = 0 OR genre = 0");
+    	stmt.executeUpdate("ALTER TABLE MovieGenres ADD CONSTRAINT `mg_movie` "+
+		"FOREIGN KEY (`movie`) REFERENCES `movies` (`movie_id`) " +
+		"ON DELETE CASCADE ON UPDATE NO ACTION, " +
+		"ADD CONSTRAINT `mg_genre` " +
+		"FOREIGN KEY (`genre`) REFERENCES `genres` (`genre_id`) " +
+		"ON DELETE CASCADE ON UPDATE NO ACTION");
+    	stmt.getConnection().commit();        
+    	stmt.close();
+        
+        reader.close();
 	}
 	
 	private abstract class ImporterHelper
@@ -324,6 +320,9 @@ public class Importer {
 		        i++;
 		        if (i % 5000 == 0) {
 		        	System.out.print(i + ", ");
+	        		if (i % 50000 == 0) {
+	        			System.out.println();
+	        		}
 		        }
 		        String person_name = parts[0];
 		        String movie_info = parts[1];
@@ -388,12 +387,25 @@ public class Importer {
 	
 	private void import_actors(File directory) throws IOException, SQLException 
 	{
-        reader = new ListFileReader(new File(directory, "actors.list"));
+    	Statement stmt = schema.createStatement();
+    	try {
+    		stmt.executeUpdate("ALTER TABLE Roles DROP FOREIGN KEY `roles_person`");
+    	} catch (SQLException ex) {
+    	}
+    	try {
+    		stmt.executeUpdate("ALTER TABLE Roles DROP FOREIGN KEY `roles_movie`");
+		} catch (SQLException ex) {
+		}
+    	stmt.getConnection().commit();
+    	stmt.close();
+
+		reader = new ListFileReader(new File(directory, "actors.list"));
         reader.skipUntil("^Name\\s+Titles\\s*$");
         reader.skipUntil("^-*\\s+-*\\s*$");
         ActorsImporterHelper helper = new ActorsImporterHelper();
         helper.doImport("m");
         helper.close();
+        reader.close();
 
         reader = new ListFileReader(new File(directory, "actresses.list"));
         reader.skipUntil("^Name\\s+Titles\\s*$");
@@ -401,6 +413,16 @@ public class Importer {
         ActorsImporterHelper helper2 = new ActorsImporterHelper();
         helper2.doImport("f");
         helper2.close();
+        reader.close();
+
+    	stmt = schema.createStatement();
+    	stmt.executeUpdate("DELETE FROM Roles WHERE movie = 0 OR person = 0");
+    	stmt.executeUpdate("ALTER TABLE MovieGenres ADD CONSTRAINT `roles_movie` " +
+    	"FOREIGN KEY (`movie`) REFERENCES `movies` (`movie_id`) ON DELETE CASCADE ON UPDATE NO ACTION, " +
+    	"ADD CONSTRAINT `roles_person` FOREIGN KEY (`actor`) REFERENCES `people` " +
+    	"(`person_id`) ON DELETE CASCADE ON UPDATE NO ACTION");
+    	stmt.getConnection().commit();        
+    	stmt.close();
 	}
 
 	private void import_directors(File directory) throws IOException, SQLException 
@@ -411,6 +433,7 @@ public class Importer {
         DirectorsImporterHelper helper = new DirectorsImporterHelper();
         helper.doImport(null);
         helper.close();
+        reader.close();
 	}
 	
     private static final Pattern datePattern = Pattern.compile("(?:(\\d{1,2})\\s+)??(?:(\\w+)\\s+)??(\\d{4}).*");
@@ -562,6 +585,9 @@ public class Importer {
 	        	i++;
 	        	if (i % 5000 == 0) {
 	        		System.out.print(i + ", ");
+	        		if (i % 50000 == 0) {
+	        			System.out.println();
+	        		}
 	        	}
 	        	batch.add(first_name, middle_name, last_name, real_name, nick_name, 
 					bdate, ddate, imdb_name);
@@ -570,6 +596,7 @@ public class Importer {
         
         newPeople.close();
         batch.close();
+        reader.close();
 	}
 	
 	public void createViews() throws SQLException {
@@ -584,10 +611,10 @@ public class Importer {
 
 	static public void main(String[] args) throws IOException, SQLException, ClassNotFoundException
 	{
-		Schema schema = new Schema("localhost:3306", "pony_imdb2", "root", "root");
+		Schema schema = new Schema("localhost:3306", "pony_imdb", "root", "root");
 		
 		Importer imp = new Importer(schema);
-		imp.importLists(new File("C:\\Users\\sebulba\\Desktop\\db"));
+		imp.importLists("d:\\imdb-files");
 		
 	}
 }

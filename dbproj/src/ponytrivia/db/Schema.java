@@ -102,6 +102,11 @@ public class Schema {
 		}
 		return qGetPersonByName.queryGetKey(personName);
 	}
+
+	public String getMovieNameByID(int movie_id) {
+		// TODO Auto-generated method stub
+		return null;
+	}
 }
 
 
