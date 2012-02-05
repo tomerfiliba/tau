@@ -11,17 +11,28 @@ import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+/**
+ * A utility class for reading IMDB's list files
+ */
 public class ListFileReader {
 	private FileInputStream fstream;
 	private BufferedReader reader;
 	public final String fileName;
 
+	/**
+	 * constructs a ListFileReader from the given File object
+	 * @param f
+	 * @throws IOException
+	 */
 	public ListFileReader(File f) throws IOException {
 		fileName = f.getName();
 		fstream = new FileInputStream(f);
 		reader = new BufferedReader(new InputStreamReader(fstream));
 	}
 
+	/**
+	 * closes the file and releases all resources
+	 */
 	public void close() {
 		if (reader != null) {
 			try {
@@ -39,27 +50,61 @@ public class ListFileReader {
 		reader = null;
 	}
 	
+	/**
+	 * returns the current file position
+	 * @return file position
+	 * @throws IOException
+	 */
 	public long getPosition() throws IOException {
 		return fstream.getChannel().position();
 	}
 	
+	/**
+	 * returns the file's size
+	 * @return file's size
+	 * @throws IOException
+	 */
 	public long getSize() throws IOException {
 		return fstream.getChannel().size();
 	}
 
+	/**
+	 * reads the next line from the line
+	 * @return the line or null on EOF
+	 * @throws IOException
+	 */
 	public String readLine() throws IOException {
 		return reader.readLine();
 	}
 
+	/**
+	 * skips all lines until (and including) the given pattern
+	 * @param regex
+	 * @throws IOException
+	 */
 	public void skipUntil(String regex) throws IOException {
 		readUntil(regex);
 	}
 
+	/**
+	 * reads a block of lines from the file, until the pattern is matched
+	 * @param regex
+	 * @return a list of lines, not including the last (matching) line
+	 * @throws IOException
+	 */
 	public List<String> readUntil(String regex) throws IOException {
-		return readUntil(regex, false);
+		return readUntil(regex, false, true);
 	}
 
-	public List<String> readUntil(String regex, boolean includeLastLine)
+	/**
+	 * reads a block of lines from the file, until the pattern is matched
+	 * @param regex
+	 * @param includeLastLine - whether to include the last (matching) line or not
+	 * @param throwOnEOF - whether to throw EOFException on EOF, if the pattern was not found
+	 * @return a list of lines
+	 * @throws IOException
+	 */
+	public List<String> readUntil(String regex, boolean includeLastLine, boolean throwOnEOF)
 			throws IOException {
 		ArrayList<String> lines = new ArrayList<String>();
 		String line;
@@ -68,8 +113,8 @@ public class ListFileReader {
 		while (true) {
 			line = readLine();
 			if (line == null) {
-				if (lines.isEmpty()) {
-					throw new EOFException("Not found");
+				if (lines.isEmpty() && throwOnEOF) {
+					throw new EOFException("Pattern not found");
 				}
 				break;
 			}
@@ -81,6 +126,9 @@ public class ListFileReader {
 				break;
 			}
 			lines.add(line);
+		}
+		if (lines.isEmpty()) {
+			return null;
 		}
 		return lines;
 	}

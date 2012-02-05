@@ -81,7 +81,7 @@ CREATE TABLE `highscores` (
   `score` int(11) NOT NULL,
   PRIMARY KEY (`highscore_id`),
   KEY `highscore_user` (`user`),
-  CONSTRAINT `highscore_user` FOREIGN KEY (`user`) REFERENCES `gameplayers` (`user_id`) ON DELETE NO ACTION ON UPDATE NO ACTION
+  CONSTRAINT `highscore_user` FOREIGN KEY (`user`) REFERENCES `gameplayers` (`user_id`) ON DELETE CASCADE ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -108,10 +108,10 @@ CREATE TABLE `moviedirectors` (
   PRIMARY KEY (`movie_director_id`),
   UNIQUE KEY `movie` (`movie`,`director`),
   KEY `md_movie` (`movie`),
-  KEY `md_director` (`director`)
-  -- CONSTRAINT `md_movie` FOREIGN KEY (`movie`) REFERENCES `movies` (`movie_id`) ON DELETE NO ACTION ON UPDATE NO ACTION,
-  -- CONSTRAINT `md_director` FOREIGN KEY (`director`) REFERENCES `people` (`person_id`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+  KEY `md_director` (`director`),
+  CONSTRAINT `md_movie` FOREIGN KEY (`movie`) REFERENCES `movies` (`movie_id`) ON DELETE CASCADE ON UPDATE NO ACTION,
+  CONSTRAINT `md_director` FOREIGN KEY (`director`) REFERENCES `people` (`person_id`) ON DELETE CASCADE ON UPDATE NO ACTION
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -137,10 +137,10 @@ CREATE TABLE `moviegenres` (
   PRIMARY KEY (`movie_genre_id`),
   UNIQUE KEY `genre` (`genre`,`movie`),
   KEY `mg_movie` (`movie`),
-  KEY `mg_genre` (`genre`)
-  -- CONSTRAINT `mg_movie` FOREIGN KEY (`movie`) REFERENCES `movies` (`movie_id`) ON DELETE NO ACTION ON UPDATE NO ACTION,
-  -- CONSTRAINT `mg_genre` FOREIGN KEY (`genre`) REFERENCES `genres` (`genre_id`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+  KEY `mg_genre` (`genre`),
+  CONSTRAINT `mg_movie` FOREIGN KEY (`movie`) REFERENCES `movies` (`movie_id`) ON DELETE CASCADE ON UPDATE NO ACTION,
+  CONSTRAINT `mg_genre` FOREIGN KEY (`genre`) REFERENCES `genres` (`genre_id`) ON DELETE CASCADE ON UPDATE NO ACTION
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -171,7 +171,7 @@ CREATE TABLE `movies` (
   PRIMARY KEY (`movie_id`),
   UNIQUE KEY `imdb_name_UNIQUE` (`imdb_name`),
   KEY `movie_year` (`year`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -203,7 +203,7 @@ CREATE TABLE `people` (
   `gender` enum('m','f') DEFAULT NULL,
   PRIMARY KEY (`person_id`),
   UNIQUE KEY `person_imdb_name_UNIQUE` (`imdb_name`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -231,10 +231,10 @@ CREATE TABLE `roles` (
   PRIMARY KEY (`role_id`),
   UNIQUE KEY `movie` (`movie`,`actor`),
   KEY `role_movie` (`movie`),
-  KEY `role_actor` (`actor`)
-  -- CONSTRAINT `role_movie` FOREIGN KEY (`movie`) REFERENCES `movies` (`movie_id`) ON DELETE NO ACTION ON UPDATE NO ACTION,
-  -- CONSTRAINT `role_actor` FOREIGN KEY (`actor`) REFERENCES `people` (`person_id`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+  KEY `role_actor` (`actor`),
+  CONSTRAINT `role_movie` FOREIGN KEY (`movie`) REFERENCES `movies` (`movie_id`) ON DELETE CASCADE ON UPDATE NO ACTION,
+  CONSTRAINT `role_actor` FOREIGN KEY (`actor`) REFERENCES `people` (`person_id`) ON DELETE CASCADE ON UPDATE NO ACTION
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --

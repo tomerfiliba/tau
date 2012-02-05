@@ -26,8 +26,14 @@ public class Schema {
 		return conn.prepareStatement(sql);
 	}
 	
+	/**
+	 * creates a batch object
+	 * @param sql query passed to prepareStatement
+	 * @return a Batch object; don't forget to close the batch when you're done
+	 * @throws SQLException
+	 */
 	public Batch createBatch(String sql) throws SQLException {
-		return new Batch(conn.prepareStatement(sql), 2000);
+		return new Batch(conn.prepareStatement(sql), 500);
 	}
 
 	public SimpleInsert createInsert(String table, boolean ignoreErrors, String... columns) throws SQLException {
@@ -68,17 +74,31 @@ public class Schema {
 	}
 	
 	private SimpleQuery qGetMovieByName = null;
+	
+	/**
+	 * returns the key of the given movie (by imdb_name)
+	 * @param movieName
+	 * @return DB key
+	 * @throws SQLException, NoResultsFound
+	 */
 	public int getMovieByName(String movieName) throws SQLException {
 		if (qGetMovieByName == null) {
-			qGetMovieByName = createQuery("movie_id", "movies", "imdb_name = ?");
+			qGetMovieByName = createQuery("movie_id", "movies", "imdb_name = ?", 1);
 		}
 		return qGetMovieByName.queryGetKey(movieName);
 	}
 
 	private SimpleQuery qGetPersonByName = null;
+	
+	/**
+	 * returns the key of the given person (by imdb_name)
+	 * @param personName
+	 * @return DB key
+	 * @throws SQLException, NoResultsFound
+	 */
 	public int getPersonByName(String personName) throws SQLException {
 		if (qGetPersonByName == null) {
-			qGetPersonByName = createQuery("person_id", "people", "imdb_name = ?");
+			qGetPersonByName = createQuery("person_id", "people", "imdb_name = ?", 1);
 		}
 		return qGetPersonByName.queryGetKey(personName);
 	}

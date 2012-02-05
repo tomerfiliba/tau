@@ -4,7 +4,6 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-import ponytrivia.db.exceptions.NoResultsFound;
 
 public class SimpleQuery extends Prepared {
 	public SimpleQuery(PreparedStatement pstmt) throws SQLException {

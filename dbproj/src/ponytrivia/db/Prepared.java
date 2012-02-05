@@ -6,7 +6,7 @@ import java.sql.SQLException;
 import java.sql.Types;
 
 public abstract class Prepared {
-	protected PreparedStatement pstmt;
+	public PreparedStatement pstmt;
 	protected boolean autoCommit;
 	
 	protected Prepared(PreparedStatement pstmt) {
@@ -67,8 +67,7 @@ public abstract class Prepared {
 			}
 			else if (arg instanceof String) {
 				pstmt.setString(i, ((String)arg));
-			}
-			else {
+			} else {
 				throw new IllegalArgumentException("can't add " + arg);
 			}
 			i++;

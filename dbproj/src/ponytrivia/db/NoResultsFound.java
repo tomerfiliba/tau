@@ -1,4 +1,4 @@
-package ponytrivia.db.exceptions;
+package ponytrivia.db;
 
 import java.sql.SQLException;
 
