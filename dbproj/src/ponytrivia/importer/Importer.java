@@ -86,10 +86,10 @@ public class Importer {
 		// import_genres(directory);
 		
 		System.out.printf("\n%s >> importing actors\n", (new java.util.Date()));
-		import_actors(directory);
+		//import_actors(directory);
 		
 		System.out.printf("\n%s >> importing directors\n", (new java.util.Date()));
-		import_directors(directory);
+		//import_directors(directory);
 		
 		System.out.printf("\n%s >> importing bios\n", (new java.util.Date()));
 		import_biographies(directory);
@@ -112,7 +112,7 @@ public class Importer {
         	"INSERT IGNORE INTO movies (imdb_name, type, name, episode, year) " +
         	"VALUES (?, ?, ?, ?, ?)");
         
-        int i = 0;
+        //int i = 0;
         while (true) {
         	String line = reader.readLine();
             if (line == null) {
@@ -152,13 +152,13 @@ public class Importer {
             	}
             	name = m.group(1);
             }
-            i++;
+            /*i++;
             if (i % 5000 == 0) {
         		System.out.print(i + ", ");
         		if (i % 50000 == 0) {
         			System.out.println();
         		}
-	        }
+	        }*/
             batch.add(imdb_name, tvshow ? "tv" : "film", name, episode, (year > 1900) ? year : null);
         }
         batch.close();
@@ -231,7 +231,7 @@ public class Importer {
     	stmt.getConnection().commit();
     	stmt.close();
         
-    	int i = 0;
+    	//int i = 0;
         while (true) {
         	String line = reader.readLine();
             if (line == null) {
@@ -260,14 +260,14 @@ public class Importer {
             	}
             	genresMap.put(genre, genre_id);
             }
-            i++;
+            /*i++;
             if (i % 5000 == 0) {
             	insertGenre.commit();
         		System.out.print(i + ", ");
         		if (i % 50000 == 0) {
         			System.out.println();
         		}
-	        }
+	        }*/
             batch.add(imdb_name, genre_id);
         }
         insertGenre.close();
@@ -292,6 +292,7 @@ public class Importer {
 	{
 		protected SimpleInsert people;
 		protected Batch batch = null;
+		protected int minEntries = 0;
 		
 		public ImporterHelper() throws SQLException {
 			people = schema.createInsert("people", true, "imdb_name", "gender");
@@ -328,13 +329,23 @@ public class Importer {
 		        String movie_info = parts[1];
 		        lines.add(0, movie_info);
 		        int person_id;
+				for (int j = lines.size() - 1; j >=0; j--) {
+					if (lines.get(j).charAt(0) == '"') {
+						// skip tv shows
+						lines.remove(j);
+					}
+				}
+				if (lines.size() < minEntries) {
+					// skips people with less than minEntries
+					continue;
+				}
 		        try {
 			        person_id = people.insert(person_name, gender);
 			        if (person_id < 0) {
 			        	person_id = schema.getPersonByName(person_name);
 			        }
 			        for (String ln : lines) {
-			        	addMovie(person_id, ln.trim());
+			        	addMovie(person_id, ln);
 			        }
 		        } catch (SQLException ex) {
 		        	throw ex;
@@ -342,7 +353,7 @@ public class Importer {
 			}
 		}
 		
-		abstract protected void addMovie(int person_id, String movie_info) throws SQLException;
+		abstract protected void addMovie(int person_id, String line) throws SQLException;
 	}
 	
 	private class ActorsImporterHelper extends ImporterHelper
@@ -351,6 +362,7 @@ public class Importer {
 				"(.+?)\\s+(?:\\[(.+?)\\])??\\s+(?:\\<(\\d+)\\>)??");
 		
 		public ActorsImporterHelper() throws SQLException {
+			minEntries = 6;
 			batch = schema.createBatch("INSERT IGNORE INTO roles (actor, movie, char_name, credit_pos) " +
 					"VALUES (?, (SELECT movie_id FROM Movies WHERE imdb_name = ? LIMIT 1), ?, ?)");
 		}
@@ -375,6 +387,7 @@ public class Importer {
 	private class DirectorsImporterHelper extends ImporterHelper
 	{
 		public DirectorsImporterHelper() throws SQLException {
+			minEntries = 3;
 			batch = schema.createBatch("INSERT IGNORE INTO MovieDirectors (director, movie) " +
 					"VALUES (?, (SELECT movie_id FROM Movies WHERE imdb_name = ? LIMIT 1))");
 		}
@@ -416,8 +429,8 @@ public class Importer {
         reader.close();
 
     	stmt = schema.createStatement();
-    	stmt.executeUpdate("DELETE FROM Roles WHERE movie = 0 OR person = 0");
-    	stmt.executeUpdate("ALTER TABLE MovieGenres ADD CONSTRAINT `roles_movie` " +
+    	stmt.executeUpdate("DELETE FROM Roles WHERE movie = 0 OR actor = 0");
+    	stmt.executeUpdate("ALTER TABLE Roles ADD CONSTRAINT `roles_movie` " +
     	"FOREIGN KEY (`movie`) REFERENCES `movies` (`movie_id`) ON DELETE CASCADE ON UPDATE NO ACTION, " +
     	"ADD CONSTRAINT `roles_person` FOREIGN KEY (`actor`) REFERENCES `people` " +
     	"(`person_id`) ON DELETE CASCADE ON UPDATE NO ACTION");
@@ -427,13 +440,32 @@ public class Importer {
 
 	private void import_directors(File directory) throws IOException, SQLException 
 	{
-        reader = new ListFileReader(new File(directory, "directors.list"));
+    	Statement stmt = schema.createStatement();
+    	try {
+    		stmt.executeUpdate("ALTER TABLE MovieDirectors DROP FOREIGN KEY `md_movie`");
+    	} catch (SQLException ex) {
+    	}
+    	try {
+    		stmt.executeUpdate("ALTER TABLE MovieDirectors DROP FOREIGN KEY `md_people`");
+		} catch (SQLException ex) {
+		}
+    	stmt.getConnection().commit();
+    	stmt.close();
+
+		reader = new ListFileReader(new File(directory, "directors.list"));
         reader.skipUntil("^\\s*Name\\s+Titles\\s*$");
         reader.skipUntil("^\\s*-+\\s+-+\\s*$");
         DirectorsImporterHelper helper = new DirectorsImporterHelper();
         helper.doImport(null);
         helper.close();
         reader.close();
+        
+        stmt = schema.createStatement();
+    	stmt.executeUpdate("DELETE FROM MovieDirectors WHERE movie = 0 OR director = 0");
+    	stmt.executeUpdate("ALTER TABLE MovieDirectors ADD CONSTRAINT `md_movie` " +
+    	"FOREIGN KEY (`movie`) REFERENCES `movies` (`movie_id`) ON DELETE CASCADE ON UPDATE NO ACTION, " +
+    	"ADD CONSTRAINT `md_people` FOREIGN KEY (`director`) REFERENCES `people` " +
+    	"(`person_id`) ON DELETE CASCADE ON UPDATE NO ACTION");
 	}
 	
     private static final Pattern datePattern = Pattern.compile("(?:(\\d{1,2})\\s+)??(?:(\\w+)\\s+)??(\\d{4}).*");
