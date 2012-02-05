@@ -4,6 +4,8 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
+import ponytrivia.db.exceptions.NoResultsFound;
+
 public class SimpleQuery extends Prepared {
 	public SimpleQuery(PreparedStatement pstmt) throws SQLException {
 		super(pstmt);
@@ -11,15 +13,15 @@ public class SimpleQuery extends Prepared {
 
 	public ResultSet query(Object... values) throws SQLException {
 		fill(values);
-		pstmt.executeUpdate();
+		pstmt.executeQuery();
 		return pstmt.getResultSet();
 	}
 	
-	public int queryGetFirst(Object... values) throws SQLException {
+	public int queryGetKey(Object... values) throws SQLException {
 		ResultSet rs = query(values);
 		try {
 			if (!rs.next()) {
-				throw new SQLException("empty result");
+				throw new NoResultsFound("Empty ResultSet " + pstmt);
 			}
 			return rs.getInt(1);
 		} finally {

@@ -1,20 +1,18 @@
 package ponytrivia.db;
 
-import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 
 
 public class Batch extends Prepared {
-	protected Connection conn;
 	protected int threshold;
 	protected int count;
 	
-	public Batch(Connection conn, PreparedStatement pstmt, int threshold) {
+	public Batch(PreparedStatement pstmt, int threshold) {
 		super(pstmt);
 		this.threshold = threshold;
 		this.count = 0;
-		this.conn = conn;
+		setAutoCommit(false);
 	}
 	
 	@Override
@@ -26,19 +24,19 @@ public class Batch extends Prepared {
 		super.close();
 	}
 
-	protected void flush() throws SQLException {
+	public void flush() throws SQLException {
 		if (count <= 0) {
 			return;
 		}
 		int res[] = pstmt.executeBatch();
 		for (int i = 0; i < res.length; i++) {
 			if (res[i] == PreparedStatement.EXECUTE_FAILED) {
-				conn.rollback();
+				//conn.rollback();
 				throw new SQLException("Batch operation " + i
 						+ " has failed with code " + res[i]);
 			}
 		}
-		conn.commit();
+		pstmt.getConnection().commit();
 		count = 0;
 	}
 	

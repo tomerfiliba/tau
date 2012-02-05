@@ -47,13 +47,13 @@ public class Importer {
 	public void import_all(File directory) throws IOException, SQLException 
 	{
 		reader = null;
-		System.out.println("movies");
-		import_movies(directory);
-		System.out.println("ratings");
-		import_ratings(directory);
-		System.out.println("genres");
-		import_genres(directory);
-		//import_actors(directory);
+		//System.out.println("movies");
+		//import_movies(directory);
+		//System.out.println("ratings");
+		//import_ratings(directory);
+		//System.out.println("genres");
+		//import_genres(directory);
+		import_actors(directory);
 		//import_directors(directory);
 		//import_biographies(directory);
 		reader = null;
@@ -120,11 +120,11 @@ public class Importer {
 	private void import_ratings(File directory) throws IOException, SQLException 
 	{
         reader = new ListFileReader(new File(directory, "ratings.list"));
-        reader.skipUntil("^New\\s+Distribution\\s+Votes\\s+Rank\\s+Title\\*$");
+        reader.skipUntil("New\\s+Distribution\\s+Votes\\s+Rank\\s+Title");
         
         final Pattern linePattern = Pattern.compile("^.+?\\s+(\\d+)\\s+(\\d\\.\\d)\\s+(.+)$");
         
-        Batch batch = schema.createBatch("UPDATE movies SET rating = ?, votes = ? WHERE id = ?");
+        Batch batch = schema.createBatch("UPDATE movies SET rating = ?, votes = ? WHERE movie_id = ?");
         
         while (true) {
         	String line = reader.readLine();
@@ -150,8 +150,12 @@ public class Importer {
             	rank = Double.parseDouble(m.group(2));
             } catch(NumberFormatException ex) {
             }
-            int movie_id = schema.getMovieByName(imdb_name);
-            batch.add(rank, votes, movie_id);
+            try {
+            	int movie_id = schema.getMovieByName(imdb_name);
+            	batch.add(rank, votes, movie_id);
+            } catch (SQLException ex) {
+            	//System.out.printf("ERR: %s\n", ex);
+            }
         }
         batch.close();
 	}
@@ -164,10 +168,10 @@ public class Importer {
         final Pattern linePattern = Pattern.compile("^(.+?)\\t\\s*(.+)$");
         HashMap<String, Integer> genresMap = new HashMap<String, Integer>();
         
-        Batch batch = schema.createBatch(
-        		"INSERT IGNORE movie_genres (movie_id, genre_id) VALUES (?, ?)");
+        Batch batch = schema.createBatch("INSERT IGNORE MovieGenres (movie, genre) VALUES (?, ?)");
     	SimpleInsert insertGenre = schema.createInsert("genres", true, "name");
     	SimpleQuery findGenre = schema.createQuery("genre_id", "genres", "name = ?");
+    	//SimpleInsert insertMG = schema.createInsert("MovieGenres", true, "movie", "genre");
         
         String prev_imdb_name = "";
         int prev_movie_id = -1;
@@ -191,20 +195,29 @@ public class Importer {
             	movie_id = prev_movie_id;
             }
             else {
-            	movie_id = schema.getMovieByName(imdb_name);
+            	try {
+            		movie_id = schema.getMovieByName(imdb_name);
+            	} catch (SQLException ex) {
+            		continue;
+            	}
             }
             int genre_id;
+            genre = genre.toLowerCase();
             if (genresMap.containsKey(genre)) {
             	genre_id = genresMap.get(genre);
             }
             else {
             	genre_id = insertGenre.insert(genre);
+            	insertGenre.commit();
             	if (genre_id < 0) {
-            		genre_id = findGenre.queryGetFirst(genre);
+            		genre_id = findGenre.queryGetKey(genre);
             	}
             	genresMap.put(genre, genre_id);
             }
+            //System.out.printf("%s / %s\n", movie_id, genre_id);
             batch.add(movie_id, genre_id);
+            //insertMG.insert(movie_id, genre_id);
+            
             prev_imdb_name = imdb_name;
             prev_movie_id = movie_id;
         }
@@ -238,6 +251,7 @@ public class Importer {
 		        	continue;
 		        }
 		        String person_name = parts[0];
+		        //System.out.println("person: " + person_name);
 		        String movie_info = parts[1];
 		        lines.add(0, movie_info);
 		        int person_id;
@@ -261,16 +275,17 @@ public class Importer {
 	private class ActorsImporterHelper extends ImporterHelper
 	{
 		private final Pattern moviePattern = Pattern.compile(
-				"(.+?)\\s+(:?\\[(.+?)\\])??\\s+(?:\\<(\\d+)\\>)??");
-		SimpleInsert roles = null;
+				"(.+?)\\s+(?:\\[(.+?)\\])??\\s+(?:\\<(\\d+)\\>)??");
+		Batch batch = null;
 		
 		public ActorsImporterHelper() throws SQLException {
-			roles = schema.createInsert("roles", true, "person_id", "movie_id", "character", "credit_pos");
+			batch = schema.createBatch("INSERT IGNORE INTO roles " +
+					"(actor, movie, char_name, credit_pos) VALUES (?, ?, ?, ?)");
 		}
 		
 		@Override
 		public void close() throws SQLException {
-			roles.close();
+			batch.close();
 			super.close();
 		}
 
@@ -287,29 +302,41 @@ public class Importer {
         		pos = Integer.parseInt(m.group(3));
         	} catch (NumberFormatException ex) {
         	}
-        	int movie_id = schema.getMovieByName(imdb_name);
-        	roles.insert(person_id, movie_id, character, (pos > 0) ? pos : null);
+        	int movie_id = -1;
+        	try {
+        		movie_id = schema.getMovieByName(imdb_name);
+        	} catch (SQLException ex) {
+        		return;
+        	}
+        	//System.out.printf("%s / %s\n", character, pos);
+        	batch.add(person_id, movie_id, character, (pos > 0) ? pos : null);
 		}
 	}
 
 	private class DirectorsImporterHelper extends ImporterHelper
 	{
-		SimpleInsert directors = null;
+		Batch batch = null;
 		
 		public DirectorsImporterHelper() throws SQLException {
-			directors = schema.createInsert("roles", true, "person_id", "movie_id", "character", "credit_pos");
+			batch = schema.createBatch("INSERT IGNORE INTO directors (director, movie) " +
+					"VALUES (?, ?, ?, ?)");
 		}
 		
 		@Override
 		public void close() throws SQLException {
-			directors.close();
+			batch.close();
 			super.close();
 		}
 
 		@Override
 		protected void addMovie(int person_id, String imdb_name) throws SQLException {
-        	int movie_id = schema.getMovieByName(imdb_name);
-        	directors.insert(person_id, movie_id);
+			int movie_id = -1;
+			try {
+				movie_id = schema.getMovieByName(imdb_name);
+			} catch (SQLException ex) {
+				return;
+			}
+			batch.add(person_id, movie_id);
 		}
 	}
 	

@@ -9,6 +9,7 @@ public class SimpleInsert extends Prepared
 {
 	public SimpleInsert(PreparedStatement pstmt) throws SQLException {
 		super(pstmt);
+		setAutoCommit(true);
 	}
 	
 	public int insert(Object... values) throws SQLException {

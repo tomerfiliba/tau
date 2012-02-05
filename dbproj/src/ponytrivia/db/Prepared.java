@@ -7,19 +7,29 @@ import java.sql.Types;
 
 public abstract class Prepared {
 	protected PreparedStatement pstmt;
+	protected boolean autoCommit;
 	
-	protected Prepared() {
-		this.pstmt = null;
-	}
 	protected Prepared(PreparedStatement pstmt) {
 		this.pstmt = pstmt;
+		this.autoCommit = false;
 	}
 	
 	public void close() throws SQLException {
 		if (pstmt != null) {
+			if (autoCommit) {
+				pstmt.getConnection().commit();
+			}
 			pstmt.close();
 			pstmt = null;
 		}
+	}
+	
+	public void commit() throws SQLException {
+		pstmt.getConnection().commit();
+	}
+	
+	public void setAutoCommit(boolean value) {
+		autoCommit = value;
 	}
 	
 	@Override

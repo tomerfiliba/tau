@@ -28,7 +28,7 @@ DROP TABLE IF EXISTS `gameplayers`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `gameplayers` (
-  `user_id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL AUTO_INCREMENT,
   `username` varchar(30) NOT NULL,
   PRIMARY KEY (`user_id`),
   UNIQUE KEY `username_UNIQUE` (`username`)
@@ -76,7 +76,7 @@ DROP TABLE IF EXISTS `highscores`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `highscores` (
-  `highscore_id` int(11) NOT NULL,
+  `highscore_id` int(11) NOT NULL AUTO_INCREMENT,
   `user` int(11) NOT NULL,
   `score` int(11) NOT NULL,
   PRIMARY KEY (`highscore_id`),
@@ -102,7 +102,7 @@ DROP TABLE IF EXISTS `moviedirectors`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `moviedirectors` (
-  `movie_director_id` int(11) NOT NULL,
+  `movie_director_id` int(11) NOT NULL AUTO_INCREMENT,
   `movie` int(11) NOT NULL,
   `director` int(11) NOT NULL,
   PRIMARY KEY (`movie_director_id`),
@@ -131,7 +131,7 @@ DROP TABLE IF EXISTS `moviegenres`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `moviegenres` (
-  `movie_genre_id` int(11) NOT NULL,
+  `movie_genre_id` int(11) NOT NULL AUTO_INCREMENT,
   `genre` int(11) NOT NULL,
   `movie` int(11) NOT NULL,
   PRIMARY KEY (`movie_genre_id`),
@@ -166,7 +166,7 @@ CREATE TABLE `movies` (
   `name` varchar(100) DEFAULT NULL,
   `episode` varchar(100) DEFAULT NULL,
   `year` smallint(6) DEFAULT NULL,
-  `rating` decimal(1,1) DEFAULT NULL,
+  `rating` double DEFAULT NULL,
   `votes` int(11) DEFAULT NULL,
   PRIMARY KEY (`movie_id`),
   UNIQUE KEY `imdb_name_UNIQUE` (`imdb_name`),
@@ -223,7 +223,7 @@ DROP TABLE IF EXISTS `roles`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `roles` (
-  `role_id` int(11) NOT NULL,
+  `role_id` int(11) NOT NULL AUTO_INCREMENT,
   `movie` int(11) NOT NULL,
   `actor` int(11) NOT NULL,
   `character` varchar(100) DEFAULT NULL,

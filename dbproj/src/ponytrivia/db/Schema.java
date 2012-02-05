@@ -3,12 +3,8 @@ package ponytrivia.db;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
-
-import ponytrivia.db.exceptions.MovieNotFound;
-import ponytrivia.db.exceptions.PersonNotFound;
 
 
 public class Schema {
@@ -31,14 +27,14 @@ public class Schema {
 	}
 	
 	public Batch createBatch(String sql) throws SQLException {
-		return new Batch(conn, conn.prepareStatement(sql), 2000);
+		return new Batch(conn.prepareStatement(sql), 2000);
 	}
 
 	public SimpleInsert createInsert(String table, boolean ignoreErrors, String... columns) throws SQLException {
 		String cols = "";
 		String temp = "";
 		for (int i = 0; i < columns.length; i++) {
-			cols += columns[0].toString();
+			cols += columns[i].toString();
 			temp += "?";
 			if (i != columns.length - 1) {
 				cols += ", ";
@@ -48,6 +44,10 @@ public class Schema {
 		return new SimpleInsert(conn.prepareStatement("INSERT " + (ignoreErrors ? "IGNORE" : "") + " INTO " + 
 				table + " (" + cols + ") VALUES (" + temp +")", 
 				Statement.RETURN_GENERATED_KEYS));
+	}
+	public SimpleUpdate createUpdate(String table, boolean ignoreErrors, String sets, String where) throws SQLException {
+		return new SimpleUpdate(conn.prepareStatement("UPDATE " + (ignoreErrors ? "IGNORE " : "") + 
+				table + " SET " + sets + " WHERE " + where));
 	}
 
 	public SimpleQuery createQuery(String columns, String tables, String where) throws SQLException {
@@ -67,41 +67,20 @@ public class Schema {
 				" WHERE " + where + " ORDER BY " + orderby + " LIMIT " + limit));
 	}
 	
-	public SimpleUpdate createUpdate(String table, boolean ignoreErrors, String sets, String where) throws SQLException {
-		return new SimpleUpdate(conn.prepareStatement("UPDATE " + (ignoreErrors ? "IGNORE" : "") + 
-				" SET " + sets + " WHERE " + where));
-	}
-	
 	private SimpleQuery qGetMovieByName = null;
 	public int getMovieByName(String movieName) throws SQLException {
 		if (qGetMovieByName == null) {
 			qGetMovieByName = createQuery("movie_id", "movies", "imdb_name = ?");
 		}
-		ResultSet rs = qGetMovieByName.query(movieName);
-		try {
-			if (!rs.next()) {
-				throw new MovieNotFound(movieName);
-			}
-			return rs.getInt(1);
-		} finally {
-			rs.close();
-		}
+		return qGetMovieByName.queryGetKey(movieName);
 	}
 
 	private SimpleQuery qGetPersonByName = null;
 	public int getPersonByName(String personName) throws SQLException {
 		if (qGetPersonByName == null) {
-			qGetPersonByName = createQuery("person_id", "movies", "imdb_name = ?");
+			qGetPersonByName = createQuery("person_id", "people", "imdb_name = ?");
 		}
-		ResultSet rs = qGetMovieByName.query(personName);
-		try {
-			if (!rs.next()) {
-				throw new PersonNotFound(personName);
-			}
-			return rs.getInt(1);
-		} finally {
-			rs.close();
-		}
+		return qGetPersonByName.queryGetKey(personName);
 	}
 }
 
