@@ -214,7 +214,7 @@ public class Schema {
 		System.out.println(new java.util.Date() + " >> " + obj);
 	}
 
-	public void createPopularTables(boolean force) throws SQLException {
+	public void buildPopularTables(boolean force) throws SQLException {
 		Statement stmt = createStatement();
 
 		if (force) {

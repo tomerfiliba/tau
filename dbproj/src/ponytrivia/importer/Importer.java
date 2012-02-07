@@ -68,7 +68,7 @@ public class Importer {
 		return new ImportStatus(reader.fileName, reader.getSize(), reader.getPosition());
 	}
 
-	public void importLists(String directory) throws IOException, SQLException {
+	public void importLists(String directory) throws Exception {
 		importLists(new File(directory));
 	}
 
@@ -79,7 +79,7 @@ public class Importer {
 	 * @throws IOException
 	 * @throws SQLException
 	 */
-	public void importLists(File directory) throws IOException, SQLException 
+	public void importLists(File directory) throws Exception
 	{
 		reader = null;
 		try {
@@ -100,15 +100,15 @@ public class Importer {
 			
 			debug("importing bios");
 			import_biographies(directory);
+			
+			debug("committing...");
+			schema.commit();
 			debug("done");
 		}
-		catch (IOException ex) {
+		catch (Exception ex) {
 			// on error - rollback
-			schema.rollback();
-			throw ex;
-		}
-		catch (SQLException ex) {
-			// on error - rollback
+			ex.printStackTrace();
+			debug("rollback...");
 			schema.rollback();
 			throw ex;
 		}
@@ -190,7 +190,7 @@ public class Importer {
         }
         batch.close();
         reader.close();
-		schema.commit();
+		//schema.commit();
 	}
 
 	private void import_ratings(File directory) throws IOException, SQLException 
@@ -231,7 +231,7 @@ public class Importer {
         }
         batch.close();
         reader.close();
-		schema.commit();
+		//schema.commit();
 	}
 
 	private void import_genres(File directory) throws IOException, SQLException 
@@ -304,7 +304,7 @@ public class Importer {
 		"FOREIGN KEY (`genre`) REFERENCES `genres` (`genre_id`) " +
 		"ON DELETE CASCADE ON UPDATE NO ACTION");
     	stmt.close();
-		schema.commit();
+		//schema.commit();
         
         reader.close();
 	}
@@ -500,7 +500,7 @@ public class Importer {
     	"ADD CONSTRAINT `roles_person` FOREIGN KEY (`actor`) REFERENCES `people` " +
     	"(`person_id`) ON DELETE CASCADE ON UPDATE NO ACTION");
     	stmt.close();
-    	schema.commit();
+    	//schema.commit();
 	}
 
 	private void import_directors(File directory) throws IOException, SQLException 
@@ -534,7 +534,7 @@ public class Importer {
     	"ADD CONSTRAINT `md_people` FOREIGN KEY (`director`) REFERENCES `people` " +
     	"(`person_id`) ON DELETE CASCADE ON UPDATE NO ACTION");
     	stmt.close();
-		schema.commit();
+		//schema.commit();
 	}
 	
     private static final Pattern datePattern = Pattern.compile("(?:(\\d{1,2})\\s+)??(?:(\\w+)\\s+)??(\\d{4}).*");
@@ -664,20 +664,21 @@ public class Importer {
         
         batch.close();
         reader.close();
-		schema.commit();
+		//schema.commit();
 	}
 
 	private void debug(Object obj) {
 		System.out.println(new java.util.Date() + " >> " + obj);
 	}
 
-	static public void main(String[] args) throws IOException, SQLException, ClassNotFoundException
+	/*static public void main(String[] args) throws Exception
 	{
 		Schema schema = new Schema("localhost:3306", "dbmysql10", "root", "root");
 		
 		Importer imp = new Importer(schema);
 		imp.importLists(new File("d:\\imdb-files"));
-	}
+		schema.buildPopularTables(false);
+	}*/
 }
 
 

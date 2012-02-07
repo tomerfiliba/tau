@@ -74,7 +74,7 @@ public class GameScreen {
 	 */
 	public static void main(String[] args) throws Exception {
 		Schema schema = new Schema("localhost:3306", "dbmysql102", "root", "root");
-		schema.createPopularTables(false);
+		schema.buildPopularTables(false);
 		QuestionRegistry qr = new QuestionRegistry(schema);
 		
 		GameScreen window = new GameScreen(qr);
@@ -256,11 +256,6 @@ public class GameScreen {
 		lblPony.setAlignment(SWT.CENTER);
 		lblPony.setImage(imgKitty1);
 		lblGrass.setBackground(SWTResourceManager.getColor(0, 204, 102));
-		
-		/*Scale scale = new Scale(composite_4, SWT.NONE);
-		scale.setEnabled(false);
-		scale.setSelection(50);
-		scale.setBounds(10, 101, 589, 48);*/
 		
 		//////////////////////////////////////////////////////////////////////////////////0/////////
 
