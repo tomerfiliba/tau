@@ -8,7 +8,7 @@ public class SimpleUpdate extends Prepared
 {
 	public SimpleUpdate(PreparedStatement pstmt) throws SQLException {
 		super(pstmt);
-		setAutoCommit(true);
+		//setAutoCommit(true);
 	}
 	
 	public void update(Object... values) throws SQLException {

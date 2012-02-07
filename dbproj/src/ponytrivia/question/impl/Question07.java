@@ -1,10 +1,10 @@
 package ponytrivia.question.impl;
 
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 
 import ponytrivia.db.Schema;
+import ponytrivia.db.SimpleQuery;
 import ponytrivia.question.QuestionGenerator;
 import ponytrivia.question.QuestionInfo;
 
@@ -17,31 +17,30 @@ public class Question07 extends QuestionGenerator {
 		super(schema);
 	}
 
+	private SimpleQuery chooseMost = null;
+	private SimpleQuery chooseWrongs = null;
+
 	@Override
 	public QuestionInfo generate() throws SQLException {
-		ResultSet rs = schema
-				.executeQuery("select M.movie_id from filtered_movies as M "
-						+ "where M.rating >= 8.0 order by rand() limit 1");
+		if (chooseMost == null) {
+			chooseMost = schema.createQuery("FM.movie_id", "FilteredMovies AS FM, Movies AS M",
+					"FM.movie_id = M.movie_id AND M.rating >= 8.5", "rand()", 1);
+		}
+		if (chooseWrongs == null) {
+			chooseWrongs = schema.createQuery("FM.movie_id", "FilteredMovies AS FM, Movies AS M",
+					"FM.movie_id = M.movie_id AND M.rating < 8.5", "rand()", 3);
+		}
 
-		rs.next();
-		int mid = rs.getInt(1);
-		String movie_name = schema.getPerson(mid);
-		rs.close();
-
-		rs = schema
-				.executeQuery("select M.movie_id from filtered_movies as M "
-						+ "where M.rating < 8.0 order by rand() limit 3");
-
+		int movie_id = chooseMost.queryGetKey();
+		String movie_name = schema.getMovieName(movie_id);
+		
+		int[][] wrongs = chooseWrongs.queryGetInts(3, 1);
 		ArrayList<String> wrongAnswers = new ArrayList<String>();
 		for (int i = 0; i < 3; i++) {
-			rs.next();
-			mid = rs.getInt(1);
-			wrongAnswers.add(schema.getPerson(mid));
+			wrongAnswers.add(schema.getMovieName(wrongs[i][0]));
 		}
-		rs.close();
 
-		return new QuestionInfo(
-				"Which of the following movies has the highest rating on IMDB?",
+		return new QuestionInfo("Which of the following movies is the most popular on IMDB?",
 				movie_name, wrongAnswers);
 	}
 

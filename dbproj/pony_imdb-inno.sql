@@ -1,6 +1,6 @@
 -- MySQL dump 10.13  Distrib 5.5.17, for Win32 (x86)
 --
--- Host: localhost    Database: pony_imdb
+-- Host: localhost    Database: DbMysql10
 -- ------------------------------------------------------
 -- Server version	5.5.17
 
@@ -19,9 +19,11 @@
 -- Table structure for table `gameplayers`
 --
 
-DROP SCHEMA IF EXISTS `pony_imdb`;
-CREATE SCHEMA `pony_imdb`;
-USE `pony_imdb`;
+-- DB password: "foobar"
+
+DROP SCHEMA IF EXISTS `DbMysql10`;
+CREATE SCHEMA `DbMysql10`;
+USE `DbMysql10`;
 
 DROP TABLE IF EXISTS `gameplayers`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -161,7 +163,7 @@ DROP TABLE IF EXISTS `movies`;
 CREATE TABLE `movies` (
   `movie_id` int(11) NOT NULL AUTO_INCREMENT,
   `imdb_name` varchar(100) NOT NULL,
-  `type` enum('tv','film') DEFAULT NULL,
+  `is_film` TINYINT(1) DEFAULT 0,
   `name` varchar(100) DEFAULT NULL,
   `episode` varchar(100) DEFAULT NULL,
   `year` smallint(6) DEFAULT NULL,
@@ -169,7 +171,10 @@ CREATE TABLE `movies` (
   `votes` int(11) DEFAULT NULL,
   PRIMARY KEY (`movie_id`),
   UNIQUE KEY `imdb_name_UNIQUE` (`imdb_name`),
-  KEY `movie_year` (`year`)
+  INDEX `movie_is_film` (`is_film` ASC),
+  INDEX `movie_year` (`year`),
+  INDEX `movie_rating` (`rating` ASC), 
+  INDEX `movie_votes` (`votes` ASC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

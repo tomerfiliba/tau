@@ -12,7 +12,7 @@ public class Batch extends Prepared {
 		super(pstmt);
 		this.threshold = threshold;
 		this.count = 0;
-		setAutoCommit(false);
+		//setAutoCommit(false);
 	}
 	
 	@Override
@@ -36,7 +36,7 @@ public class Batch extends Prepared {
 						+ " has failed with code " + res[i]);
 			}
 		}
-		pstmt.getConnection().commit();
+		//pstmt.getConnection().commit();
 		count = 0;
 	}
 	

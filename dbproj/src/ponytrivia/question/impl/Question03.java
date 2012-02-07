@@ -1,6 +1,5 @@
 package ponytrivia.question.impl;
 
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Calendar;
@@ -9,6 +8,7 @@ import java.util.Random;
 import java.util.Set;
 
 import ponytrivia.db.Schema;
+import ponytrivia.db.SimpleQuery;
 import ponytrivia.question.QuestionGenerator;
 import ponytrivia.question.QuestionInfo;
 
@@ -34,18 +34,20 @@ public class Question03 extends QuestionGenerator {
 		}
 		return s;
 	}
-	
+
+	private SimpleQuery chooseMovie = null;
+
 	@Override
 	public QuestionInfo generate() throws SQLException {
-		ResultSet rs = schema.executeQuery("select M.idmovie, M.year from filtered_movie as M " +
-			"WHERE M.year is not null and M.year > 1900 " +
-			"ORDER BY RAND() LIMIT 1");
-
-		rs.next();
-		int movie_id =  rs.getInt(1);
-		Integer year = rs.getInt(2);
+		if (chooseMovie == null) {
+			chooseMovie = schema.createQuery("FM.movie_id, M.year", "FilteredMovies as FM, Movies as M",
+				"FM.movie_id = M.movie_id", "rand()", 1);
+		}
+		int[] res = chooseMovie.queryGetIntsSingleRow(2);
+		int movie_id =  res[0];
+		Integer year = res[1];
 		
-		String movie_name = schema.getMovie(movie_id);
+		String movie_name = schema.getMovieName(movie_id);
 		ArrayList<String> wrong_answers = new ArrayList<String>();
 		for (Integer r : getRands(year, -6, 6)) {
 			wrong_answers.add(r.toString());

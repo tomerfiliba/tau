@@ -10,12 +10,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.zip.GZIPInputStream;
 
 /**
  * A utility class for reading IMDB's list files
  */
 public class ListFileReader {
 	private FileInputStream fstream;
+	private GZIPInputStream gzstream;
 	private BufferedReader reader;
 	public final String fileName;
 
@@ -25,9 +27,19 @@ public class ListFileReader {
 	 * @throws IOException
 	 */
 	public ListFileReader(File f) throws IOException {
+		if (!f.exists()) {
+			f = new File(f.getPath() + ".gz");
+		}
 		fileName = f.getName();
 		fstream = new FileInputStream(f);
-		reader = new BufferedReader(new InputStreamReader(fstream));
+		if (fileName.endsWith(".gz") || fileName.endsWith(".gzip")) {
+			gzstream = new GZIPInputStream(fstream);
+			reader = new BufferedReader(new InputStreamReader(gzstream));
+		}
+		else {
+			gzstream = null;
+			reader = new BufferedReader(new InputStreamReader(fstream));
+		}
 	}
 
 	/**
@@ -40,6 +52,12 @@ public class ListFileReader {
 			} catch (IOException ex) {
 			}
 		}
+		if (gzstream != null) {
+			try {
+				gzstream.close();
+			} catch (IOException ex) {
+			}
+		}
 		if (fstream != null) {
 			try {
 				fstream.close();
@@ -47,6 +65,7 @@ public class ListFileReader {
 			}
 		}
 		fstream = null;
+		gzstream = null;
 		reader = null;
 	}
 	

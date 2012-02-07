@@ -1,50 +1,43 @@
 package ponytrivia.question.impl;
 
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 
 import ponytrivia.db.Schema;
+import ponytrivia.db.SimpleQuery;
 import ponytrivia.question.QuestionGenerator;
 import ponytrivia.question.QuestionInfo;
 
 /*
- * Which of the following is the latest movie directed by <director X>?
- * Choose 4 movies by director X
+ * Which of the following actors is the oldest?
+ * Choose 4 living actors, ordered by age
+ * Living = no date of death
  */
 public class Question08 extends QuestionGenerator {
 	public Question08(Schema schema) {
 		super(schema);
 	}
 
+	private SimpleQuery chooseActors = null;
+
 	@Override
 	public QuestionInfo generate() throws SQLException {
-		ResultSet rs = schema
-				.executeQuery("select * from (select distinct D.person_id, M.movie_id, M.year "
-						+ "from filtered_directors as D, filtered_movies as M "
-						+ "where D.movie_id = M.movie_id and M.year > 1930 "
-						+ "group by D.person_id "
-						+ "having count(M.movie_id) >= 4 "
-						+ "order by rand() limit 4) as X" +
-						" order by X.year desc");
-
-		ArrayList<String> wrongAnswers = new ArrayList<String>();
-		rs.next();
-		int pid = rs.getInt(1);
-		int mid = rs.getInt(2);
-		String person_name = schema.getPerson(pid);
-		String movie_name = schema.getPerson(mid);
-		rs.close();
-
-		for (int i = 0; i < 3; i++) {
-			rs.next();
-			mid = rs.getInt(2);
-			wrongAnswers.add(schema.getMovie(mid));
+		if (chooseActors == null) {
+			chooseActors = schema.createQuery("X.actor", "(SELECT FA.actor, P.birth_date FROM " +
+					"FilteredActors AS FA, People AS P WHERE FA.actor = P.person_id AND " +
+					"P.birth_date IS NOT NULL AND P.death_date IS NULL ORDER BY rand() LIMIT 4) AS X",
+					"true", "X.birth_date ASC");
 		}
-		rs.close();
+		
+		int[][] res = chooseActors.queryGetInts(4, 1);
+		ArrayList<String> wrongAnswers = new ArrayList<String>();
+		String person_name = schema.getPersonName(res[0][0]);
 
-		return new QuestionInfo(
-				"Which of the following is the latest movie directed by " + person_name +"?",
-				movie_name, wrongAnswers);
+		for (int i = 1; i < 4; i++) {
+			wrongAnswers.add(schema.getPersonName(res[i][0]));
+		}
+
+		return new QuestionInfo("Which of the following actors is the oldest?",
+				person_name, wrongAnswers);
 	}
 }

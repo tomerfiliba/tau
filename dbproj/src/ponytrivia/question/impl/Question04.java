@@ -1,10 +1,10 @@
 package ponytrivia.question.impl;
 
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 
 import ponytrivia.db.Schema;
+import ponytrivia.db.SimpleQuery;
 import ponytrivia.question.QuestionGenerator;
 import ponytrivia.question.QuestionInfo;
 
@@ -17,37 +17,35 @@ public class Question04 extends QuestionGenerator {
 		super(schema);
 	}
 
+	private SimpleQuery chooseMovie = null;
+	private SimpleQuery chooseWrongs = null;
+
 	@Override
 	public QuestionInfo generate() throws SQLException {
-		ResultSet rs = schema.executeQuery("select M.idmovie from filtered_movie as M " +
-			"ORDER BY RAND() LIMIT 1");
-
-		rs.next();
-		int movie_id =  rs.getInt(1);
-		String movie_name = schema.getMovie(movie_id);
-		rs.close();
+		if (chooseMovie == null) {
+			chooseMovie = schema.createQuery("FM.movie_id, D.director", "FilteredMovies as FM, " +
+					"MovieDirectors as D", "FM.movie_id = D.movie", "rand()", 1);
+		}
+		if (chooseWrongs == null) {
+			chooseWrongs = schema.createQuery("director", "PopularDirectors as PD",
+				"PD.director NOT IN (SELECT MD.director FROM MovieDirectors as MD WHERE MD.movie = ?)",
+				"RAND()", 3);
+		}
 		
-		rs = schema.executeQuery("select D.director from Movies_directors as D " +
-				"WHERE D.movie = " + movie_id + ' ' +
-				"ORDER BY RAND() LIMIT 1");
-		rs.next();
-		int director_id = rs.getInt(1);
-		rs.close();
+		int[] res = chooseMovie.queryGetIntsSingleRow(2);
+		int movie_id = res[0];
+		int director_id = res[1];
+		String movie_name = schema.getMovieName(movie_id);
+		String director_name = schema.getPersonName(director_id);
 		
-		rs = schema.executeQuery("SELECT PD.director from Filtered_directors as PD " +
-				"WHERE PD.director NOT IN (SELECT D.director FROM Movies_directors as D " +
-				"                          WHERE D.movie = " + movie_id + ") " +
-				"ORDER BY RAND() LIMIT 3");
-		
+		int[][] wrongs = chooseWrongs.queryGetInts(3, 1, movie_id);
 		ArrayList<String> wrongAnswers = new ArrayList<String>();
-		for (int i=0; i<3; i++){
-			rs.next();
-			int pid = rs.getInt(1);
-			wrongAnswers.add(schema.getPerson(pid));
+		for (int[] r : wrongs){
+			wrongAnswers.add(schema.getPersonName(r[0]));
 		}
 		
 		return new QuestionInfo("Who is the director of " + movie_name + "?", 
-				schema.getPerson(director_id), wrongAnswers); 
+				director_name, wrongAnswers); 
 	}
 
 }

@@ -14,6 +14,8 @@ import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.UnsupportedAudioFileException;
+import javax.sound.midi.MidiSystem;
+import javax.sound.midi.Sequence;
 
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Event;
@@ -70,14 +72,13 @@ public class GameScreen {
 	 * Launch the application.
 	 * @param args
 	 */
-	public static void main(String[] args) {
-		/*try {
-			Schema schema = new Schema("localhost:3306", "root", "root");
-			GameScreen window = new GameScreen(new QuestionRegistry(schema));
-			window.open();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}*/
+	public static void main(String[] args) throws Exception {
+		Schema schema = new Schema("localhost:3306", "dbmysql102", "root", "root");
+		schema.createPopularTables(false);
+		QuestionRegistry qr = new QuestionRegistry(schema);
+		
+		GameScreen window = new GameScreen(qr);
+		window.open();
 	}
 	
 	public GameScreen(QuestionRegistry questionRegistry)
@@ -114,8 +115,6 @@ public class GameScreen {
 		shlPonyTrivia.setText("Pony Trivia");
 		shlPonyTrivia.setLayout(new FormLayout());
 		shlPonyTrivia.setMinimumSize(shlPonyTrivia.getSize());
-		
-		bgMusicThread.start();
 		
 		final Label lblFlower = new Label(shlPonyTrivia, SWT.NONE);
 		lblFlower.setBackground(SWTResourceManager.getColor(255, 240, 245));
@@ -301,12 +300,7 @@ public class GameScreen {
 			public void run()
 			{
 				QuestionInfo qi;
-				try {
-					qi = questionRegistry.getQuestion();
-				} catch (SQLException ex) {
-					ex.printStackTrace();
-					return;
-				}
+				qi = questionRegistry.getQuestion();
 				lblQuestionText.setText(qi.questionText);
 				for (int i = 0; i < answerButtons.length; i++) {
 					Button btn = answerButtons[i];
@@ -452,6 +446,9 @@ public class GameScreen {
 		display.timerExec(1000, timer);
 		
 		btnNext.addSelectionListener(answerQuestion);
+		
+		bgMusicThread.setDaemon(true);
+		bgMusicThread.start();
 	}
 	
 	public static class BgMusicThread extends Thread
@@ -460,7 +457,7 @@ public class GameScreen {
 		
 		public void run()
 		{
-			InputStream ins = GameScreen.class.getResourceAsStream("res/nyan.wav");
+			InputStream ins = GameScreen.class.getResourceAsStream("res/bgmusic.wav");
 			AudioInputStream audioIn;
 			//System.out.println(ins);
 			

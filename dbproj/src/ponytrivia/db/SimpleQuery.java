@@ -27,4 +27,28 @@ public class SimpleQuery extends Prepared {
 			rs.close();
 		}
 	}
+	
+	public int[][] queryGetInts(int rows, int cols, Object... values) throws SQLException {
+		ResultSet rs = query(values);
+		int[][] results = new int[rows][cols];
+		
+		try {
+			for (int i = 0; i < rows; i++) {
+				if (!rs.next()) {
+					throw new NoResultsFound("Not enough rows: " + pstmt);
+				}
+				for (int j = 0; j < cols; j++) {
+					results[i][j] = rs.getInt(1 + j);
+				}
+			}
+			return results;
+		} finally {
+			rs.close();
+		}
+	}
+
+	public int[] queryGetIntsSingleRow(int cols, Object... values) throws SQLException {
+		return queryGetInts(1, cols, values)[0];
+	}
+	
 }

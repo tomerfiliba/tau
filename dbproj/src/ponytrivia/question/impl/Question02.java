@@ -1,6 +1,5 @@
 package ponytrivia.question.impl;
 
-import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 
@@ -19,37 +18,36 @@ public class Question02 extends QuestionGenerator {
 	}
 	
 	private SimpleQuery chooseActor = null;
+	private SimpleQuery chooseWrong = null;
 	
 	@Override
 	public QuestionInfo generate() throws SQLException {
 		if (chooseActor == null) {
 			chooseActor = schema.createQuery("P.person_id, M.movie_id", 
-				"People as P, Roles as R, FilteredMovie as M", 
+				"People as P, Roles as R, FilteredMovies as M", 
 				"P.person_id = R.actor and R.movie = M.movie_id", "rand()", 1);
 		}
-		
-		ResultSet rs = chooseActor.query();
-		rs.next();
-		int person_id = rs.getInt(1);
-		int movie_id = rs.getInt(2);
-		String right_answer = 
-		
-		String right_answer = schema.getMovieNameByID(movie_id);
-		String person = schema.getPerson(person_id);
-
-		rs = schema.executeQuery("select M.idmovie from filtered_movie as M " +
-				"where M.idmovie not in ( " +
-				"   select M.idmovie from movie as M, role as R, Person as P " +
-				"    where M.idmovie = R.movie_id and R.person_id = " + person_id + ") " +
-				"order by rand() " +
-				"limit 3");
-		ArrayList<String> wrong_answers = new ArrayList<String>();
-		while (rs.next()) {
-			movie_id = rs.getInt(1);
-			wrong_answers.add(schema.getMovie(movie_id));
+		if (chooseWrong == null) {
+			chooseWrong = schema.createQuery("FM.movie_id", "FilteredMovies as FM", 
+					"FM.movie_id NOT IN (SELECT M.movie_id FROM Movies AS M, Roles AS R, People as P " +
+							"WHERE M.movie_id = R.movie AND R.actor = ?)", 
+					"RAND()", 3);
 		}
 		
-		return new QuestionInfo("In which of the following movies did " + person + " play?", 
+		int res[] = chooseActor.queryGetIntsSingleRow(2);
+		int person_id = res[0];
+		int movie_id = res[1];
+		String person_name = schema.getPersonName(person_id);
+		String right_answer = schema.getMovieName(movie_id);
+
+		ArrayList<String> wrong_answers = new ArrayList<String>();
+
+		int wrongs[][] = chooseWrong.queryGetInts(3, 1, person_id);
+		for (int[] mid : wrongs) {
+			wrong_answers.add(schema.getMovieName(mid[0]));
+		}
+		
+		return new QuestionInfo("In which of the following movies did " + person_name + " play?", 
 				right_answer, wrong_answers); 
 	}
 
