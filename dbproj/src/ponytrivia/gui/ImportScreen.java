@@ -271,6 +271,9 @@ public class ImportScreen extends Shell {
 					int counter = 0;
 					@Override
 					public void run() {
+						if (ImportScreen.this.isDisposed()) {
+							return;
+						}
 						counter++;
 						lblPony.setVisible(true);
 						Point p = lblPony.getLocation();

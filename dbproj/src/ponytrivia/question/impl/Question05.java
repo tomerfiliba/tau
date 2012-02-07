@@ -45,7 +45,7 @@ public class Question05 extends QuestionGenerator {
 		int begin_at = 0;
 		for (int i = 0; i < 10; i++) {
 			begin_at = Math.abs(rand.nextInt()) % maxMovieID.queryGetKey();
-			System.out.println("begin_at = " + begin_at);
+			//System.out.println("begin_at = " + begin_at);
 			try {
 				movie_id = chooseDirActor.queryGetKey(begin_at);
 			} catch (NoResultsFound ex) {

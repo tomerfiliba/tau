@@ -22,6 +22,14 @@ import ponytrivia.question.impl.Question09;
 import ponytrivia.question.impl.Question10;
 
 
+/**
+ * implements a question register: uses the schema, possibly sets a filter on which movies,
+ * actors and genres are to be fetched, and produces up to 10 questions in the background
+ * (using a thread). 
+ * 
+ * use getQuestion() to pop a question from the pool, call close() when done
+ *
+ */
 public class QuestionRegistry {
 	protected Random rand;
 	protected List<QuestionGenerator> registry;
@@ -30,7 +38,11 @@ public class QuestionRegistry {
 	protected ArrayBlockingQueue<QuestionInfo> questionsQueue;
 	protected boolean disposed;
 	
-	public QuestionRegistry(Schema schema) throws SQLException {
+	public int numOfFilteredMovies = -1;
+	public int numOfFilteredDirectors = -1;
+	public int numOfFilteredActors = -1;
+	
+	public QuestionRegistry(Schema schema, boolean autoClear) throws SQLException {
 		registry = new ArrayList<QuestionGenerator>();
 		rand = new Random();
 		questionHistory = new HashSet<String>();
@@ -49,14 +61,19 @@ public class QuestionRegistry {
 		registry.add(new Question09(schema));
 		registry.add(new Question10(schema));
 		
-		System.out.println("clearFilter begin");
-		clearFilter();
-		System.out.println("clearFilter done");
+		if (autoClear) {
+			System.out.println("clearFilter begin");
+			clearFilter();
+			System.out.println("clearFilter done");
+		}
 		qgThread = new QuestionGeneratorThread();
 		qgThread.setDaemon(true);
-		qgThread.start();
 	}
 	
+	public void startBgThread() {
+		qgThread.start();
+	}
+
 	protected class QuestionGeneratorThread extends Thread {
 		@Override
 		public void run() {
@@ -77,10 +94,8 @@ public class QuestionRegistry {
 				}
 				try {
 					questionsQueue.put(qi);
-					System.out.println("Added another question");
+					//System.out.println("Added another question");
 				} catch (InterruptedException e) {
-					// shouldn't ever happen
-					System.out.println("Error adding question");
 					break;
 				}
 			}
@@ -89,29 +104,41 @@ public class QuestionRegistry {
 	
 	protected QuestionGeneratorThread qgThread;
 	
+	/**
+	 * closes the background thread and waits for it to terminate
+	 */
+	@SuppressWarnings("deprecation")
 	public void close() {
 		if (disposed) {
 			return;
 		}
 		disposed = true;
 		questionsQueue.clear();
-		try {
+		//qgThread.interrupt();
+		qgThread.stop();
+		/*try {
 			qgThread.join();
 		} catch (InterruptedException e) {
-		}
+		}*/
 	}
 	
+	/**
+	 * returns the next question from the pool. note that this might block if the pool is empty
+	 * @return QuestionInfo object
+	 */
 	public QuestionInfo getQuestion() {
 		try {
-			System.out.println("In getQuestion...");
 			return questionsQueue.take();
 		} catch (InterruptedException e) {
 			return null;
-		} finally {
-			System.out.println("Outta getQuestion");
 		}
 	}
 
+	/**
+	 * called by the background thread to generate questions
+	 * @return a QuestionInfo object
+	 * @throws SQLException
+	 */
 	protected QuestionInfo generateQuestion() throws SQLException
 	{
 		QuestionInfo qi = null;
@@ -131,8 +158,8 @@ public class QuestionRegistry {
 	 * @return the films of movies in the newly created FilteredMovies table
 	 * @throws SQLException
 	 */
-	public synchronized int clearFilter() throws SQLException {
-		return setFilter(-1, -1, null);
+	public synchronized void clearFilter() throws SQLException {
+		setFilter(-1, -1, null);
 	}
 	
 	/**
@@ -143,7 +170,7 @@ public class QuestionRegistry {
 	 * @return the number of films in the newly created FilteredMovies table
 	 * @throws SQLException
 	 */
-	public synchronized int setFilter(int minYear, int maxYear, int[] genre_ids) throws SQLException {
+	public synchronized void setFilter(int minYear, int maxYear, List<Integer> genre_ids) throws SQLException {
 		Statement stmt = schema.createStatement();
 		String genres = "";
 
@@ -153,14 +180,14 @@ public class QuestionRegistry {
 		if (maxYear < 0) {
 			maxYear = 3000;
 		}
-		if (genre_ids == null || genre_ids.length == 0) {
+		if (genre_ids == null || genre_ids.size() == 0) {
 			genres = "SELECT genre_id FROM genres";
 		}
 		else {
-			for (int i = 0; i < genre_ids.length - 1; i++) {
-				genres = genre_ids[i] + ", ";
+			for (int i = 0; i < genre_ids.size() - 1; i++) {
+				genres += genre_ids.get(i) + ", ";
 			}
-			genres += genre_ids[genre_ids.length - 1];
+			genres += genre_ids.get(genre_ids.size() - 1);
 		}
 
 		try {
@@ -172,8 +199,8 @@ public class QuestionRegistry {
 					"FROM PopularMovies as PM, Movies as M, MovieGenres as MG WHERE " +
 					"PM.movie_id = M.movie_id AND M.year BETWEEN " + minYear + " AND " + maxYear + 
 					" AND MG.movie = PM.movie_id AND MG.genre IN (" + genres + ")");
-			int count = stmt.getUpdateCount();
-			System.out.println("FilteredMovies = " + count);
+			numOfFilteredMovies = stmt.getUpdateCount();
+			System.out.println("FilteredMovies = " + numOfFilteredMovies);
 
 			stmt.executeUpdate("DROP TABLE IF EXISTS FilteredDirectors");
 			stmt.executeUpdate("CREATE TEMPORARY TABLE FilteredDirectors (fildir_id INT PRIMARY KEY NOT NULL AUTO_INCREMENT, " +
@@ -181,8 +208,8 @@ public class QuestionRegistry {
 			stmt.executeUpdate("INSERT INTO FilteredDirectors (director) SELECT DISTINCT PD.director " +
 					"FROM PopularDirectors AS PD, FilteredMovies as FM, MovieDirectors AS MD " +
 					"WHERE PD.director = MD.director AND MD.movie = FM.movie_id");
-			count = stmt.getUpdateCount();
-			System.out.println("FilteredDirectors = " + count);
+			numOfFilteredDirectors = stmt.getUpdateCount();
+			System.out.println("FilteredDirectors = " + numOfFilteredDirectors);
 			
 			stmt.executeUpdate("DROP TABLE IF EXISTS FilteredActors");
 			stmt.executeUpdate("CREATE TEMPORARY TABLE FilteredActors (filact_id INT PRIMARY KEY NOT NULL AUTO_INCREMENT, " +
@@ -190,14 +217,13 @@ public class QuestionRegistry {
 			stmt.executeUpdate("INSERT INTO FilteredActors (actor) SELECT DISTINCT PA.actor " +
 					"FROM PopularActors AS PA INNER JOIN Roles AS R ON PA.actor = R.actor " +
 					"INNER JOIN FilteredMovies AS FM ON R.movie = FM.movie_id");
-			count = stmt.getUpdateCount();
-			System.out.println("FilteredActors = " + count);
+			numOfFilteredActors = stmt.getUpdateCount();
+			System.out.println("FilteredActors = " + numOfFilteredActors);
 			
 			stmt.close();
 			questionsQueue.clear();
 			questionHistory.clear();
 			schema.commit();
-			return count;
 		} catch (SQLException ex) {
 			schema.rollback();
 			throw ex;

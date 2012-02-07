@@ -41,21 +41,21 @@ import ponytrivia.question.QuestionRegistry;
 public class GameScreen {
 
 	protected Display display;
-	protected Schema schema;
 	protected QuestionRegistry questionRegistry;
 	protected Shell shlPonyTrivia;
 	
 	protected static class GameInfo
 	{
+		public int initalTurnsForFiftyFifty = 0;
 		public int question_number = 1;
-		public final int alotted_time = 20;
+		public int alotted_time = 20;
 		public int remaining_time = alotted_time;
 		public int total_score = 0;
 		public int correctAnswerIndex = -1;
-		public int questions_to_win = 10;
+		public int questions_to_win = 3;
 		public int pony_pos = 0;
-		protected int turnsBeforeEnablingFiftyFifty;
-		protected boolean enabled = true;
+		public int turnsBeforeEnablingFiftyFifty;
+		public boolean enabled = true;
 	}
 	
 	protected GameInfo gameinfo = new GameInfo();
@@ -63,24 +63,20 @@ public class GameScreen {
 	/**
 	 * Launch the application.
 	 * @param args
+	 * @wbp.parser.entryPoint
 	 */
-	public static void run(Display display, Schema schema) {
-		QuestionRegistry qr;
+	public static void run(Display display, QuestionRegistry qr) {
 		try {
-			qr = new QuestionRegistry(schema);
-			GameScreen window = new GameScreen(display, schema, qr);
+			GameScreen window = new GameScreen(display, qr);
 			window.open();
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		
 	}
 	
-	public GameScreen(Display display, Schema schema, QuestionRegistry questionRegistry)
+	public GameScreen(Display display, QuestionRegistry questionRegistry)
 	{
 		this.display = display;
-		this.schema = schema;
 		this.questionRegistry = questionRegistry;
 	}
 
@@ -410,12 +406,13 @@ public class GameScreen {
 					{
 						if (gameinfo.pony_pos >= gameinfo.questions_to_win) {
 							shlPonyTrivia.setEnabled(false);
+							WinScreen.run(display);
 							shlPonyTrivia.close();
 							return;
 						}
 						if (gameinfo.pony_pos <= -gameinfo.questions_to_win) {
 							shlPonyTrivia.setEnabled(false);
-							
+							LoseScreen.run(display);
 							shlPonyTrivia.close();
 							return;
 						}
@@ -439,7 +436,7 @@ public class GameScreen {
 					return;
 				}
 				btnFiftyFifty.setEnabled(false);
-				gameinfo.turnsBeforeEnablingFiftyFifty = 3;
+				gameinfo.turnsBeforeEnablingFiftyFifty = gameinfo.initalTurnsForFiftyFifty;
 				ArrayList<Integer> discarded = new ArrayList<Integer>();
 				discarded.add(0);
 				discarded.add(1);

@@ -15,11 +15,12 @@ public class LoseScreen extends Shell {
 	 * Launch the application.
 	 * @param args
 	 */
-	public static void main(String args[]) {
+	public static void run(Display display) {
 		try {
-			Display display = Display.getDefault();
 			LoseScreen shell = new LoseScreen(display);
 			shell.open();
+			shell.setActive();
+			shell.setFocus();
 			shell.layout();
 			while (!shell.isDisposed()) {
 				if (!display.readAndDispatch()) {

@@ -1,7 +1,9 @@
 package ponytrivia.gui;
 
 import java.io.IOException;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.Properties;
 
 import org.eclipse.swt.widgets.Display;
@@ -22,10 +24,15 @@ import org.eclipse.swt.custom.StackLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.MessageBox;
+import org.eclipse.swt.widgets.TableItem;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.Combo;
 
 import ponytrivia.db.Schema;
+import ponytrivia.db.SimpleQuery;
+import ponytrivia.question.QuestionRegistry;
+import org.eclipse.swt.widgets.Table;
+import org.eclipse.swt.widgets.TableColumn;
 
 public class MainScreen {
 	/**
@@ -44,6 +51,7 @@ public class MainScreen {
 	protected Display display;
 	protected Shell shlMain;
 	protected Schema schema; 
+	private Table table;
 
 	protected void errorMsgbox(String title, String message) {
 		MessageBox mb = new MessageBox(shlMain, SWT.ICON_ERROR | SWT.OK);
@@ -58,9 +66,6 @@ public class MainScreen {
 	public void open() {
 		display = Display.getDefault();
 		shlMain = new Shell();
-		createContents();
-		shlMain.open();
-		shlMain.layout();
 		
 		Properties config = new Properties();
 		try {
@@ -81,7 +86,11 @@ public class MainScreen {
 			shlMain.dispose();
 			return;
 		}
-		
+
+		createContents();
+		shlMain.open();
+		shlMain.layout();
+
 		while (!shlMain.isDisposed()) {
 			if (!display.readAndDispatch()) {
 				display.sleep();
@@ -93,8 +102,8 @@ public class MainScreen {
 	 * Create contents of the window.
 	 */
 	protected void createContents() {
-		shlMain.setSize(623, 269);
-		shlMain.setText("Pony Trivia");
+		shlMain.setSize(623, 416);
+		shlMain.setText("Welcome to Pony Trivia");
 		shlMain.setLayout(null);
 		
 		Button btnImportImdbFiles = new Button(shlMain, SWT.NONE);
@@ -106,53 +115,74 @@ public class MainScreen {
 				shlMain.setEnabled(true);
 			}
 		});
-		btnImportImdbFiles.setBounds(10, 150, 239, 66);
+		btnImportImdbFiles.setBounds(10, 294, 239, 66);
 		btnImportImdbFiles.setImage(SWTResourceManager.getImage(MainScreen.class, "/ponytrivia/gui/res/IMDB-logo.gif"));
 		btnImportImdbFiles.setText("Import IMDB Files");
 		
 		Button btnEditDb = new Button(shlMain, SWT.NONE);
-		btnEditDb.setBounds(255, 150, 189, 67);
+		btnEditDb.setBounds(255, 294, 189, 67);
 		btnEditDb.setImage(SWTResourceManager.getImage(MainScreen.class, "/ponytrivia/gui/res/mysql-logo.gif"));
 		btnEditDb.setText("Edit DB");
 		
 		Group group = new Group(shlMain, SWT.NONE);
-		group.setBounds(10, 10, 582, 134);
+		group.setBounds(10, 10, 582, 278);
 		
 		Button btnPlayGame = new Button(group, SWT.NONE);
-		btnPlayGame.addSelectionListener(new SelectionAdapter() {
-			@Override
-			public void widgetSelected(SelectionEvent arg0) {
-				shlMain.setEnabled(false);
-				GameScreen.run(display, schema);
-				shlMain.setEnabled(true);
-			}
-		});
-		btnPlayGame.setBounds(321, 20, 251, 96);
+		btnPlayGame.setBounds(10, 172, 251, 96);
 		btnPlayGame.setImage(SWTResourceManager.getImage(MainScreen.class, "/ponytrivia/gui/res/kitty1.gif"));
 		btnPlayGame.setText("Play Game");
 		
 		Label lblNewLabel = new Label(group, SWT.NONE);
 		lblNewLabel.setBounds(10, 23, 94, 18);
-		lblNewLabel.setText("Username:");
+		lblNewLabel.setText("Your Name");
 
 		Text playerName = new Text(group, SWT.BORDER);
-		playerName.setBounds(110, 20, 126, 24);
+		playerName.setBounds(130, 20, 126, 24);
 
 		Label lblGenre = new Label(group, SWT.NONE);
-		lblGenre.setText("Genre:");
-		lblGenre.setBounds(10, 55, 94, 18);
-		
-		Combo combo = new Combo(group, SWT.NONE);
-		combo.setBounds(110, 55, 126, 26);
+		lblGenre.setText("Movie Genres");
+		lblGenre.setBounds(294, 23, 103, 18);
 		
 		Label lblDecade = new Label(group, SWT.NONE);
-		lblDecade.setText("Decade:");
-		lblDecade.setBounds(10, 90, 94, 18);
+		lblDecade.setText("From Decade");
+		lblDecade.setBounds(10, 59, 114, 18);
 		
-		Combo combo_1 = new Combo(group, SWT.NONE);
-		combo_1.setItems(new String[] {"1950's", "1960's", "1970's", "1980's", "1990's", "2000's"});
-		combo_1.setBounds(110, 87, 126, 26);
-		combo_1.select(5);
+		final Combo comboMinYear = new Combo(group, SWT.NONE);
+		comboMinYear.setItems(new String[] {"Any", "1950", "1960", "1970", "1980", "1990", "2000"});
+		comboMinYear.setBounds(130, 56, 126, 26);
+		comboMinYear.select(0);
+		
+		Label lblToDecade = new Label(group, SWT.NONE);
+		lblToDecade.setText("To Decade");
+		lblToDecade.setBounds(10, 98, 114, 18);
+		
+		final Combo comboMaxYear = new Combo(group, SWT.NONE);
+		comboMaxYear.setItems(new String[] {"1950", "1960", "1970", "1980", "1990", "2000", "Any"});
+		comboMaxYear.setBounds(130, 95, 126, 28);
+		comboMaxYear.select(6);
+		
+		table = new Table(group, SWT.BORDER | SWT.CHECK | SWT.FULL_SELECTION);
+		table.setBounds(294, 47, 278, 221);
+		table.setHeaderVisible(true);
+		table.setLinesVisible(true);
+		
+		TableColumn tblclmnGenre = new TableColumn(table, SWT.NONE);
+		tblclmnGenre.setWidth(239);
+		tblclmnGenre.setText("Genre");
+		
+		try {
+			SimpleQuery q = schema.createQuery("genre_id, name", "genres", "true", "name ASC");
+			ResultSet rs;
+			rs = q.query();
+			while (rs.next()) {
+				TableItem tableItem = new TableItem(table, SWT.NONE);
+				tableItem.setData(rs.getInt(1));
+				tableItem.setText(0, rs.getString(2));
+			}
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		
 		Button btnHighscores = new Button(shlMain, SWT.NONE);
 		btnHighscores.addSelectionListener(new SelectionAdapter() {
@@ -164,9 +194,69 @@ public class MainScreen {
 			}
 		});
 		btnHighscores.setImage(SWTResourceManager.getImage(MainScreen.class, "/ponytrivia/gui/res/grail.gif"));
-		btnHighscores.setBounds(450, 150, 142, 67);
+		btnHighscores.setBounds(450, 294, 142, 67);
 		btnHighscores.setText("Highscores");
+		
+		btnPlayGame.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent arg0) {
+				shlMain.setEnabled(false);
+				int minYear = -1;
+				int maxYear = -1;
+				switch (comboMinYear.getSelectionIndex()) {
+				case 1:
+					minYear = 1950;
+					break;
+				case 2:
+					minYear = 1960;
+					break;
+				case 3:
+					minYear = 1970;
+					break;
+				case 4:
+					minYear = 1980;
+					break;
+				case 5:
+					minYear = 1990;
+					break;
+				case 6:
+					minYear = 2000;
+					break;
+				}
+				switch (comboMaxYear.getSelectionIndex()) {
+				case 0:
+					maxYear = 1950;
+					break;
+				case 1:
+					maxYear = 1960;
+					break;
+				case 2:
+					maxYear = 1970;
+					break;
+				case 3:
+					maxYear = 1980;
+					break;
+				case 4:
+					maxYear = 1990;
+					break;
+				case 5:
+					maxYear = 2000;
+					break;
+				}
+				
+				ArrayList<Integer> genre_ids = new ArrayList<Integer>();
+				for (TableItem ti : table.getItems()) {
+					if (ti.getChecked()) {
+						genre_ids.add((Integer)ti.getData());
+					}
+				}
+				System.out.println("minYear: " + minYear + ", maxYear: " + maxYear);
+				System.out.println("genre_ids: " + genre_ids);
+				
+				ApplyFilterScreen.run(display, schema, minYear, maxYear, genre_ids);
+				shlMain.setEnabled(true);
+			}
+		});		
 
 	}
-
 }

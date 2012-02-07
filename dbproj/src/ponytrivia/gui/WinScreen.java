@@ -15,9 +15,8 @@ public class WinScreen extends Shell {
 	 * Launch the application.
 	 * @param args
 	 */
-	public static void main(String args[]) {
+	public static void run(Display display) {
 		try {
-			Display display = Display.getDefault();
 			WinScreen shell = new WinScreen(display);
 			shell.open();
 			shell.layout();
