@@ -120,6 +120,14 @@ public class MainScreen {
 		btnImportImdbFiles.setText("Import IMDB Files");
 		
 		Button btnEditDb = new Button(shlMain, SWT.NONE);
+		btnEditDb.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent arg0) {
+				shlMain.setEnabled(false);
+				EditScreen.run(display, schema);
+				shlMain.setEnabled(true);
+			}
+		});
 		btnEditDb.setBounds(255, 294, 189, 67);
 		btnEditDb.setImage(SWTResourceManager.getImage(MainScreen.class, "/ponytrivia/gui/res/mysql-logo.gif"));
 		btnEditDb.setText("Edit DB");
@@ -250,13 +258,13 @@ public class MainScreen {
 						genre_ids.add((Integer)ti.getData());
 					}
 				}
-				System.out.println("minYear: " + minYear + ", maxYear: " + maxYear);
-				System.out.println("genre_ids: " + genre_ids);
+				//System.out.println("minYear: " + minYear + ", maxYear: " + maxYear);
+				//System.out.println("genre_ids: " + genre_ids);
 				
 				ApplyFilterScreen.run(display, schema, minYear, maxYear, genre_ids);
 				shlMain.setEnabled(true);
 			}
-		});		
+		});
 
 	}
 }

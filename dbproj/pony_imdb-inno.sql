@@ -206,7 +206,9 @@ CREATE TABLE `people` (
   `death_date` date DEFAULT NULL,
   `gender` enum('m','f') DEFAULT NULL,
   PRIMARY KEY (`person_id`),
-  UNIQUE KEY `person_imdb_name_UNIQUE` (`imdb_name`)
+  UNIQUE KEY `person_imdb_name_UNIQUE` (`imdb_name`),
+  INDEX `person_first_name` (`first_name` ASC),
+  INDEX `person_last_name` (`last_name` ASC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

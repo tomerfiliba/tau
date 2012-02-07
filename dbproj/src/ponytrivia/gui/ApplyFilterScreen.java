@@ -16,6 +16,8 @@ import org.eclipse.swt.layout.FormLayout;
 import org.eclipse.swt.layout.FormData;
 import org.eclipse.swt.layout.FormAttachment;
 import org.eclipse.swt.widgets.ProgressBar;
+import org.eclipse.swt.events.DisposeEvent;
+import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.graphics.Point;
 
 public class ApplyFilterScreen extends Shell {
@@ -84,6 +86,15 @@ public class ApplyFilterScreen extends Shell {
 		this.minYear = minYear;
 		this.maxYear = maxYear;
 		this.genres_ids = genres_ids;
+
+		this.addDisposeListener(new DisposeListener() {
+			@Override
+			public void widgetDisposed(DisposeEvent arg0) {
+				if (qr != null) {
+					qr.close();
+				}
+			}
+		});
 		
 		setMinimumSize(new Point(400, 130));
 		setLayout(new FormLayout());
