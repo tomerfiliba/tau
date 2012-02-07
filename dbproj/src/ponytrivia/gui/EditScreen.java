@@ -69,6 +69,11 @@ public class EditScreen extends Shell {
 	protected SimpleUpdate updatePersonDetails;
 	protected SimpleInsert insertPersonDetails;
 
+	protected SimpleInsert insertRole;
+	protected SimpleInsert insertDirector;
+	protected PreparedStatement deleteRole;
+	protected PreparedStatement deleteDirector;
+	
 	private Text textPersonNameSearch;
 	private Text textPersonFN;
 	private Text textPersonMN;
@@ -77,8 +82,10 @@ public class EditScreen extends Shell {
 	private Text textPersonRN;
 	private Text text_1;
 	private Spinner text_2;
-	private Text text_3;
-	private Text text_4;
+	private Text textActMovieName;
+	private Text textActPersonName;
+	private Text textDirMovieName;
+	private Text textDirPersonName;
 
 	/**
 	 * Launch the application.
@@ -582,21 +589,21 @@ public class EditScreen extends Shell {
 		lblMovieName_1.setLayoutData(fd_lblMovieName_1);
 		lblMovieName_1.setText("Movie name:");
 		
-		text_3 = new Text(grpLocateMovie_1, SWT.BORDER);
-		FormData fd_text_3 = new FormData();
-		fd_text_3.top = new FormAttachment(lblMovieName_1, -3, SWT.TOP);
-		fd_text_3.left = new FormAttachment(lblMovieName_1, 6);
-		fd_text_3.right = new FormAttachment(100, -10);
-		text_3.setLayoutData(fd_text_3);
+		textActMovieName = new Text(grpLocateMovie_1, SWT.BORDER);
+		FormData fd_textActMovieName = new FormData();
+		fd_textActMovieName.top = new FormAttachment(lblMovieName_1, -3, SWT.TOP);
+		fd_textActMovieName.left = new FormAttachment(lblMovieName_1, 6);
+		fd_textActMovieName.right = new FormAttachment(100, -10);
+		textActMovieName.setLayoutData(fd_textActMovieName);
 		
-		List list_2 = new List(grpLocateMovie_1, SWT.BORDER);
-		FormData fd_list_2 = new FormData();
-		fd_list_2.top = new FormAttachment(lblMovieName_1, 6);
-		fd_list_2.left = new FormAttachment(0, 10);
-		fd_list_2.right = new FormAttachment(100, -10);
-		fd_list_2.bottom = new FormAttachment(100, -10);
+		final List listActMovies = new List(grpLocateMovie_1, SWT.BORDER);
+		FormData fd_listActMovies = new FormData();
+		fd_listActMovies.top = new FormAttachment(lblMovieName_1, 6);
+		fd_listActMovies.left = new FormAttachment(0, 10);
+		fd_listActMovies.right = new FormAttachment(100, -10);
+		fd_listActMovies.bottom = new FormAttachment(100, -10);
 		
-		list_2.setLayoutData(fd_list_2);
+		listActMovies.setLayoutData(fd_listActMovies);
 		
 		Group grpLocateActor = new Group(composite_4, SWT.NONE);
 		grpLocateActor.setText("Locate Actor");
@@ -609,26 +616,115 @@ public class EditScreen extends Shell {
 		lblPersonName.setLayoutData(fd_lblPersonName);
 		lblPersonName.setText("Person name:");
 		
-		text_4 = new Text(grpLocateActor, SWT.BORDER);
-		FormData fd_text_4 = new FormData();
-		fd_text_4.top = new FormAttachment(lblPersonName, -3, SWT.TOP);
-		fd_text_4.left = new FormAttachment(lblPersonName, 6);
-		fd_text_4.right = new FormAttachment(100, -10);
-		text_4.setLayoutData(fd_text_4);
+		textActPersonName = new Text(grpLocateActor, SWT.BORDER);
+		FormData fd_textActPersonName = new FormData();
+		fd_textActPersonName.top = new FormAttachment(lblPersonName, -3, SWT.TOP);
+		fd_textActPersonName.left = new FormAttachment(lblPersonName, 6);
+		fd_textActPersonName.right = new FormAttachment(100, -10);
+		textActPersonName.setLayoutData(fd_textActPersonName);
 		
-		List list_3 = new List(grpLocateActor, SWT.BORDER);
-		FormData fd_list_3 = new FormData();
-		fd_list_3.top = new FormAttachment(lblPersonName, 6);
-		fd_list_3.left = new FormAttachment(lblPersonName, 0, SWT.LEFT);
-		fd_list_3.bottom = new FormAttachment(100, -10);
-		fd_list_3.right = new FormAttachment(100, -10);
-		list_3.setLayoutData(fd_list_3);
+		final List listActPeople = new List(grpLocateActor, SWT.BORDER);
+		FormData fd_listActPeople = new FormData();
+		fd_listActPeople.top = new FormAttachment(lblPersonName, 6);
+		fd_listActPeople.left = new FormAttachment(lblPersonName, 0, SWT.LEFT);
+		fd_listActPeople.bottom = new FormAttachment(100, -10);
+		fd_listActPeople.right = new FormAttachment(100, -10);
+		listActPeople.setLayoutData(fd_listActPeople);
 		
 		TabItem tbtmDirectors = new TabItem(tabFolder, SWT.NONE);
 		tbtmDirectors.setText("Directors");
 		
 		Composite composite_3 = new Composite(tabFolder, SWT.NONE);
 		tbtmDirectors.setControl(composite_3);
+		composite_3.setLayout(new FormLayout());
+		
+		Group group = new Group(composite_3, SWT.NONE);
+		FormData fd_group = new FormData();
+		fd_group.bottom = new FormAttachment(100, -10);
+		fd_group.left = new FormAttachment(0, 10);
+		fd_group.right = new FormAttachment(100, -10);
+		fd_group.top = new FormAttachment(100, -100);
+		group.setLayoutData(fd_group);
+		group.setLayout(new FormLayout());
+		
+		Button btnAddupdateDirector = new Button(group, SWT.NONE);
+		btnAddupdateDirector.setText("Add/Update Director");
+		FormData fd_btnAddupdateDirector = new FormData();
+		fd_btnAddupdateDirector.bottom = new FormAttachment(100, -10);
+		fd_btnAddupdateDirector.right = new FormAttachment(100, -10);
+		btnAddupdateDirector.setLayoutData(fd_btnAddupdateDirector);
+		
+		Button btnRemoveDirector = new Button(group, SWT.NONE);
+		btnRemoveDirector.setText("Remove Director");
+		FormData fd_btnRemoveDirector = new FormData();
+		fd_btnRemoveDirector.bottom = new FormAttachment(100, -10);
+		fd_btnRemoveDirector.right = new FormAttachment(btnAddupdateDirector, -15);
+		btnRemoveDirector.setLayoutData(fd_btnRemoveDirector);
+		
+		Composite composite_5 = new Composite(composite_3, SWT.NONE);
+		FillLayout fl_composite_5 = new FillLayout(SWT.HORIZONTAL);
+		fl_composite_5.marginWidth = 5;
+		fl_composite_5.marginHeight = 5;
+		fl_composite_5.spacing = 5;
+		composite_5.setLayout(fl_composite_5);
+		FormData fd_composite_5 = new FormData();
+		fd_composite_5.top = new FormAttachment(0, 10);
+		fd_composite_5.left = new FormAttachment(0, 10);
+		fd_composite_5.right = new FormAttachment(100, -10);
+		fd_composite_5.bottom = new FormAttachment(group, 0);
+		composite_5.setLayoutData(fd_composite_5);
+		
+		Group group_1 = new Group(composite_5, SWT.NONE);
+		group_1.setText("Locate Movie");
+		group_1.setLayout(new FormLayout());
+		
+		Label label = new Label(group_1, SWT.NONE);
+		label.setText("Movie name:");
+		FormData fd_label = new FormData();
+		fd_label.top = new FormAttachment(0, 10);
+		fd_label.left = new FormAttachment(0, 10);
+		label.setLayoutData(fd_label);
+		
+		textDirMovieName = new Text(group_1, SWT.BORDER);
+		FormData fd_textDirMovieName = new FormData();
+		fd_textDirMovieName.top = new FormAttachment(label, -3, SWT.TOP);
+		fd_textDirMovieName.right = new FormAttachment(100, -10);
+		fd_textDirMovieName.left = new FormAttachment(label, 6);
+		textDirMovieName.setLayoutData(fd_textDirMovieName);
+		
+		final List listDirMovies = new List(group_1, SWT.BORDER);
+		FormData fd_listDirMovies = new FormData();
+		fd_listDirMovies.bottom = new FormAttachment(100, -10);
+		fd_listDirMovies.top = new FormAttachment(label, 6);
+		fd_listDirMovies.right = new FormAttachment(100, -10);
+		fd_listDirMovies.left = new FormAttachment(0, 10);
+		listDirMovies.setLayoutData(fd_listDirMovies);
+		
+		Group grpLocateDirector = new Group(composite_5, SWT.NONE);
+		grpLocateDirector.setText("Locate Director");
+		grpLocateDirector.setLayout(new FormLayout());
+		
+		Label label_1 = new Label(grpLocateDirector, SWT.NONE);
+		label_1.setText("Person name:");
+		FormData fd_label_1 = new FormData();
+		fd_label_1.top = new FormAttachment(0, 10);
+		fd_label_1.left = new FormAttachment(0, 10);
+		label_1.setLayoutData(fd_label_1);
+		
+		textDirPersonName = new Text(grpLocateDirector, SWT.BORDER);
+		FormData fd_textDirPersonName = new FormData();
+		fd_textDirPersonName.top = new FormAttachment(label_1, -3, SWT.TOP);
+		fd_textDirPersonName.right = new FormAttachment(100, -10);
+		fd_textDirPersonName.left = new FormAttachment(label_1, 6);
+		textDirPersonName.setLayoutData(fd_textDirPersonName);
+		
+		final List listDirPeople = new List(grpLocateDirector, SWT.BORDER);
+		FormData fd_listDirPeople = new FormData();
+		fd_listDirPeople.bottom = new FormAttachment(100, -10);
+		fd_listDirPeople.top = new FormAttachment(label_1, 6);
+		fd_listDirPeople.right = new FormAttachment(100, -10);
+		fd_listDirPeople.left = new FormAttachment(label_1, 0, SWT.LEFT);
+		listDirPeople.setLayoutData(fd_listDirPeople);
 
 		try {
 			findMovie = schema.createQuery("DISTINCT M.name, M.movie_id", 
@@ -660,6 +756,11 @@ public class EditScreen extends Shell {
 			insertPersonDetails = schema.createInsert("People", false, "imdb_name", "first_name", 
 					"middle_name", "last_name", "nick_name", "real_name", "birth_date", "death_date",
 					"gender");
+			
+			insertRole = schema.createInsert("Roles", true, "actor", "movie", "char_name", "credit_pos"); 
+			insertDirector = schema.createInsert("Roles", true, "director", "movie"); 
+			deleteRole = schema.prepareStatement("DELETE FROM Roles WHERE actor = ? AND movie = ?");
+			deleteDirector = schema.prepareStatement("DELETE FROM MovieDirectors WHERE director = ? AND movie= ?");
 			
 			ResultSet rs = getAllGenres.query();
 			while (rs.next()) {
@@ -983,6 +1084,166 @@ public class EditScreen extends Shell {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}				
+			}
+		});
+		
+		textActPersonName.addModifyListener(new ModifyListener() {
+			@Override
+			public void modifyText(ModifyEvent arg0) {
+				if (textActPersonName.getText().length() < 3) {
+					return;
+				}
+				String[] names = textActPersonName.getText().split(" ");
+				
+				ResultSet rs;
+				try {
+					if (names.length == 1) {
+						rs = findPerson1.query(names[0] + "%");
+					}
+					else {
+						rs = findPerson2.query(names[0] + "%", names[1] + "%");
+					}
+					
+					listActPeople.removeAll();
+					personIdMapping.clear();
+					int i = 0;
+					while (rs.next()) {
+						listActPeople.add(rs.getString(1));
+						personIdMapping.put(i, rs.getInt(2));
+						i++;
+					}
+					rs.close();
+				} catch (SQLException e) {
+					e.printStackTrace();
+				}
+			}
+		});
+		
+		textActMovieName.addModifyListener(new ModifyListener() {
+			@Override
+			public void modifyText(ModifyEvent arg0) {
+				if (textActMovieName.getText().length() < 3) {
+					return;
+				}
+				String movie_name = "%"+ textActMovieName.getText() + "%";
+				listActMovies.removeAll();
+				movieIdMapping.clear();
+				try {
+					ResultSet rs = findMovie.query(movie_name);
+					int i = 0;
+					while (rs.next()) {
+						listActMovies.add(rs.getString(1));
+						movieIdMapping.put(i, rs.getInt(2));
+						i++;
+					}
+				} catch (SQLException e) {
+					e.printStackTrace();
+				}
+			}
+		});
+
+		btnRemoveRole.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent arg0) {
+				int movind = listDirMovies.getSelectionIndex();
+				int perind = listDirPeople.getSelectionIndex();
+				if (movind < 0) {
+					errorMsgBox("Error", "Select a movie first");
+					return;
+				}
+				if (perind < 0) {
+					errorMsgBox("Error", "Select a person first");
+					return;
+				}
+				int movie_id = personIdMapping.get(movind);
+				int person_id = personIdMapping.get(perind);
+				try {
+					deleteRole.setInt(1, person_id);
+					deleteRole.setInt(2, movie_id);
+					deleteRole.executeUpdate();
+				} catch (SQLException e) {
+					e.printStackTrace();
+				}
+			}
+		});
+		
+		textDirPersonName.addModifyListener(new ModifyListener() {
+			@Override
+			public void modifyText(ModifyEvent arg0) {
+				if (textDirPersonName.getText().length() < 3) {
+					return;
+				}
+				String[] names = textDirPersonName.getText().split(" ");
+				
+				ResultSet rs;
+				try {
+					if (names.length == 1) {
+						rs = findPerson1.query(names[0] + "%");
+					}
+					else {
+						rs = findPerson2.query(names[0] + "%", names[1] + "%");
+					}
+					
+					listDirPeople.removeAll();
+					personIdMapping.clear();
+					int i = 0;
+					while (rs.next()) {
+						listDirPeople.add(rs.getString(1));
+						personIdMapping.put(i, rs.getInt(2));
+						i++;
+					}
+					rs.close();
+				} catch (SQLException e) {
+					e.printStackTrace();
+				}
+			}
+		});	
+		
+		textDirMovieName.addModifyListener(new ModifyListener() {
+			@Override
+			public void modifyText(ModifyEvent arg0) {
+				if (textDirMovieName.getText().length() < 3) {
+					return;
+				}
+				String movie_name = "%"+ textDirMovieName.getText() + "%";
+				listDirMovies.removeAll();
+				movieIdMapping.clear();
+				try {
+					ResultSet rs = findMovie.query(movie_name);
+					int i = 0;
+					while (rs.next()) {
+						listDirMovies.add(rs.getString(1));
+						movieIdMapping.put(i, rs.getInt(2));
+						i++;
+					}
+				} catch (SQLException e) {
+					e.printStackTrace();
+				}
+			}
+		});	
+		
+		btnRemoveDirector.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent arg0) {
+				int movind = listDirMovies.getSelectionIndex();
+				int perind = listDirPeople.getSelectionIndex();
+				if (movind < 0) {
+					errorMsgBox("Error", "Select a movie first");
+					return;
+				}
+				if (perind < 0) {
+					errorMsgBox("Error", "Select a person first");
+					return;
+				}
+				int movie_id = personIdMapping.get(movind);
+				int person_id = personIdMapping.get(perind);
+				try {
+					deleteDirector.setInt(1, person_id);
+					deleteDirector.setInt(2, movie_id);
+					deleteDirector.executeUpdate();
+				} catch (SQLException e) {
+					e.printStackTrace();
+				}
 			}
 		});
 		
