@@ -12,16 +12,8 @@ import org.eclipse.wb.swt.SWTResourceManager;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Button;
-import org.eclipse.swt.layout.GridLayout;
-import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
-import org.eclipse.swt.layout.FillLayout;
-import org.eclipse.swt.layout.FormLayout;
-import org.eclipse.swt.layout.FormData;
-import org.eclipse.swt.layout.FormAttachment;
-import org.eclipse.swt.custom.StackLayout;
-import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.TableItem;
@@ -29,8 +21,8 @@ import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.Combo;
 
 import ponytrivia.db.Schema;
+import ponytrivia.db.SimpleInsert;
 import ponytrivia.db.SimpleQuery;
-import ponytrivia.question.QuestionRegistry;
 import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.TableColumn;
 
@@ -47,11 +39,17 @@ public class MainScreen {
 			e.printStackTrace();
 		}
 	}
+	
+	public static boolean rebuildPopularTables = false;
 
 	protected Display display;
 	protected Shell shlMain;
 	protected Schema schema; 
 	private Table table;
+	protected GameScreen.GameConfig gameConfig = new GameScreen.GameConfig();
+	
+	protected SimpleQuery findPlayer;
+	protected SimpleInsert insertPlayer;
 
 	protected void errorMsgbox(String title, String message) {
 		MessageBox mb = new MessageBox(shlMain, SWT.ICON_ERROR | SWT.OK);
@@ -67,9 +65,9 @@ public class MainScreen {
 		display = Display.getDefault();
 		shlMain = new Shell();
 		
-		Properties config = new Properties();
+		Properties appConfig = new Properties();
 		try {
-			config.load(MainScreen.class.getResourceAsStream("/config.properties"));
+			appConfig.load(MainScreen.class.getResourceAsStream("/config.properties"));
 		} catch (IOException e) {
 			e.printStackTrace();
 			errorMsgbox("Config Error", "Could not load config file!");
@@ -78,15 +76,42 @@ public class MainScreen {
 		}
 		
 		try {
-			schema = new Schema(config.getProperty("dbhost"), config.getProperty("schema"), 
-					config.getProperty("dbuser"), config.getProperty("dbpass"));
+			schema = new Schema(appConfig.getProperty("dbhost"), appConfig.getProperty("schema"), 
+					appConfig.getProperty("dbuser"), appConfig.getProperty("dbpass"));
 		} catch (Exception e) {
 			e.printStackTrace();
 			errorMsgbox("DB Error", "Could not connect to DB!");
 			shlMain.dispose();
 			return;
 		}
+		
+		try {
+			String s = appConfig.getProperty("questionTime");
+			if (s != null) {
+				gameConfig.alotted_time = Integer.parseInt(s);
+			}
+		} catch (NumberFormatException ex) {
+			ex.printStackTrace();
+		}
 
+		try {
+			String s = appConfig.getProperty("questionsToWin");
+			if (s != null) {
+				gameConfig.questions_to_win = Integer.parseInt(s);
+			}
+		} catch (NumberFormatException ex) {
+			ex.printStackTrace();
+		}
+
+		try {
+			String s = appConfig.getProperty("turnsBeforeReenableFiftyFifty");
+			if (s != null) {
+				gameConfig.initalTurnsForFiftyFifty = Integer.parseInt(s);
+			}
+		} catch (NumberFormatException ex) {
+			ex.printStackTrace();
+		}
+		
 		createContents();
 		shlMain.open();
 		shlMain.layout();
@@ -144,7 +169,7 @@ public class MainScreen {
 		lblNewLabel.setBounds(10, 23, 94, 18);
 		lblNewLabel.setText("Your Name");
 
-		Text playerName = new Text(group, SWT.BORDER);
+		final Text playerName = new Text(group, SWT.BORDER);
 		playerName.setBounds(130, 20, 126, 24);
 
 		Label lblGenre = new Label(group, SWT.NONE);
@@ -179,6 +204,9 @@ public class MainScreen {
 		tblclmnGenre.setText("Genre");
 		
 		try {
+			findPlayer = schema.createQuery("user_id", "GamePlayers", "username = ?");
+			insertPlayer = schema.createInsert("GamePlayers", false, "username");
+
 			SimpleQuery q = schema.createQuery("genre_id, name", "genres", "true", "name ASC");
 			ResultSet rs;
 			rs = q.query();
@@ -208,6 +236,27 @@ public class MainScreen {
 		btnPlayGame.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent arg0) {
+				String player = playerName.getText().trim();
+				if (player.isEmpty()) {
+					errorMsgbox("Error", "Please enter your name first");
+					return;
+				}
+				gameConfig.playerId = -1;
+				try {
+					ResultSet rs = findPlayer.query(player);
+					if (!rs.next()) {
+						gameConfig.playerId = insertPlayer.insert(player);
+						schema.commit();
+					} else {
+						gameConfig.playerId = rs.getInt(1);
+					}
+					rs.close();
+				} catch (SQLException e) {
+					e.printStackTrace();
+					errorMsgbox("Error", "Could not find/add player");
+					return;
+				}
+				
 				shlMain.setEnabled(false);
 				int minYear = -1;
 				int maxYear = -1;
@@ -258,10 +307,8 @@ public class MainScreen {
 						genre_ids.add((Integer)ti.getData());
 					}
 				}
-				//System.out.println("minYear: " + minYear + ", maxYear: " + maxYear);
-				//System.out.println("genre_ids: " + genre_ids);
 				
-				ApplyFilterScreen.run(display, schema, minYear, maxYear, genre_ids);
+				ApplyFilterScreen.run(display, schema, gameConfig, minYear, maxYear, genre_ids);
 				shlMain.setEnabled(true);
 			}
 		});

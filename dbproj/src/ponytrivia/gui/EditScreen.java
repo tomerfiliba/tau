@@ -68,7 +68,10 @@ public class EditScreen extends Shell {
 	protected SimpleQuery getPersonDetails;
 	protected SimpleUpdate updatePersonDetails;
 	protected SimpleInsert insertPersonDetails;
-
+	
+	protected SimpleQuery findActorMovies;
+	protected SimpleQuery findDirectorMovies;
+	
 	protected SimpleInsert insertRole;
 	protected SimpleInsert insertDirector;
 	protected PreparedStatement deleteRole;
@@ -80,12 +83,14 @@ public class EditScreen extends Shell {
 	private Text textPersonLN;
 	private Text textPersonNN;
 	private Text textPersonRN;
-	private Text text_1;
-	private Spinner text_2;
-	private Text textActMovieName;
 	private Text textActPersonName;
 	private Text textDirMovieName;
 	private Text textDirPersonName;
+	private Text textActSearchMovie;
+	private Text textActCharName;
+	private Spinner textActCredPos;
+	private Table tableActPlaysIn;
+	private Table tableDirectedMovies;
 
 	/**
 	 * Launch the application.
@@ -178,6 +183,9 @@ public class EditScreen extends Shell {
 		text.addModifyListener(new ModifyListener() {
 			@Override
 			public void modifyText(ModifyEvent arg0) {
+				if (EditScreen.this.isDisposed()) {
+					return;
+				}
 				if (text.getText().length() < 3) {
 					return;
 				}
@@ -458,6 +466,9 @@ public class EditScreen extends Shell {
 		btnAlive.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent arg0) {
+				if (EditScreen.this.isDisposed()) {
+					return;
+				}
 				deathDate.setEnabled(!btnAlive.getSelection());
 			}
 		});
@@ -510,59 +521,7 @@ public class EditScreen extends Shell {
 		
 		Composite composite_2 = new Composite(tabFolder, SWT.NONE);
 		tbtmRoles.setControl(composite_2);
-		composite_2.setLayout(new FormLayout());
-		
-		Group grpDetails = new Group(composite_2, SWT.NONE);
-		grpDetails.setText("Details");
-		grpDetails.setLayout(new FormLayout());
-		FormData fd_grpDetails = new FormData();
-		fd_grpDetails.bottom = new FormAttachment(100, -10);
-		fd_grpDetails.left = new FormAttachment(0, 10);
-		fd_grpDetails.top = new FormAttachment(100, -130);
-		fd_grpDetails.right = new FormAttachment(100, -10);
-		grpDetails.setLayoutData(fd_grpDetails);
-		
-		Label lblCharacter = new Label(grpDetails, SWT.NONE);
-		FormData fd_lblCharacter = new FormData();
-		fd_lblCharacter.top = new FormAttachment(0, 10);
-		fd_lblCharacter.left = new FormAttachment(0, 10);
-		lblCharacter.setLayoutData(fd_lblCharacter);
-		lblCharacter.setText("Character:");
-		
-		text_1 = new Text(grpDetails, SWT.BORDER);
-		FormData fd_text_1 = new FormData();
-		fd_text_1.top = new FormAttachment(lblCharacter, -3, SWT.TOP);
-		fd_text_1.right = new FormAttachment(lblCharacter, 179, SWT.RIGHT);
-		fd_text_1.left = new FormAttachment(lblCharacter, 47);
-		text_1.setLayoutData(fd_text_1);
-		
-		Label lblCreditPosition = new Label(grpDetails, SWT.NONE);
-		FormData fd_lblCreditPosition = new FormData();
-		fd_lblCreditPosition.top = new FormAttachment(lblCharacter, 18);
-		fd_lblCreditPosition.left = new FormAttachment(0, 10);
-		lblCreditPosition.setLayoutData(fd_lblCreditPosition);
-		lblCreditPosition.setText("Credit position:");
-		
-		text_2 = new Spinner(grpDetails, SWT.BORDER);
-		FormData fd_text_2 = new FormData();
-		fd_text_2.top = new FormAttachment(lblCreditPosition, -3, SWT.TOP);
-		fd_text_2.left = new FormAttachment(text_1, 0, SWT.LEFT);
-		fd_text_2.right = new FormAttachment(text_1, 0, SWT.RIGHT);
-		text_2.setLayoutData(fd_text_2);
-		
-		Button btnAddRole = new Button(grpDetails, SWT.NONE);
-		FormData fd_btnAddRole = new FormData();
-		fd_btnAddRole.bottom = new FormAttachment(100, -10);
-		fd_btnAddRole.right = new FormAttachment(100, -10);
-		btnAddRole.setLayoutData(fd_btnAddRole);
-		btnAddRole.setText("Add/Update Role");
-		
-		Button btnRemoveRole = new Button(grpDetails, SWT.NONE);
-		FormData fd_btnRemoveRole = new FormData();
-		fd_btnRemoveRole.bottom = new FormAttachment(100, -10);
-		fd_btnRemoveRole.right = new FormAttachment(btnAddRole, -15);
-		btnRemoveRole.setLayoutData(fd_btnRemoveRole);
-		btnRemoveRole.setText("Remove Role");
+		composite_2.setLayout(new FillLayout(SWT.HORIZONTAL));
 		
 		Composite composite_4 = new Composite(composite_2, SWT.NONE);
 		FillLayout fl_composite_4 = new FillLayout(SWT.HORIZONTAL);
@@ -570,40 +529,6 @@ public class EditScreen extends Shell {
 		fl_composite_4.marginHeight = 5;
 		fl_composite_4.spacing = 5;
 		composite_4.setLayout(fl_composite_4);
-		FormData fd_composite_4 = new FormData();
-		fd_composite_4.top = new FormAttachment(0, 10);
-		fd_composite_4.left = new FormAttachment(0, 10);
-		fd_composite_4.right = new FormAttachment(100, -10);
-		fd_composite_4.bottom = new FormAttachment(grpDetails, -10);
-		//fd_composite_4.left = new FormAttachment(grpDetails, 0, SWT.LEFT);
-		composite_4.setLayoutData(fd_composite_4);
-		
-		Group grpLocateMovie_1 = new Group(composite_4, SWT.NONE);
-		grpLocateMovie_1.setText("Locate Movie");
-		grpLocateMovie_1.setLayout(new FormLayout());
-		
-		Label lblMovieName_1 = new Label(grpLocateMovie_1, SWT.NONE);
-		FormData fd_lblMovieName_1 = new FormData();
-		fd_lblMovieName_1.top = new FormAttachment(0, 10);
-		fd_lblMovieName_1.left = new FormAttachment(0, 10);
-		lblMovieName_1.setLayoutData(fd_lblMovieName_1);
-		lblMovieName_1.setText("Movie name:");
-		
-		textActMovieName = new Text(grpLocateMovie_1, SWT.BORDER);
-		FormData fd_textActMovieName = new FormData();
-		fd_textActMovieName.top = new FormAttachment(lblMovieName_1, -3, SWT.TOP);
-		fd_textActMovieName.left = new FormAttachment(lblMovieName_1, 6);
-		fd_textActMovieName.right = new FormAttachment(100, -10);
-		textActMovieName.setLayoutData(fd_textActMovieName);
-		
-		final List listActMovies = new List(grpLocateMovie_1, SWT.BORDER);
-		FormData fd_listActMovies = new FormData();
-		fd_listActMovies.top = new FormAttachment(lblMovieName_1, 6);
-		fd_listActMovies.left = new FormAttachment(0, 10);
-		fd_listActMovies.right = new FormAttachment(100, -10);
-		fd_listActMovies.bottom = new FormAttachment(100, -10);
-		
-		listActMovies.setLayoutData(fd_listActMovies);
 		
 		Group grpLocateActor = new Group(composite_4, SWT.NONE);
 		grpLocateActor.setText("Locate Actor");
@@ -631,76 +556,120 @@ public class EditScreen extends Shell {
 		fd_listActPeople.right = new FormAttachment(100, -10);
 		listActPeople.setLayoutData(fd_listActPeople);
 		
+		Composite composite_6 = new Composite(composite_2, SWT.NONE);
+		FillLayout fl_composite_6 = new FillLayout(SWT.VERTICAL);
+		fl_composite_6.marginWidth = 5;
+		fl_composite_6.marginHeight = 5;
+		fl_composite_6.spacing = 5;
+		composite_6.setLayout(fl_composite_6);
+		
+		Group grpPlaysIn = new Group(composite_6, SWT.NONE);
+		grpPlaysIn.setText("Plays In");
+		grpPlaysIn.setLayout(new FormLayout());
+		
+		Button btnRemoveSelectedRole = new Button(grpPlaysIn, SWT.NONE);
+
+		FormData fd_btnRemoveSelectedRole = new FormData();
+		fd_btnRemoveSelectedRole.bottom = new FormAttachment(100, -10);
+		fd_btnRemoveSelectedRole.right = new FormAttachment(100, -10);
+		btnRemoveSelectedRole.setLayoutData(fd_btnRemoveSelectedRole);
+		btnRemoveSelectedRole.setText("Remove Selected Roles");
+		
+		tableActPlaysIn = new Table(grpPlaysIn, SWT.BORDER | SWT.CHECK | SWT.FULL_SELECTION);
+		FormData fd_tableActPlaysIn = new FormData();
+		fd_tableActPlaysIn.top = new FormAttachment(0, 10);
+		fd_tableActPlaysIn.left = new FormAttachment(0, 10);
+		fd_tableActPlaysIn.right = new FormAttachment(100, -10);
+		fd_tableActPlaysIn.bottom = new FormAttachment(btnRemoveSelectedRole, -10);
+		tableActPlaysIn.setLayoutData(fd_tableActPlaysIn);
+		tableActPlaysIn.setHeaderVisible(true);
+		tableActPlaysIn.setLinesVisible(true);
+		
+		TableColumn tblclmnMovie = new TableColumn(tableActPlaysIn, SWT.NONE);
+		tblclmnMovie.setWidth(133);
+		tblclmnMovie.setText("Movie");
+		
+		TableColumn tblclmnCharacter = new TableColumn(tableActPlaysIn, SWT.NONE);
+		tblclmnCharacter.setWidth(88);
+		tblclmnCharacter.setText("Character");
+		
+		TableColumn tblclmnCreditPosition = new TableColumn(tableActPlaysIn, SWT.NONE);
+		tblclmnCreditPosition.setWidth(91);
+		tblclmnCreditPosition.setText("Credit Position");
+		
+		Group grpEditRoles = new Group(composite_6, SWT.NONE);
+		grpEditRoles.setText("Edit Roles");
+		grpEditRoles.setLayout(new FormLayout());
+		
+		Label lblLocateMovie = new Label(grpEditRoles, SWT.NONE);
+		FormData fd_lblLocateMovie = new FormData();
+		fd_lblLocateMovie.top = new FormAttachment(0, 10);
+		fd_lblLocateMovie.left = new FormAttachment(0, 10);
+		lblLocateMovie.setLayoutData(fd_lblLocateMovie);
+		lblLocateMovie.setText("Locate movie");
+		
+		textActSearchMovie = new Text(grpEditRoles, SWT.BORDER);
+		FormData fd_textActSearchMovie = new FormData();
+		fd_textActSearchMovie.top = new FormAttachment(lblLocateMovie, -3, SWT.TOP);
+		fd_textActSearchMovie.left = new FormAttachment(lblLocateMovie, 28);
+		fd_textActSearchMovie.right = new FormAttachment(100, -10);
+		textActSearchMovie.setLayoutData(fd_textActSearchMovie);
+		
+		final List listActAddMovie = new List(grpEditRoles, SWT.BORDER);
+		FormData fd_listActAddMovie = new FormData();
+		fd_listActAddMovie.top = new FormAttachment(lblLocateMovie, 6);
+		fd_listActAddMovie.left = new FormAttachment(lblLocateMovie, 0, SWT.LEFT);
+		fd_listActAddMovie.right = new FormAttachment(100, -10);
+		listActAddMovie.setLayoutData(fd_listActAddMovie);
+		
+		Label lblCreditPosition = new Label(grpEditRoles, SWT.NONE);
+		FormData fd_lblCreditPosition = new FormData();
+		fd_lblCreditPosition.bottom = new FormAttachment(100, -10);
+		fd_lblCreditPosition.left = new FormAttachment(lblLocateMovie, 0, SWT.LEFT);
+		lblCreditPosition.setLayoutData(fd_lblCreditPosition);
+		lblCreditPosition.setText("Credit position");
+		
+		Label lblCharacterName = new Label(grpEditRoles, SWT.NONE);
+		FormData fd_lblCharacterName = new FormData();
+		fd_lblCharacterName.bottom = new FormAttachment(lblCreditPosition, -6);
+		fd_lblCharacterName.left = new FormAttachment(lblLocateMovie, 0, SWT.LEFT);
+		lblCharacterName.setLayoutData(fd_lblCharacterName);
+		lblCharacterName.setText("Character name");
+		fd_listActAddMovie.bottom = new FormAttachment(lblCharacterName, -10);
+		
+		textActCharName = new Text(grpEditRoles, SWT.BORDER);
+		FormData fd_textActCharName = new FormData();
+		fd_textActCharName.top = new FormAttachment(lblCharacterName, -3, SWT.TOP);
+		fd_textActCharName.left = new FormAttachment(textActSearchMovie, 0, SWT.LEFT);
+		fd_textActCharName.right = new FormAttachment(100, -10);
+		textActCharName.setLayoutData(fd_textActCharName);
+		
+		Button btnAddupdateRole = new Button(grpEditRoles, SWT.NONE);
+
+		FormData fd_btnAddupdateRole = new FormData();
+		fd_btnAddupdateRole.top = new FormAttachment(lblCreditPosition, 0, SWT.TOP);
+		fd_btnAddupdateRole.right = new FormAttachment(100, -10);
+		btnAddupdateRole.setLayoutData(fd_btnAddupdateRole);
+		btnAddupdateRole.setText("Add/Update Role");
+		
+		textActCredPos = new Spinner(grpEditRoles, SWT.BORDER);
+		FormData fd_textActCredPos = new FormData();
+		fd_textActCredPos.top = new FormAttachment(lblCreditPosition, 0, SWT.TOP);
+		fd_textActCredPos.left = new FormAttachment(textActSearchMovie, 0, SWT.LEFT);
+		textActCredPos.setLayoutData(fd_textActCredPos);
+
 		TabItem tbtmDirectors = new TabItem(tabFolder, SWT.NONE);
 		tbtmDirectors.setText("Directors");
 		
 		Composite composite_3 = new Composite(tabFolder, SWT.NONE);
 		tbtmDirectors.setControl(composite_3);
-		composite_3.setLayout(new FormLayout());
+		FillLayout fl_composite_3 = new FillLayout(SWT.HORIZONTAL);
+		fl_composite_3.spacing = 5;
+		fl_composite_3.marginWidth = 5;
+		fl_composite_3.marginHeight = 5;
+		composite_3.setLayout(fl_composite_3);
 		
-		Group group = new Group(composite_3, SWT.NONE);
-		FormData fd_group = new FormData();
-		fd_group.bottom = new FormAttachment(100, -10);
-		fd_group.left = new FormAttachment(0, 10);
-		fd_group.right = new FormAttachment(100, -10);
-		fd_group.top = new FormAttachment(100, -100);
-		group.setLayoutData(fd_group);
-		group.setLayout(new FormLayout());
-		
-		Button btnAddupdateDirector = new Button(group, SWT.NONE);
-		btnAddupdateDirector.setText("Add/Update Director");
-		FormData fd_btnAddupdateDirector = new FormData();
-		fd_btnAddupdateDirector.bottom = new FormAttachment(100, -10);
-		fd_btnAddupdateDirector.right = new FormAttachment(100, -10);
-		btnAddupdateDirector.setLayoutData(fd_btnAddupdateDirector);
-		
-		Button btnRemoveDirector = new Button(group, SWT.NONE);
-		btnRemoveDirector.setText("Remove Director");
-		FormData fd_btnRemoveDirector = new FormData();
-		fd_btnRemoveDirector.bottom = new FormAttachment(100, -10);
-		fd_btnRemoveDirector.right = new FormAttachment(btnAddupdateDirector, -15);
-		btnRemoveDirector.setLayoutData(fd_btnRemoveDirector);
-		
-		Composite composite_5 = new Composite(composite_3, SWT.NONE);
-		FillLayout fl_composite_5 = new FillLayout(SWT.HORIZONTAL);
-		fl_composite_5.marginWidth = 5;
-		fl_composite_5.marginHeight = 5;
-		fl_composite_5.spacing = 5;
-		composite_5.setLayout(fl_composite_5);
-		FormData fd_composite_5 = new FormData();
-		fd_composite_5.top = new FormAttachment(0, 10);
-		fd_composite_5.left = new FormAttachment(0, 10);
-		fd_composite_5.right = new FormAttachment(100, -10);
-		fd_composite_5.bottom = new FormAttachment(group, 0);
-		composite_5.setLayoutData(fd_composite_5);
-		
-		Group group_1 = new Group(composite_5, SWT.NONE);
-		group_1.setText("Locate Movie");
-		group_1.setLayout(new FormLayout());
-		
-		Label label = new Label(group_1, SWT.NONE);
-		label.setText("Movie name:");
-		FormData fd_label = new FormData();
-		fd_label.top = new FormAttachment(0, 10);
-		fd_label.left = new FormAttachment(0, 10);
-		label.setLayoutData(fd_label);
-		
-		textDirMovieName = new Text(group_1, SWT.BORDER);
-		FormData fd_textDirMovieName = new FormData();
-		fd_textDirMovieName.top = new FormAttachment(label, -3, SWT.TOP);
-		fd_textDirMovieName.right = new FormAttachment(100, -10);
-		fd_textDirMovieName.left = new FormAttachment(label, 6);
-		textDirMovieName.setLayoutData(fd_textDirMovieName);
-		
-		final List listDirMovies = new List(group_1, SWT.BORDER);
-		FormData fd_listDirMovies = new FormData();
-		fd_listDirMovies.bottom = new FormAttachment(100, -10);
-		fd_listDirMovies.top = new FormAttachment(label, 6);
-		fd_listDirMovies.right = new FormAttachment(100, -10);
-		fd_listDirMovies.left = new FormAttachment(0, 10);
-		listDirMovies.setLayoutData(fd_listDirMovies);
-		
-		Group grpLocateDirector = new Group(composite_5, SWT.NONE);
+		Group grpLocateDirector = new Group(composite_3, SWT.NONE);
 		grpLocateDirector.setText("Locate Director");
 		grpLocateDirector.setLayout(new FormLayout());
 		
@@ -725,6 +694,107 @@ public class EditScreen extends Shell {
 		fd_listDirPeople.right = new FormAttachment(100, -10);
 		fd_listDirPeople.left = new FormAttachment(label_1, 0, SWT.LEFT);
 		listDirPeople.setLayoutData(fd_listDirPeople);
+		
+		Composite composite_5 = new Composite(composite_3, SWT.NONE);
+		FillLayout fl_composite_5 = new FillLayout(SWT.VERTICAL);
+		fl_composite_5.marginHeight = 5;
+		fl_composite_5.spacing = 5;
+		fl_composite_5.marginWidth = 5;
+		composite_5.setLayout(fl_composite_5);
+		
+		Group grpDirected = new Group(composite_5, SWT.NONE);
+		grpDirected.setText("Directed");
+		grpDirected.setLayout(new FormLayout());
+		
+		Button btnRemoveSelectedMovies = new Button(grpDirected, SWT.NONE);
+		FormData fd_btnRemoveSelectedMovies = new FormData();
+		fd_btnRemoveSelectedMovies.bottom = new FormAttachment(100, -10);
+		fd_btnRemoveSelectedMovies.right = new FormAttachment(100, -10);
+		btnRemoveSelectedMovies.setLayoutData(fd_btnRemoveSelectedMovies);
+		btnRemoveSelectedMovies.setText("Remove Selected Movies");
+		
+		tableDirectedMovies = new Table(grpDirected, SWT.BORDER | SWT.CHECK | SWT.FULL_SELECTION);
+		FormData fd_tableDirectedMovies = new FormData();
+		fd_tableDirectedMovies.top = new FormAttachment(0, 10);
+		fd_tableDirectedMovies.left = new FormAttachment(0, 10);
+		fd_tableDirectedMovies.right = new FormAttachment(100, -10);
+		fd_tableDirectedMovies.bottom = new FormAttachment(btnRemoveSelectedMovies, -10);
+		tableDirectedMovies.setLayoutData(fd_tableDirectedMovies);
+		tableDirectedMovies.setHeaderVisible(true);
+		tableDirectedMovies.setLinesVisible(true);
+		
+		TableColumn tblclmnMovie_1 = new TableColumn(tableDirectedMovies, SWT.NONE);
+		tblclmnMovie_1.setWidth(292);
+		tblclmnMovie_1.setText("Movie");
+		
+		Group group_1 = new Group(composite_5, SWT.NONE);
+		group_1.setText("Locate Movie");
+		group_1.setLayout(new FormLayout());
+		
+		Label label = new Label(group_1, SWT.NONE);
+		label.setText("Movie name:");
+		FormData fd_label = new FormData();
+		fd_label.top = new FormAttachment(0, 10);
+		fd_label.left = new FormAttachment(0, 10);
+		label.setLayoutData(fd_label);
+		
+		textDirMovieName = new Text(group_1, SWT.BORDER);
+		FormData fd_textDirMovieName = new FormData();
+		fd_textDirMovieName.top = new FormAttachment(label, -3, SWT.TOP);
+		fd_textDirMovieName.right = new FormAttachment(100, -10);
+		fd_textDirMovieName.left = new FormAttachment(label, 6);
+		textDirMovieName.setLayoutData(fd_textDirMovieName);
+		
+		final List listDirMovies = new List(group_1, SWT.BORDER);
+		FormData fd_listDirMovies = new FormData();
+		fd_listDirMovies.top = new FormAttachment(label, 6);
+		fd_listDirMovies.right = new FormAttachment(100, -10);
+		fd_listDirMovies.left = new FormAttachment(0, 10);
+		listDirMovies.setLayoutData(fd_listDirMovies);
+		
+		Button btnAddMovie = new Button(group_1, SWT.NONE);
+
+		FormData fd_btnAddMovie = new FormData();
+		fd_btnAddMovie.bottom = new FormAttachment(100, -10);
+		fd_btnAddMovie.right = new FormAttachment(100, -10);
+		btnAddMovie.setLayoutData(fd_btnAddMovie);
+		btnAddMovie.setText("Add Movie");
+		fd_listDirMovies.bottom = new FormAttachment(btnAddMovie, -10);
+		
+		textDirPersonName.addModifyListener(new ModifyListener() {
+			@Override
+			public void modifyText(ModifyEvent arg0) {
+				if (EditScreen.this.isDisposed()) {
+					return;
+				}
+				if (textDirPersonName.getText().length() < 3) {
+					return;
+				}
+				String[] names = textDirPersonName.getText().split(" ");
+				
+				ResultSet rs;
+				try {
+					if (names.length == 1) {
+						rs = findPerson1.query(names[0] + "%");
+					}
+					else {
+						rs = findPerson2.query(names[0] + "%", names[1] + "%");
+					}
+					
+					listDirPeople.removeAll();
+					personIdMapping.clear();
+					int i = 0;
+					while (rs.next()) {
+						listDirPeople.add(rs.getString(1));
+						personIdMapping.put(i, rs.getInt(2));
+						i++;
+					}
+					rs.close();
+				} catch (SQLException e) {
+					e.printStackTrace();
+				}
+			}
+		});	
 
 		try {
 			findMovie = schema.createQuery("DISTINCT M.name, M.movie_id", 
@@ -757,8 +827,13 @@ public class EditScreen extends Shell {
 					"middle_name", "last_name", "nick_name", "real_name", "birth_date", "death_date",
 					"gender");
 			
+			findActorMovies = schema.createQuery("M.movie_id, M.name, R.char_name, R.credit_pos", 
+					"Movies as M, Roles as R", "R.actor = ? AND R.movie = M.movie_id", "M.name ASC");
+			findDirectorMovies = schema.createQuery("M.movie_id, M.name", "Movies as M, MovieDirectors as MD",
+					"MD.director = ? AND MD.movie = M.movie_id", "M.name ASC");
+			
 			insertRole = schema.createInsert("Roles", true, "actor", "movie", "char_name", "credit_pos"); 
-			insertDirector = schema.createInsert("Roles", true, "director", "movie"); 
+			insertDirector = schema.createInsert("MovieDirectors", true, "director", "movie"); 
 			deleteRole = schema.prepareStatement("DELETE FROM Roles WHERE actor = ? AND movie = ?");
 			deleteDirector = schema.prepareStatement("DELETE FROM MovieDirectors WHERE director = ? AND movie= ?");
 			
@@ -777,6 +852,9 @@ public class EditScreen extends Shell {
 		btnAddNew.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent arg0) {
+				if (EditScreen.this.isDisposed()) {
+					return;
+				}
 				String name = textName.getText().trim();
 				if (name.isEmpty()) {
 					errorMsgBox("Error", "Name must not be empty");
@@ -812,6 +890,7 @@ public class EditScreen extends Shell {
 					}
 					
 					schema.commit();
+					MainScreen.rebuildPopularTables = true;
 				} catch (SQLException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -822,6 +901,9 @@ public class EditScreen extends Shell {
 		btnUpdate.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent arg0) {
+				if (EditScreen.this.isDisposed()) {
+					return;
+				}
 				String name = textName.getText().trim();
 				if (name.isEmpty()) {
 					errorMsgBox("Error", "Name must not be empty");
@@ -853,6 +935,7 @@ public class EditScreen extends Shell {
 					}
 					
 					schema.commit();
+					MainScreen.rebuildPopularTables = true;
 				} catch (SQLException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -867,7 +950,13 @@ public class EditScreen extends Shell {
 
 			@Override
 			public void widgetSelected(SelectionEvent arg0) {
+				if (EditScreen.this.isDisposed()) {
+					return;
+				}
 				int selind = list.getSelectionIndex();
+				if (selind < 0) {
+					return;
+				}
 				int movie_id = movieIdMapping.get(selind);
 				
 				try {
@@ -908,6 +997,9 @@ public class EditScreen extends Shell {
 		textPersonNameSearch.addModifyListener(new ModifyListener() {
 			@Override
 			public void modifyText(ModifyEvent arg0) {
+				if (EditScreen.this.isDisposed()) {
+					return;
+				}
 				if (textPersonNameSearch.getText().length() < 3) {
 					return;
 				}
@@ -945,7 +1037,13 @@ public class EditScreen extends Shell {
 			@SuppressWarnings("deprecation")
 			@Override
 			public void widgetSelected(SelectionEvent arg0) {
+				if (EditScreen.this.isDisposed()) {
+					return;
+				}
 				int selind = list_1.getSelectionIndex();
+				if (selind < 0) {
+					return;
+				}
 				int movie_id = personIdMapping.get(selind);
 				
 				try {
@@ -992,6 +1090,9 @@ public class EditScreen extends Shell {
 			@SuppressWarnings("deprecation")
 			@Override
 			public void widgetSelected(SelectionEvent arg0) {
+				if (EditScreen.this.isDisposed()) {
+					return;
+				}
 				String fn = textPersonFN.getText().trim();
 				if (fn.isEmpty()) {
 					errorMsgBox("Error", "First name must not be empty");
@@ -1027,6 +1128,7 @@ public class EditScreen extends Shell {
 				try {
 					updatePersonDetails.update(fn, mn, ln, nn, rn, bd, dd, gender, person_id);
 					schema.commit();
+					MainScreen.rebuildPopularTables = true;
 				} catch (SQLException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
@@ -1038,6 +1140,9 @@ public class EditScreen extends Shell {
 			@SuppressWarnings("deprecation")
 			@Override
 			public void widgetSelected(SelectionEvent arg0) {
+				if (EditScreen.this.isDisposed()) {
+					return;
+				}
 				String fn = textPersonFN.getText().trim();
 				if (fn.isEmpty()) {
 					errorMsgBox("Error", "First name must not be empty");
@@ -1080,16 +1185,21 @@ public class EditScreen extends Shell {
 					}
 					
 					schema.commit();
+					MainScreen.rebuildPopularTables = true;
 				} catch (SQLException e) {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}				
 			}
 		});
+
 		
 		textActPersonName.addModifyListener(new ModifyListener() {
 			@Override
 			public void modifyText(ModifyEvent arg0) {
+				if (EditScreen.this.isDisposed()) {
+					return;
+				}
 				if (textActPersonName.getText().length() < 3) {
 					return;
 				}
@@ -1118,21 +1228,98 @@ public class EditScreen extends Shell {
 				}
 			}
 		});
-		
-		textActMovieName.addModifyListener(new ModifyListener() {
+
+		final SelectionListener updatePlayedInTable = new SelectionListener() {
 			@Override
-			public void modifyText(ModifyEvent arg0) {
-				if (textActMovieName.getText().length() < 3) {
+			public void widgetDefaultSelected(SelectionEvent arg0) {
+			}
+
+			@Override
+			public void widgetSelected(SelectionEvent arg0) {
+				if (EditScreen.this.isDisposed()) {
 					return;
 				}
-				String movie_name = "%"+ textActMovieName.getText() + "%";
-				listActMovies.removeAll();
+				int selind = listActPeople.getSelectionIndex();
+				if (selind < 0) {
+					return;
+				}
+				int person_id = personIdMapping.get(selind);
+				
+				try {
+					ResultSet rs = findActorMovies.query(person_id);
+					tableActPlaysIn.removeAll();
+					tableActPlaysIn.setData(person_id);
+					while (rs.next()) {
+						TableItem ti = new TableItem(tableActPlaysIn, SWT.NONE);
+						ti.setData(rs.getInt(1));
+						ti.setText(0, rs.getString(2));
+						ti.setText(1, rs.getString(3) == null ? "" : rs.getString(3));
+						ti.setText(2, rs.getInt(4) <= 0 ? "" : new Integer(rs.getInt(4)).toString());
+					}
+				} catch (SQLException e) {
+					e.printStackTrace();
+					return;
+				}
+			}
+		};
+		
+		listActPeople.addSelectionListener(updatePlayedInTable);
+
+		btnRemoveSelectedRole.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent arg0) {
+				if (EditScreen.this.isDisposed()) {
+					return;
+				}
+				boolean found = false;
+				int person_id = (Integer)tableActPlaysIn.getData();
+				int i = -1;
+				for (TableItem ti : tableActPlaysIn.getItems()) {
+					i++;
+					if (!ti.getChecked()) {
+						continue;
+					}
+					found = true;
+					int movie_id = (Integer)ti.getData();
+					try {
+						deleteRole.setInt(1, person_id);
+						deleteRole.setInt(2, movie_id);
+						deleteRole.executeUpdate();
+					} catch (SQLException e) {
+						e.printStackTrace();
+					}
+					tableActPlaysIn.remove(i);
+				}
+				if (found) {
+					try {
+						schema.commit();
+						MainScreen.rebuildPopularTables = true;
+					} catch (SQLException e) {
+						e.printStackTrace();
+					}
+				} else {
+					errorMsgBox("Error", "No movies selected");
+				}
+			}
+		});
+		
+		textActSearchMovie.addModifyListener(new ModifyListener() {
+			@Override
+			public void modifyText(ModifyEvent arg0) {
+				if (EditScreen.this.isDisposed()) {
+					return;
+				}
+				if (textActSearchMovie.getText().length() < 3) {
+					return;
+				}
+				String movie_name = "%"+ textActSearchMovie.getText() + "%";
+				listActAddMovie.removeAll();
 				movieIdMapping.clear();
 				try {
 					ResultSet rs = findMovie.query(movie_name);
 					int i = 0;
 					while (rs.next()) {
-						listActMovies.add(rs.getString(1));
+						listActAddMovie.add(rs.getString(1));
 						movieIdMapping.put(i, rs.getInt(2));
 						i++;
 					}
@@ -1142,66 +1329,47 @@ public class EditScreen extends Shell {
 			}
 		});
 
-		btnRemoveRole.addSelectionListener(new SelectionAdapter() {
+		btnAddupdateRole.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent arg0) {
-				int movind = listDirMovies.getSelectionIndex();
-				int perind = listDirPeople.getSelectionIndex();
-				if (movind < 0) {
+				if (EditScreen.this.isDisposed()) {
+					return;
+				}
+				int selind = listActAddMovie.getSelectionIndex();
+				if (selind < 0) {
 					errorMsgBox("Error", "Select a movie first");
 					return;
 				}
-				if (perind < 0) {
-					errorMsgBox("Error", "Select a person first");
-					return;
+				int movie_id = movieIdMapping.get(selind);
+				String charname = textActCharName.getText().trim();
+				if (charname.isEmpty()) {
+					charname = null;
 				}
-				int movie_id = personIdMapping.get(movind);
-				int person_id = personIdMapping.get(perind);
+				Integer creditpos = textActCredPos.getSelection();
+				if (creditpos <= 0) {
+					creditpos = null;
+				}
+				int person_id = (Integer)tableActPlaysIn.getData();
 				try {
 					deleteRole.setInt(1, person_id);
 					deleteRole.setInt(2, movie_id);
 					deleteRole.executeUpdate();
+					insertRole.insert(person_id, movie_id, charname, creditpos);
+					schema.commit();
+					MainScreen.rebuildPopularTables = true;
 				} catch (SQLException e) {
 					e.printStackTrace();
 				}
+				updatePlayedInTable.widgetSelected(null);
 			}
 		});
-		
-		textDirPersonName.addModifyListener(new ModifyListener() {
-			@Override
-			public void modifyText(ModifyEvent arg0) {
-				if (textDirPersonName.getText().length() < 3) {
-					return;
-				}
-				String[] names = textDirPersonName.getText().split(" ");
 				
-				ResultSet rs;
-				try {
-					if (names.length == 1) {
-						rs = findPerson1.query(names[0] + "%");
-					}
-					else {
-						rs = findPerson2.query(names[0] + "%", names[1] + "%");
-					}
-					
-					listDirPeople.removeAll();
-					personIdMapping.clear();
-					int i = 0;
-					while (rs.next()) {
-						listDirPeople.add(rs.getString(1));
-						personIdMapping.put(i, rs.getInt(2));
-						i++;
-					}
-					rs.close();
-				} catch (SQLException e) {
-					e.printStackTrace();
-				}
-			}
-		});	
-		
 		textDirMovieName.addModifyListener(new ModifyListener() {
 			@Override
 			public void modifyText(ModifyEvent arg0) {
+				if (EditScreen.this.isDisposed()) {
+					return;
+				}
 				if (textDirMovieName.getText().length() < 3) {
 					return;
 				}
@@ -1220,34 +1388,103 @@ public class EditScreen extends Shell {
 					e.printStackTrace();
 				}
 			}
-		});	
+		});
 		
-		btnRemoveDirector.addSelectionListener(new SelectionAdapter() {
+		final SelectionListener updateDirectedTable = new SelectionListener() {
+			@Override
+			public void widgetDefaultSelected(SelectionEvent arg0) {
+			}
+
 			@Override
 			public void widgetSelected(SelectionEvent arg0) {
-				int movind = listDirMovies.getSelectionIndex();
-				int perind = listDirPeople.getSelectionIndex();
-				if (movind < 0) {
-					errorMsgBox("Error", "Select a movie first");
+				if (EditScreen.this.isDisposed()) {
 					return;
 				}
-				if (perind < 0) {
-					errorMsgBox("Error", "Select a person first");
+				int selind = listDirPeople.getSelectionIndex();
+				if (selind < 0) {
 					return;
 				}
-				int movie_id = personIdMapping.get(movind);
-				int person_id = personIdMapping.get(perind);
+				int person_id = personIdMapping.get(selind);
+				
 				try {
-					deleteDirector.setInt(1, person_id);
-					deleteDirector.setInt(2, movie_id);
-					deleteDirector.executeUpdate();
+					ResultSet rs = findDirectorMovies.query(person_id);
+					tableDirectedMovies.removeAll();
+					tableDirectedMovies.setData(person_id);
+					while (rs.next()) {
+						TableItem ti = new TableItem(tableDirectedMovies, SWT.NONE);
+						ti.setData(rs.getInt(1));
+						ti.setText(0, rs.getString(2));
+					}
 				} catch (SQLException e) {
 					e.printStackTrace();
+					return;
+				}
+			}
+		};
+		
+		listDirPeople.addSelectionListener(updateDirectedTable);		
+		
+		btnRemoveSelectedMovies.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent arg0) {
+				if (EditScreen.this.isDisposed()) {
+					return;
+				}
+				boolean found = false;
+				int person_id = (Integer)tableDirectedMovies.getData();
+				int i = -1;
+				for (TableItem ti : tableDirectedMovies.getItems()) {
+					i++;
+					if (!ti.getChecked()) {
+						continue;
+					}
+					found = true;
+					int movie_id = (Integer)ti.getData();
+					try {
+						deleteDirector.setInt(1, person_id);
+						deleteDirector.setInt(2, movie_id);
+						deleteDirector.executeUpdate();
+					} catch (SQLException e) {
+						e.printStackTrace();
+					}
+					tableDirectedMovies.remove(i);
+				}
+				if (found) {
+					try {
+						schema.commit();
+						MainScreen.rebuildPopularTables = true;
+					} catch (SQLException e) {
+						e.printStackTrace();
+					}
+				} else {
+					errorMsgBox("Error", "No movies selected");
 				}
 			}
 		});
 		
-		
+		btnAddMovie.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent arg0) {
+				if (EditScreen.this.isDisposed()) {
+					return;
+				}
+				int selind = listDirMovies.getSelectionIndex();
+				if (selind < 0) {
+					errorMsgBox("Error", "Select a movie first");
+					return;
+				}
+				int movie_id = movieIdMapping.get(selind);
+				int person_id = (Integer)tableDirectedMovies.getData();
+				try {
+					insertDirector.insert(person_id, movie_id);
+					schema.commit();
+					MainScreen.rebuildPopularTables = true;
+				} catch (SQLException e) {
+					e.printStackTrace();
+				}
+				updateDirectedTable.widgetSelected(null);
+			}
+		});		
 	}
 
 	@Override

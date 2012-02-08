@@ -35,6 +35,7 @@ import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.graphics.Rectangle;
 
 import ponytrivia.db.Schema;
+import ponytrivia.db.SimpleInsert;
 import ponytrivia.question.QuestionInfo;
 import ponytrivia.question.QuestionRegistry;
 
@@ -44,40 +45,58 @@ public class GameScreen {
 	protected QuestionRegistry questionRegistry;
 	protected Shell shlPonyTrivia;
 	
-	protected static class GameInfo
-	{
-		public int initalTurnsForFiftyFifty = 0;
-		public int question_number = 1;
+	protected SimpleInsert insertHighscore;
+	
+	public static class GameConfig {
+		public int playerId = -1;
+		public int initalTurnsForFiftyFifty = 2;
+		public int questions_to_win = 5;
 		public int alotted_time = 20;
-		public int remaining_time = alotted_time;
+	}
+	
+	protected GameConfig config;
+	protected Schema schema;
+	
+	protected static class GameState
+	{
+		public int question_number = 1;
+		public int remaining_time = -1;
 		public int total_score = 0;
 		public int correctAnswerIndex = -1;
-		public int questions_to_win = 3;
 		public int pony_pos = 0;
 		public int turnsBeforeEnablingFiftyFifty;
 		public boolean enabled = true;
 	}
 	
-	protected GameInfo gameinfo = new GameInfo();
+	protected GameState gameState = new GameState();
 
 	/**
 	 * Launch the application.
 	 * @param args
 	 * @wbp.parser.entryPoint
 	 */
-	public static void run(Display display, QuestionRegistry qr) {
+	public static void run(Display display, Schema schema, QuestionRegistry qr, GameConfig config) {
 		try {
-			GameScreen window = new GameScreen(display, qr);
+			GameScreen window = new GameScreen(display, schema, qr, config);
 			window.open();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 	
-	public GameScreen(Display display, QuestionRegistry questionRegistry)
+	public GameScreen(Display display, Schema schema, QuestionRegistry questionRegistry, GameConfig config)
 	{
+		this.config = config;
+		this.gameState.remaining_time = config.alotted_time;
 		this.display = display;
+		this.schema = schema;
 		this.questionRegistry = questionRegistry;
+		
+		try {
+			insertHighscore = schema.createInsert("Highscores", false, "user", "score");
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
 	}
 
 	/**
@@ -275,7 +294,7 @@ public class GameScreen {
 				r.width = composite_4.getBounds().width - 6;
 				lblGrass.setBounds(r);
 				
-				int x = (int)((lblGrass.getBounds().width / 2) * (1 - ((double)gameinfo.pony_pos) / gameinfo.questions_to_win));
+				int x = (int)((lblGrass.getBounds().width / 2) * (1 - ((double)gameState.pony_pos) / config.questions_to_win));
 				lblPony.setLocation(x - lblPony.getBounds().width / 2, lblPony.getLocation().y);
 			}
 		});
@@ -288,8 +307,8 @@ public class GameScreen {
 				if (shlPonyTrivia.isDisposed()) {
 					return;
 				}
-				lblTime.setText("Remaining time: " + Math.max(0, gameinfo.remaining_time));
-				if (gameinfo.remaining_time <= gameinfo.alotted_time / 3) {
+				lblTime.setText("Remaining time: " + Math.max(0, gameState.remaining_time));
+				if (gameState.remaining_time <= config.alotted_time / 3) {
 					lblTime.setForeground(display.getSystemColor(SWT.COLOR_RED));
 				}
 				else {
@@ -318,7 +337,7 @@ public class GameScreen {
 					btn.setBackground(origButtonColor);
 					btn.setSelection(false);
 				}
-				gameinfo.correctAnswerIndex = qi.correctAnswerIndex;
+				gameState.correctAnswerIndex = qi.correctAnswerIndex;
 			}
 		};
 		updateQuestion.run();
@@ -330,34 +349,34 @@ public class GameScreen {
 					return;
 				}
 
-				int delta = lblGrass.getBounds().width / (2 * gameinfo.questions_to_win);
+				int delta = lblGrass.getBounds().width / (2 * config.questions_to_win);
 				int timeout = 1000;
-				gameinfo.enabled = false;
+				gameState.enabled = false;
 				btnNext.setEnabled(false);
 				
-				final Button correct = answerButtons[gameinfo.correctAnswerIndex];
+				final Button correct = answerButtons[gameState.correctAnswerIndex];
 
 				if (correct.getSelection()) {
-					gameinfo.total_score += 10 + (gameinfo.remaining_time < 0 ? 0 : gameinfo.remaining_time);
+					gameState.total_score += 10 + (gameState.remaining_time < 0 ? 0 : gameState.remaining_time);
 					delta = -delta;
 					correct.setBackground(new Color(display, 150, 250, 150));
 					lblPony.setImage(imgKitty1);
-					gameinfo.pony_pos += 1;
+					gameState.pony_pos += 1;
 				}
 				else {
-					gameinfo.total_score -= 10;
+					gameState.total_score -= 10;
 					correct.setBackground(new Color(display, 250, 150, 150));
 					timeout = 1500;
 					lblPony.setImage(imgKitty2);
-					gameinfo.pony_pos -= 1;
+					gameState.pony_pos -= 1;
 				}
-				if (gameinfo.total_score < 0) {
-					gameinfo.total_score = 0;
+				if (gameState.total_score < 0) {
+					gameState.total_score = 0;
 				}
-				lblScore.setText("Score: " + gameinfo.total_score);
-				gameinfo.question_number += 1;
+				lblScore.setText("Score: " + gameState.total_score);
+				gameState.question_number += 1;
 				
-				gameinfo.turnsBeforeEnablingFiftyFifty -= 1;
+				gameState.turnsBeforeEnablingFiftyFifty -= 1;
 				
 				class AnimatePony implements Runnable
 				{
@@ -404,26 +423,34 @@ public class GameScreen {
 					@Override
 					public void run()
 					{
-						if (gameinfo.pony_pos >= gameinfo.questions_to_win) {
+						if (gameState.pony_pos >= config.questions_to_win) {
 							shlPonyTrivia.setEnabled(false);
+							
+							try {
+								insertHighscore.insert(config.playerId, gameState.total_score);
+								schema.commit();
+							} catch (SQLException e) {
+								e.printStackTrace();
+							}
+							
 							WinScreen.run(display);
 							shlPonyTrivia.close();
 							return;
 						}
-						if (gameinfo.pony_pos <= -gameinfo.questions_to_win) {
+						if (gameState.pony_pos <= -config.questions_to_win) {
 							shlPonyTrivia.setEnabled(false);
 							LoseScreen.run(display);
 							shlPonyTrivia.close();
 							return;
 						}
-						if (gameinfo.turnsBeforeEnablingFiftyFifty <= 0) {
-							gameinfo.turnsBeforeEnablingFiftyFifty = 0;
+						if (gameState.turnsBeforeEnablingFiftyFifty <= 0) {
+							gameState.turnsBeforeEnablingFiftyFifty = 0;
 							btnFiftyFifty.setEnabled(true);
 						}
 						updateTimeLabel.run();
 						updateQuestion.run();
-						gameinfo.remaining_time = gameinfo.alotted_time;
-						gameinfo.enabled = true;
+						gameState.remaining_time = config.alotted_time;
+						gameState.enabled = true;
 					}
 				});
 			}
@@ -436,13 +463,13 @@ public class GameScreen {
 					return;
 				}
 				btnFiftyFifty.setEnabled(false);
-				gameinfo.turnsBeforeEnablingFiftyFifty = gameinfo.initalTurnsForFiftyFifty;
+				gameState.turnsBeforeEnablingFiftyFifty = config.initalTurnsForFiftyFifty;
 				ArrayList<Integer> discarded = new ArrayList<Integer>();
 				discarded.add(0);
 				discarded.add(1);
 				discarded.add(2);
 				discarded.add(3);
-				discarded.remove(gameinfo.correctAnswerIndex);
+				discarded.remove(gameState.correctAnswerIndex);
 				Collections.shuffle(discarded);
 				discarded.remove(2);
 				for (int i : discarded) {
@@ -459,10 +486,10 @@ public class GameScreen {
 				if (shlPonyTrivia.isDisposed()) {
 					return;
 				}
-				gameinfo.remaining_time -= 1;
+				gameState.remaining_time -= 1;
 				display.timerExec(1000, this);
 				updateTimeLabel.run();
-				if (gameinfo.remaining_time <= 0 && gameinfo.enabled ) {
+				if (gameState.remaining_time <= 0 && gameState.enabled ) {
 					for (Button btn : answerButtons) {
 						btn.setSelection(false);
 					}

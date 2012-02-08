@@ -24,16 +24,18 @@ public class ApplyFilterScreen extends Shell {
 	protected Schema schema;
 	protected int minYear;
 	protected int maxYear;
+	protected int playerId;
 	protected List<Integer> genres_ids;
 
 	/**
 	 * Launch the application.
 	 * @param args
 	 */
-	public static void run(Display display, Schema schema, int minYear, int maxYear, List<Integer> genres_ids) {
+	public static void run(Display display, Schema schema, GameScreen.GameConfig config, 
+			int minYear, int maxYear, List<Integer> genres_ids) {
 		try {
-			ApplyFilterScreen shell = new ApplyFilterScreen(display, schema, minYear, maxYear, 
-					genres_ids);
+			ApplyFilterScreen shell = new ApplyFilterScreen(display, schema, config, minYear, 
+					maxYear, genres_ids);
 			shell.open();
 			shell.layout();
 			while (!shell.isDisposed()) {
@@ -53,6 +55,8 @@ public class ApplyFilterScreen extends Shell {
 		@Override
 		public void run() {
 			try {
+				schema.buildPopularTables(MainScreen.rebuildPopularTables);
+				MainScreen.rebuildPopularTables = false;
 				qr = new QuestionRegistry(schema, false);
 				qr.setFilter(minYear, maxYear, genres_ids);
 				if (qr.numOfFilteredMovies < 100) {
@@ -79,8 +83,8 @@ public class ApplyFilterScreen extends Shell {
 	 * Create the shell.
 	 * @param display
 	 */
-	public ApplyFilterScreen(final Display display, Schema schema, int minYear, int maxYear, 
-			List<Integer> genres_ids) {
+	public ApplyFilterScreen(final Display display, final Schema schema, final GameScreen.GameConfig config, 
+			int minYear, int maxYear, List<Integer> genres_ids) {
 		super(display, SWT.SHELL_TRIM);
 		this.schema = schema;
 		this.minYear = minYear;
@@ -139,7 +143,7 @@ public class ApplyFilterScreen extends Shell {
 					else {
 						ApplyFilterScreen.this.setEnabled(false);
 						ApplyFilterScreen.this.setVisible(false);
-						GameScreen.run(display, qr);
+						GameScreen.run(display, schema, qr, config);
 						ApplyFilterScreen.this.close();
 					}
 				}
