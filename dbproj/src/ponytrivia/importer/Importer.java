@@ -245,8 +245,8 @@ public class Importer {
         Batch batch = schema.createBatch("INSERT IGNORE MovieGenres (movie, genre) VALUES " +
         		"((SELECT movie_id FROM Movies WHERE imdb_name = ? LIMIT 1), ?)");
         
-    	SimpleInsert insertGenre = schema.createInsert("genres", true, "name");
-    	SimpleQuery findGenre = schema.createQuery("genre_id", "genres", "name = ?");
+    	SimpleInsert insertGenre = schema.createInsert("Genres", true, "name");
+    	SimpleQuery findGenre = schema.createQuery("genre_id", "Genres", "name = ?");
         
         // speedup: drop the FKs 
     	Statement stmt = schema.createStatement();
@@ -298,10 +298,10 @@ public class Importer {
     	stmt = schema.createStatement();
     	stmt.executeUpdate("DELETE FROM MovieGenres WHERE movie = 0 OR genre = 0");
     	stmt.executeUpdate("ALTER TABLE MovieGenres ADD CONSTRAINT `mg_movie` "+
-		"FOREIGN KEY (`movie`) REFERENCES `movies` (`movie_id`) " +
+		"FOREIGN KEY (`movie`) REFERENCES `Movies` (`movie_id`) " +
 		"ON DELETE CASCADE ON UPDATE NO ACTION, " +
 		"ADD CONSTRAINT `mg_genre` " +
-		"FOREIGN KEY (`genre`) REFERENCES `genres` (`genre_id`) " +
+		"FOREIGN KEY (`genre`) REFERENCES `Genres` (`genre_id`) " +
 		"ON DELETE CASCADE ON UPDATE NO ACTION");
     	stmt.close();
 		//schema.commit();
@@ -316,7 +316,7 @@ public class Importer {
 		protected int minEntries = 0;
 
 		public ImporterHelper() throws SQLException {
-			people = schema.createInsert("people", true, "imdb_name", "first_name", "middle_name", 
+			people = schema.createInsert("People", true, "imdb_name", "first_name", "middle_name", 
 					"last_name", "gender");
 		}
 
@@ -411,7 +411,7 @@ public class Importer {
 		
 		public ActorsImporterHelper() throws SQLException {
 			minEntries = 6;
-			batch = schema.createBatch("INSERT IGNORE INTO roles (actor, movie, char_name, credit_pos) " +
+			batch = schema.createBatch("INSERT IGNORE INTO Roles (actor, movie, char_name, credit_pos) " +
 					"VALUES (?, (SELECT movie_id FROM Movies WHERE imdb_name = ? LIMIT 1), ?, ?)");
 		}
 		
@@ -497,7 +497,7 @@ public class Importer {
     	stmt.executeUpdate("DELETE FROM Roles WHERE movie = 0 OR actor = 0");
     	stmt.executeUpdate("ALTER TABLE Roles ADD CONSTRAINT `roles_movie` " +
     	"FOREIGN KEY (`movie`) REFERENCES `movies` (`movie_id`) ON DELETE CASCADE ON UPDATE NO ACTION, " +
-    	"ADD CONSTRAINT `roles_person` FOREIGN KEY (`actor`) REFERENCES `people` " +
+    	"ADD CONSTRAINT `roles_person` FOREIGN KEY (`actor`) REFERENCES `People` " +
     	"(`person_id`) ON DELETE CASCADE ON UPDATE NO ACTION");
     	stmt.close();
     	//schema.commit();
@@ -530,8 +530,8 @@ public class Importer {
         stmt = schema.createStatement();
     	stmt.executeUpdate("DELETE FROM MovieDirectors WHERE movie = 0 OR director = 0");
     	stmt.executeUpdate("ALTER TABLE MovieDirectors ADD CONSTRAINT `md_movie` " +
-    	"FOREIGN KEY (`movie`) REFERENCES `movies` (`movie_id`) ON DELETE CASCADE ON UPDATE NO ACTION, " +
-    	"ADD CONSTRAINT `md_people` FOREIGN KEY (`director`) REFERENCES `people` " +
+    	"FOREIGN KEY (`movie`) REFERENCES `Movies` (`movie_id`) ON DELETE CASCADE ON UPDATE NO ACTION, " +
+    	"ADD CONSTRAINT `md_people` FOREIGN KEY (`director`) REFERENCES `People` " +
     	"(`person_id`) ON DELETE CASCADE ON UPDATE NO ACTION");
     	stmt.close();
 		//schema.commit();
@@ -606,7 +606,7 @@ public class Importer {
         reader = new ListFileReader(new File(directory, "biographies.list"));
         reader.skipUntil("^---*$");
         
-        Batch batch = schema.createBatch("UPDATE people SET real_name = ?, nick_name = ?, " +
+        Batch batch = schema.createBatch("UPDATE People SET real_name = ?, nick_name = ?, " +
         		"birth_date = ?, death_date = ? WHERE imdb_name = ?");
 
         while (true) {

@@ -15,20 +15,18 @@
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
---
--- Table structure for table `gameplayers`
---
-
--- DB password: "foobar"
-
 DROP SCHEMA IF EXISTS `DbMysql10`;
 CREATE SCHEMA `DbMysql10`;
 USE `DbMysql10`;
 
-DROP TABLE IF EXISTS `gameplayers`;
+--
+-- Table structure for table `GamePlayers`
+--
+
+DROP TABLE IF EXISTS `GamePlayers`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `gameplayers` (
+CREATE TABLE `GamePlayers` (
   `user_id` int(11) NOT NULL AUTO_INCREMENT,
   `username` varchar(30) NOT NULL,
   PRIMARY KEY (`user_id`),
@@ -37,22 +35,13 @@ CREATE TABLE `gameplayers` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `gameplayers`
+-- Table structure for table `Genres`
 --
 
-LOCK TABLES `gameplayers` WRITE;
-/*!40000 ALTER TABLE `gameplayers` DISABLE KEYS */;
-/*!40000 ALTER TABLE `gameplayers` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `genres`
---
-
-DROP TABLE IF EXISTS `genres`;
+DROP TABLE IF EXISTS `Genres`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `genres` (
+CREATE TABLE `Genres` (
   `genre_id` int(11) NOT NULL AUTO_INCREMENT,
   `name` varchar(30) NOT NULL,
   PRIMARY KEY (`genre_id`),
@@ -61,45 +50,27 @@ CREATE TABLE `genres` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `genres`
+-- Table structure for table `Highscores`
 --
 
-LOCK TABLES `genres` WRITE;
-/*!40000 ALTER TABLE `genres` DISABLE KEYS */;
-/*!40000 ALTER TABLE `genres` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `highscores`
---
-
-DROP TABLE IF EXISTS `highscores`;
+DROP TABLE IF EXISTS `Highscores`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `highscores` (
+CREATE TABLE `Highscores` (
   `highscore_id` int(11) NOT NULL AUTO_INCREMENT,
   `user` int(11) NOT NULL,
   `score` int(11) NOT NULL,
   PRIMARY KEY (`highscore_id`),
   KEY `highscore_user` (`user`),
-  CONSTRAINT `highscores_user` FOREIGN KEY (`user`) REFERENCES `gameplayers` (`user_id`) ON DELETE CASCADE ON UPDATE NO ACTION
+  CONSTRAINT `highscores_user` FOREIGN KEY (`user`) REFERENCES `GamePlayers` (`user_id`) ON DELETE CASCADE ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `highscores`
---
-
-LOCK TABLES `highscores` WRITE;
-/*!40000 ALTER TABLE `highscores` DISABLE KEYS */;
-/*!40000 ALTER TABLE `highscores` ENABLE KEYS */;
-UNLOCK TABLES;
 
 --
 -- Table structure for table `moviedirectors`
 --
 
-DROP TABLE IF EXISTS `moviedirectors`;
+DROP TABLE IF EXISTS `MovieDirectors`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `moviedirectors` (
@@ -110,28 +81,19 @@ CREATE TABLE `moviedirectors` (
   UNIQUE KEY `movie` (`movie`,`director`),
   KEY `md_movie` (`movie`),
   KEY `md_director` (`director`),
-  CONSTRAINT `md_movie` FOREIGN KEY (`movie`) REFERENCES `movies` (`movie_id`) ON DELETE CASCADE ON UPDATE NO ACTION,
-  CONSTRAINT `md_people` FOREIGN KEY (`director`) REFERENCES `people` (`person_id`) ON DELETE CASCADE ON UPDATE NO ACTION
+  CONSTRAINT `md_movie` FOREIGN KEY (`movie`) REFERENCES `Movies` (`movie_id`) ON DELETE CASCADE ON UPDATE NO ACTION,
+  CONSTRAINT `md_people` FOREIGN KEY (`director`) REFERENCES `People` (`person_id`) ON DELETE CASCADE ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `moviedirectors`
+-- Table structure for table `MovieGenres`
 --
 
-LOCK TABLES `moviedirectors` WRITE;
-/*!40000 ALTER TABLE `moviedirectors` DISABLE KEYS */;
-/*!40000 ALTER TABLE `moviedirectors` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `moviegenres`
---
-
-DROP TABLE IF EXISTS `moviegenres`;
+DROP TABLE IF EXISTS `MovieGenres`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `moviegenres` (
+CREATE TABLE `MovieGenres` (
   `movie_genre_id` int(11) NOT NULL AUTO_INCREMENT,
   `genre` int(11) NOT NULL,
   `movie` int(11) NOT NULL,
@@ -139,28 +101,19 @@ CREATE TABLE `moviegenres` (
   UNIQUE KEY `genre` (`genre`,`movie`),
   KEY `mg_movie` (`movie`),
   KEY `mg_genre` (`genre`),
-  CONSTRAINT `mg_movie` FOREIGN KEY (`movie`) REFERENCES `movies` (`movie_id`) ON DELETE CASCADE ON UPDATE NO ACTION,
-  CONSTRAINT `mg_genre` FOREIGN KEY (`genre`) REFERENCES `genres` (`genre_id`) ON DELETE CASCADE ON UPDATE NO ACTION
+  CONSTRAINT `mg_movie` FOREIGN KEY (`movie`) REFERENCES `Movies` (`movie_id`) ON DELETE CASCADE ON UPDATE NO ACTION,
+  CONSTRAINT `mg_genre` FOREIGN KEY (`genre`) REFERENCES `Genres` (`genre_id`) ON DELETE CASCADE ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `moviegenres`
---
-
-LOCK TABLES `moviegenres` WRITE;
-/*!40000 ALTER TABLE `moviegenres` DISABLE KEYS */;
-/*!40000 ALTER TABLE `moviegenres` ENABLE KEYS */;
-UNLOCK TABLES;
 
 --
 -- Table structure for table `movies`
 --
 
-DROP TABLE IF EXISTS `movies`;
+DROP TABLE IF EXISTS `Movies`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `movies` (
+CREATE TABLE `Movies` (
   `movie_id` int(11) NOT NULL AUTO_INCREMENT,
   `imdb_name` varchar(100) NOT NULL,
   `is_film` TINYINT(1) DEFAULT 0,
@@ -174,24 +127,16 @@ CREATE TABLE `movies` (
   INDEX `movie_is_film` (`is_film` ASC),
   INDEX `movie_year` (`year`),
   INDEX `movie_rating` (`rating` ASC), 
-  INDEX `movie_votes` (`votes` ASC)
+  INDEX `movie_votes` (`votes` ASC),
+  INDEX `movie_name` (`name` ASC)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `movies`
+-- Table structure for table `People`
 --
 
-LOCK TABLES `movies` WRITE;
-/*!40000 ALTER TABLE `movies` DISABLE KEYS */;
-/*!40000 ALTER TABLE `movies` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `people`
---
-
-DROP TABLE IF EXISTS `people`;
+DROP TABLE IF EXISTS `People`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `people` (
@@ -213,19 +158,10 @@ CREATE TABLE `people` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Dumping data for table `people`
+-- Table structure for table `Roles`
 --
 
-LOCK TABLES `people` WRITE;
-/*!40000 ALTER TABLE `people` DISABLE KEYS */;
-/*!40000 ALTER TABLE `people` ENABLE KEYS */;
-UNLOCK TABLES;
-
---
--- Table structure for table `roles`
---
-
-DROP TABLE IF EXISTS `roles`;
+DROP TABLE IF EXISTS `Roles`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `roles` (
@@ -238,20 +174,10 @@ CREATE TABLE `roles` (
   UNIQUE KEY `movie` (`movie`,`actor`),
   KEY `role_movie` (`movie`),
   KEY `role_actor` (`actor`),
-  CONSTRAINT `roles_movie` FOREIGN KEY (`movie`) REFERENCES `movies` (`movie_id`) ON DELETE CASCADE ON UPDATE NO ACTION,
-  CONSTRAINT `roles_person` FOREIGN KEY (`actor`) REFERENCES `people` (`person_id`) ON DELETE CASCADE ON UPDATE NO ACTION
+  CONSTRAINT `roles_movie` FOREIGN KEY (`movie`) REFERENCES `Movies` (`movie_id`) ON DELETE CASCADE ON UPDATE NO ACTION,
+  CONSTRAINT `roles_person` FOREIGN KEY (`actor`) REFERENCES `People` (`person_id`) ON DELETE CASCADE ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping data for table `roles`
---
-
-LOCK TABLES `roles` WRITE;
-/*!40000 ALTER TABLE `roles` DISABLE KEYS */;
-/*!40000 ALTER TABLE `roles` ENABLE KEYS */;
-UNLOCK TABLES;
-/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;

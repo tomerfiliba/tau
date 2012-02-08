@@ -1,5 +1,6 @@
 package ponytrivia.gui;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
@@ -63,11 +64,11 @@ public class MainScreen {
 	 */
 	public void open() {
 		display = Display.getDefault();
-		shlMain = new Shell();
+		shlMain = new Shell(display, SWT.CLOSE | SWT.TITLE | SWT.MIN);
 		
 		Properties appConfig = new Properties();
 		try {
-			appConfig.load(MainScreen.class.getResourceAsStream("/config.properties"));
+			appConfig.load(new FileInputStream("config.properties"));
 		} catch (IOException e) {
 			e.printStackTrace();
 			errorMsgbox("Config Error", "Could not load config file!");
@@ -207,7 +208,7 @@ public class MainScreen {
 			findPlayer = schema.createQuery("user_id", "GamePlayers", "username = ?");
 			insertPlayer = schema.createInsert("GamePlayers", false, "username");
 
-			SimpleQuery q = schema.createQuery("genre_id, name", "genres", "true", "name ASC");
+			SimpleQuery q = schema.createQuery("genre_id, name", "Genres", "true", "name ASC");
 			ResultSet rs;
 			rs = q.query();
 			while (rs.next()) {

@@ -423,7 +423,7 @@ public class GameScreen {
 					@Override
 					public void run()
 					{
-						if (gameState.pony_pos >= config.questions_to_win) {
+						if (gameState.pony_pos > config.questions_to_win) {
 							shlPonyTrivia.setEnabled(false);
 							
 							try {
@@ -437,8 +437,16 @@ public class GameScreen {
 							shlPonyTrivia.close();
 							return;
 						}
-						if (gameState.pony_pos <= -config.questions_to_win) {
+						if (gameState.pony_pos < -config.questions_to_win) {
 							shlPonyTrivia.setEnabled(false);
+							
+							try {
+								insertHighscore.insert(config.playerId, gameState.total_score);
+								schema.commit();
+							} catch (SQLException e) {
+								e.printStackTrace();
+							}
+
 							LoseScreen.run(display);
 							shlPonyTrivia.close();
 							return;

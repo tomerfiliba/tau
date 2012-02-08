@@ -181,7 +181,7 @@ public class QuestionRegistry {
 			maxYear = 3000;
 		}
 		if (genre_ids == null || genre_ids.size() == 0) {
-			genres = "SELECT genre_id FROM genres";
+			genres = "SELECT genre_id FROM Genres";
 		}
 		else {
 			for (int i = 0; i < genre_ids.size() - 1; i++) {

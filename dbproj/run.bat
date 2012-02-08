@@ -1,0 +1,1 @@
+java -cp lib\swt.jar;lib\mysql-connector-java-5.1.18-bin.jar;lib\ponytrivia.jar ponytrivia.gui.MainScreen

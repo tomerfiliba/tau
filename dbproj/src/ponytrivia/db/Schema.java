@@ -137,7 +137,7 @@ public class Schema {
 	 */
 	public int getMovieByName(String movieName) throws SQLException {
 		if (qGetMovieByName == null) {
-			qGetMovieByName = createQuery("movie_id", "movies", "imdb_name = ?", 1);
+			qGetMovieByName = createQuery("movie_id", "Movies", "imdb_name = ?", 1);
 		}
 		return qGetMovieByName.queryGetKey(movieName);
 	}
@@ -152,7 +152,7 @@ public class Schema {
 	 */
 	public int getPersonByName(String personName) throws SQLException {
 		if (qGetPersonByName == null) {
-			qGetPersonByName = createQuery("person_id", "people", "imdb_name = ?", 1);
+			qGetPersonByName = createQuery("person_id", "People", "imdb_name = ?", 1);
 		}
 		return qGetPersonByName.queryGetKey(personName);
 	}
@@ -167,7 +167,7 @@ public class Schema {
 	 */
 	public String getMovieName(int movie_id) throws SQLException {
 		if (qGetMovieName == null) {
-			qGetMovieName = createQuery("name", "movies", "movie_id = ?", 1);
+			qGetMovieName = createQuery("name", "Movies", "movie_id = ?", 1);
 		}
 		ResultSet rs = qGetMovieName.query(movie_id);
 		try {
@@ -190,7 +190,7 @@ public class Schema {
 	 */
 	public String getPersonName(int person_id) throws SQLException {
 		if (qGetPersonName == null) {
-			qGetPersonName = createQuery("first_name, middle_name, last_name", "people", "person_id = ?", 1);
+			qGetPersonName = createQuery("first_name, middle_name, last_name", "People", "person_id = ?", 1);
 		}
 		ResultSet rs = qGetPersonName.query(person_id);
 		try {

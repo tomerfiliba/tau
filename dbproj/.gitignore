@@ -1,2 +1,8 @@
 *.class
+
 bin/
+*.suo
+Release/
+Debug/
+*.ncb
+*.user

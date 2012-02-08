@@ -16,8 +16,6 @@ import org.eclipse.swt.layout.FormData;
 import org.eclipse.swt.layout.FormAttachment;
 import org.eclipse.swt.widgets.TabItem;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.events.KeyEvent;
-import org.eclipse.swt.events.KeyListener;
 import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.SelectionEvent;
@@ -25,7 +23,6 @@ import org.eclipse.swt.events.SelectionListener;
 import org.eclipse.swt.graphics.Point;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Group;
-import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.MessageBox;
 import org.eclipse.swt.widgets.TableItem;
@@ -189,7 +186,7 @@ public class EditScreen extends Shell {
 				if (text.getText().length() < 3) {
 					return;
 				}
-				String movie_name = "%"+ text.getText() + "%";
+				String movie_name = text.getText() + "%";
 				list.removeAll();
 				movieIdMapping.clear();
 				try {
@@ -1312,7 +1309,7 @@ public class EditScreen extends Shell {
 				if (textActSearchMovie.getText().length() < 3) {
 					return;
 				}
-				String movie_name = "%"+ textActSearchMovie.getText() + "%";
+				String movie_name = textActSearchMovie.getText() + "%";
 				listActAddMovie.removeAll();
 				movieIdMapping.clear();
 				try {
@@ -1373,7 +1370,7 @@ public class EditScreen extends Shell {
 				if (textDirMovieName.getText().length() < 3) {
 					return;
 				}
-				String movie_name = "%"+ textDirMovieName.getText() + "%";
+				String movie_name = textDirMovieName.getText() + "%";
 				listDirMovies.removeAll();
 				movieIdMapping.clear();
 				try {
