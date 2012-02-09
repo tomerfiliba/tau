@@ -5,43 +5,39 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Types;
 
+
+/**
+ * a base class for working with prepare statements
+ */
 public abstract class Prepared {
 	protected PreparedStatement pstmt;
-	//protected boolean autoCommit;
 	
 	protected Prepared(PreparedStatement pstmt) {
 		this.pstmt = pstmt;
-		//this.autoCommit = false;
 	}
 	
+	/**
+	 * closes the prepared statement
+	 * @throws SQLException
+	 */
 	public void close() throws SQLException {
 		if (pstmt != null) {
-			//if (autoCommit) {
-			//	pstmt.getConnection().commit();
-			//}
 			pstmt.close();
 			pstmt = null;
 		}
 	}
 	
-	public void commit() throws SQLException {
-		pstmt.getConnection().commit();
-	}
-	
-	/*public void setAutoCommit(boolean value) {
-		autoCommit = value;
-	}*/
-	
 	@Override
 	protected void finalize() throws Throwable {
 		close();
 	}
-	
+
+	/**
+	 * fills in the arguments for the prepare statement
+	 * @param args
+	 * @throws SQLException
+	 */
 	protected void fill(Object[] args) throws SQLException {
-		fillPrepared(pstmt, args);
-	}
-	
-	protected static void fillPrepared(PreparedStatement pstmt, Object[] args) throws SQLException {
 		int i = 1;
 		for (Object arg : args) {
 			if (arg == null) {

@@ -71,7 +71,6 @@ public class GameScreen {
 	protected GameState gameState = new GameState();
 
 	/**
-	 * Launch the application.
 	 * @param args
 	 * @wbp.parser.entryPoint
 	 */
@@ -423,7 +422,7 @@ public class GameScreen {
 					@Override
 					public void run()
 					{
-						if (gameState.pony_pos > config.questions_to_win) {
+						if (gameState.pony_pos >= config.questions_to_win) {
 							shlPonyTrivia.setEnabled(false);
 							
 							try {
@@ -437,7 +436,7 @@ public class GameScreen {
 							shlPonyTrivia.close();
 							return;
 						}
-						if (gameState.pony_pos < -config.questions_to_win) {
+						if (gameState.pony_pos <= -config.questions_to_win) {
 							shlPonyTrivia.setEnabled(false);
 							
 							try {

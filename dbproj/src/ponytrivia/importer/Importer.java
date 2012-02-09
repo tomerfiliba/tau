@@ -19,14 +19,16 @@ import ponytrivia.db.SimpleQuery;
 
 /**
  * A utility class used to import IMDB list files into a MySQL DB, that will be used by the game.
- * The API of this class includes 
- *   - createSchema() - creates the DB schema
- *   - importLists()
+ * the only APIs are importLists() - which imports the list files, and getStatus() - which returns 
+ * the status of the import
  */
 public class Importer {
 	protected Schema schema;
 	protected ListFileReader reader;
 
+	/**
+	 * @param schema - the schema to import into
+	 */
 	public Importer(Schema schema) {
 		this.schema = schema;
 		this.reader = null;
@@ -66,10 +68,6 @@ public class Importer {
 			return null;
 		}
 		return new ImportStatus(reader.fileName, reader.getSize(), reader.getPosition());
-	}
-
-	public void importLists(String directory) throws Exception {
-		importLists(new File(directory));
 	}
 
 	/**
@@ -190,7 +188,6 @@ public class Importer {
         }
         batch.close();
         reader.close();
-		//schema.commit();
 	}
 
 	private void import_ratings(File directory) throws IOException, SQLException 
@@ -231,7 +228,6 @@ public class Importer {
         }
         batch.close();
         reader.close();
-		//schema.commit();
 	}
 
 	private void import_genres(File directory) throws IOException, SQLException 
@@ -304,7 +300,6 @@ public class Importer {
 		"FOREIGN KEY (`genre`) REFERENCES `Genres` (`genre_id`) " +
 		"ON DELETE CASCADE ON UPDATE NO ACTION");
     	stmt.close();
-		//schema.commit();
         
         reader.close();
 	}
@@ -442,7 +437,6 @@ public class Importer {
         		// ignore actors without a credit pos or if it's too big
         		return;
         	}
-        	//System.out.printf(">> %s / %s / %s\n", imdb_name, character, pos);
         	batch.add(person_id, imdb_name, character, (pos > 0) ? pos : null);
 		}
 	}
@@ -500,7 +494,6 @@ public class Importer {
     	"ADD CONSTRAINT `roles_person` FOREIGN KEY (`actor`) REFERENCES `People` " +
     	"(`person_id`) ON DELETE CASCADE ON UPDATE NO ACTION");
     	stmt.close();
-    	//schema.commit();
 	}
 
 	private void import_directors(File directory) throws IOException, SQLException 
@@ -534,7 +527,6 @@ public class Importer {
     	"ADD CONSTRAINT `md_people` FOREIGN KEY (`director`) REFERENCES `People` " +
     	"(`person_id`) ON DELETE CASCADE ON UPDATE NO ACTION");
     	stmt.close();
-		//schema.commit();
 	}
 	
     private static final Pattern datePattern = Pattern.compile("(?:(\\d{1,2})\\s+)??(?:(\\w+)\\s+)??(\\d{4}).*");
@@ -664,21 +656,11 @@ public class Importer {
         
         batch.close();
         reader.close();
-		//schema.commit();
 	}
 
 	private void debug(Object obj) {
 		System.out.println(new java.util.Date() + " >> " + obj);
 	}
-
-	/*static public void main(String[] args) throws Exception
-	{
-		Schema schema = new Schema("localhost:3306", "dbmysql10", "root", "root");
-		
-		Importer imp = new Importer(schema);
-		imp.importLists(new File("d:\\imdb-files"));
-		schema.buildPopularTables(false);
-	}*/
 }
 
 

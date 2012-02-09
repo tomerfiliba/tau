@@ -8,6 +8,13 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 
+/**
+ * Represents a connection to the database and provides the necessary abstractions for 
+ * interacting with it, such as createQuery, etc.
+ * 
+ * Note that we're always working with autoCommit = false, so you have to call schema.commit()
+ * when you're done (or rollback())
+ */
 public class Schema {
 	protected Connection conn;
 
@@ -214,6 +221,11 @@ public class Schema {
 		System.out.println(new java.util.Date() + " >> " + obj);
 	}
 
+	/**
+	 * builds the popular actors, directors and movies tables
+	 * @param force - whether to force creation, or skip if they already exist
+	 * @throws SQLException
+	 */
 	public void buildPopularTables(boolean force) throws SQLException {
 		Statement stmt = createStatement();
 

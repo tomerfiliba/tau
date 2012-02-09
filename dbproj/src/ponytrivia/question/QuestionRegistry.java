@@ -42,6 +42,12 @@ public class QuestionRegistry {
 	public int numOfFilteredDirectors = -1;
 	public int numOfFilteredActors = -1;
 	
+	/**
+	 * initializes the question registry with the 10 question generators 
+	 * @param schema - the schema to use
+	 * @param autoClear - whether to call clearFilters automatically (mostly for testing)
+	 * @throws SQLException
+	 */
 	public QuestionRegistry(Schema schema, boolean autoClear) throws SQLException {
 		registry = new ArrayList<QuestionGenerator>();
 		rand = new Random();
@@ -70,6 +76,9 @@ public class QuestionRegistry {
 		qgThread.setDaemon(true);
 	}
 	
+	/**
+	 * starts the background quesion generation thread
+	 */
 	public void startBgThread() {
 		qgThread.start();
 	}
@@ -86,7 +95,6 @@ public class QuestionRegistry {
 					// just try again
 					//e.printStackTrace();
 					continue;
-					//break;
 				}
 				if (qi == null || qi.answers.size() != 4) {
 					// something went wrong, try again 
@@ -105,7 +113,7 @@ public class QuestionRegistry {
 	protected QuestionGeneratorThread qgThread;
 	
 	/**
-	 * closes the background thread and waits for it to terminate
+	 * closes the background thread
 	 */
 	@SuppressWarnings("deprecation")
 	public void close() {
