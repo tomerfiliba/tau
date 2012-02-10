@@ -7,6 +7,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "http_srv", "http_srv\http_s
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "mythreadpool", "mythreadpool\mythreadpool.vcproj", "{FEF9351C-ABBC-4B57-9246-17AF9FD16AC9}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "hello", "hello\hello.vcproj", "{425CFAC2-8D7A-459B-9768-DBC014F37684}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -25,6 +27,10 @@ Global
 		{FEF9351C-ABBC-4B57-9246-17AF9FD16AC9}.Debug|Win32.Build.0 = Debug|Win32
 		{FEF9351C-ABBC-4B57-9246-17AF9FD16AC9}.Release|Win32.ActiveCfg = Release|Win32
 		{FEF9351C-ABBC-4B57-9246-17AF9FD16AC9}.Release|Win32.Build.0 = Release|Win32
+		{425CFAC2-8D7A-459B-9768-DBC014F37684}.Debug|Win32.ActiveCfg = Debug|Win32
+		{425CFAC2-8D7A-459B-9768-DBC014F37684}.Debug|Win32.Build.0 = Debug|Win32
+		{425CFAC2-8D7A-459B-9768-DBC014F37684}.Release|Win32.ActiveCfg = Release|Win32
+		{425CFAC2-8D7A-459B-9768-DBC014F37684}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
