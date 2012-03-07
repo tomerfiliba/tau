@@ -147,7 +147,23 @@ def parse(grammar, tokens):
                 #for t in grammar.elementary_trees:
                 #    pass
                 pass
+            
+            # complete (6)
+            if st.dot_pos == RB and not st.sat:
+                for st2 in tuple(chart):
+                    if st2.dot_pos == LA and not st2.sat and st2.i == st2.l == st.i and st2.j == st2.k == None:
+                        if st2.dot_addr == st2.tree.find_foot() and st2.tree in grammar.by_symbol[st.at_dot()]:
+                            chart.add(State(st2.tree, st2.dot_addr, RB, st.i, st.i, st.l, st.l, False))
                 
+            # complete (7)
+            if st.dot_pos == RB and st.sat:
+                for st2 in tuple(chart):
+                    if st2.tree == st.tree and st2.dot_addr == st.dot_addr and st2.dot_pos == LA \
+                            and st.i == st2.l and st.is_nonterminal():
+                        chart.add(State())
+                
+            
+            
         
         if len(chart) == before_len:
             # no more changes -- we're done
@@ -164,6 +180,8 @@ if __name__ == "__main__":
     t1 = S-["e"]
     t2 = S-["a", S-["c", ~S, "d"], "b"]
     g = TAG([t1, t2], S)
+    
+    
     
     #parse(g, "e")
     #parse(g, "aabbeccdd")
