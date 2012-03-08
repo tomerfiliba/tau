@@ -118,15 +118,15 @@ class Chart(object):
         return iter(self._elements)
     def __getitem__(self, key):
         return self._elements[key]
-    def add(self, state, prevs):
-        self._additions.append((state, prevs))
+    def add(self, state, prev):
+        self._additions.append((state, prev))
     def commit(self):
         prev_len = len(self._elements)
-        for s, prevs in self._additions:
+        for s, prev in self._additions:
             if s not in self._elements:
-                self._elements[s] = prevs
+                self._elements[s] = {prev}
             else:
-                self._elements[s].update(prevs)
+                self._elements[s].add(prev)
         del self._additions[:]
         return prev_len != len(self._elements)
 
@@ -141,13 +141,13 @@ def handle_left_aux(grammar, chart, s):
     # Left Aux (2)
     for t in grammar.get_aux_trees(s.tree.root):
         if t.direction == LEFT_AUX:
-            chart.add(State(t, 0, s.j, s.j), {s})
+            chart.add(State(t, 0, s.j, s.j), s)
     
     # Left Aux (3)
     for s2 in chart:
         if (hasattr(s2.tree, "direction") and s.tree.root == s2.tree.root and 
                 s2.is_complete() and s2.i == s.j and s2.tree.direction == LEFT_AUX):
-            chart.add(State(s.tree, 0, s.i, s2.j), {s, s2})
+            chart.add(State(s.tree, 0, s.i, s2.j), (s, s2))
 
 def handle_scan(grammar, chart, s, tokens):
     if s.is_complete():
@@ -156,15 +156,15 @@ def handle_scan(grammar, chart, s, tokens):
     if isinstance(s.next(), str): 
         # Scan (4)
         if s.next() == tokens[s.j+1]:
-            chart.add(State(s.tree, s.dot+1, s.i, s.j+1), {s})
+            chart.add(State(s.tree, s.dot+1, s.i, s.j+1), s)
         
         # Scan (5)
         if s.next() == "":
-            chart.add(State(s.tree, s.dot+1, s.i, s.j), {s})
+            chart.add(State(s.tree, s.dot+1, s.i, s.j), s)
 
     # Scan (6)
     if isinstance(s.next(), Foot):
-        chart.add(State(s.tree, s.dot+1, s.i, s.j), {s})
+        chart.add(State(s.tree, s.dot+1, s.i, s.j), s)
 
 def handle_substitution(grammar, chart, s):
     if s.is_complete() or not isinstance(s.next(), NonTerminal):
@@ -174,12 +174,12 @@ def handle_substitution(grammar, chart, s):
     
     # Substitution (7)
     for t in grammar.get_init_trees(r):
-        chart.add(State(t, 0, s.j, s.j), {s})
+        chart.add(State(t, 0, s.j, s.j), s)
 
     # Substitution (8)
     for s2 in chart:
         if s2.tree.root == r and s2.is_complete() and s2.i == s.j and s2.tree in grammar.init_trees:
-            chart.add(State(s.tree, s.dot + 1, s.i, s2.j), {s, s2})
+            chart.add(State(s.tree, s.dot + 1, s.i, s2.j), (s, s2))
 
 def handle_subtree(grammar, chart, s):
     if s.is_complete() or not isinstance(s.next(), Node):
@@ -188,12 +188,12 @@ def handle_subtree(grammar, chart, s):
     r = s.next()
     
     # Subtree (9)
-    chart.add(State(r, 0, s.j, s.j), {s})
+    chart.add(State(r, 0, s.j, s.j), s)
     
     # Subtree (10)
     for s2 in chart:
         if s2.tree == r and s2.is_complete() and s2.i == s.j:
-            chart.add(State(s.tree, s.dot+1, s.i, s2.j), {s, s2})
+            chart.add(State(s.tree, s.dot+1, s.i, s2.j), (s, s2))
 
 def handle_right_aux(grammar, chart, s):
     if not s.is_complete():
@@ -202,20 +202,20 @@ def handle_right_aux(grammar, chart, s):
     # Right Aux (11)
     for t in grammar.get_aux_trees(s.tree.root):
         if t.direction == RIGHT_AUX:
-            chart.add(State(t, 0, s.j, s.j), {s})
+            chart.add(State(t, 0, s.j, s.j), s)
 
     # Right Aux (12)
     for s2 in chart:
         if (hasattr(s2.tree, "direction") and s2.tree.root == s.tree.root and 
                 s2.is_complete() and s2.i == s.j and s2.tree.direction == RIGHT_AUX):
-            chart.add(State(s.tree, s.dot, s.i, s2.j), {s, s2})
+            chart.add(State(s.tree, s.dot, s.i, s2.j), (s, s2))
 
 
 def parse(grammar, tokens):
     chart = Chart()
     tokens = [None] + list(tokens)
     for tree in grammar.get_init_trees(grammar.start_symbol):
-        chart.add(State(tree, 0, 0, 0), {})
+        chart.add(State(tree, 0, 0, 0), None)
     
     while True:
         for s in chart:
@@ -267,9 +267,17 @@ if __name__ == "__main__":
     matches, chart = parse(g, "the banana".split())
     
     def f(s, chart, indent = 0):
+        if s is None:
+            return
         print "  " * indent + str(s)
-        for s2 in chart[s]:
-            f(s2, chart, indent + 1)
+        if isinstance(s, tuple):
+            for s2 in chart[s[0]]:
+                f(s2, chart, indent + 1)
+            for s2 in chart[s[1]]:
+                f(s2, chart, indent + 1)
+        else:
+            for s2 in chart[s]:
+                f(s2, chart, indent + 1)
     
     for s in matches:
         f(s, chart)
