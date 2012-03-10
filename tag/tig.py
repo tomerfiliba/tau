@@ -307,7 +307,6 @@ if __name__ == "__main__":
     
     print "=============="
     #f(matches[0], chart)
-    print matches
     
 
 
