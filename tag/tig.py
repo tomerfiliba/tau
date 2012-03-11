@@ -84,11 +84,12 @@ class TIG(object):
 # parser state
 #===================================================================================================
 class State(object):
-    def __init__(self, tree, dot, i, j):
+    def __init__(self, tree, dot, i, j, prev = None):
         self.tree = tree
         self.dot = dot
         self.i = i
         self.j = j
+        self.prev = prev
     def __hash__(self):
         return hash((self.tree, self.dot, self.i, self.j))
     def __eq__(self, other):
@@ -99,6 +100,8 @@ class State(object):
         prod = [u"%s\u2193" % (c,) if isinstance(c, NonTerminal) else str(c) 
             for c in self.tree.children]
         prod.insert(self.dot, u"\u00b7")
+        #if self.prev:
+        #    prod.insert(0, "<" +" ".join([str(n) for n in self.prev.tree.children]) + ">")
         return u"(%s \u2192 %s, %r:%r)" % (self.tree.root, " ".join(prod), self.i, self.j)
     def next(self):
         if self.is_complete():
@@ -129,7 +132,7 @@ class Chart(object):
                 s.index = self.counter.next()
                 self._elements[s] = {(prev, reason)}
             else:
-                if s == prev:
+                if isinstance(prev, State) and s == prev:
                     continue
                 self._elements[s].add((prev, reason))
         del self._additions[:]
@@ -146,13 +149,13 @@ def handle_left_aux(grammar, chart, s):
     # Left Aux (2)
     for t in grammar.get_aux_trees(s.tree.root):
         if t.direction == LEFT_AUX:
-            chart.add(State(t, 0, s.j, s.j), s, "LA2")
+            chart.add(State(t, 0, s.j, s.j, s.prev), s, "LA2")
     
     # Left Aux (3)
     for s2 in chart:
         if (hasattr(s2.tree, "direction") and s.tree.root == s2.tree.root and 
                 s2.is_complete() and s2.i == s.j and s2.tree.direction == LEFT_AUX):
-            chart.add(State(s.tree, 0, s.i, s2.j), s2, "LA3")
+            chart.add(State(s.tree, 0, s.i, s2.j, s2), s2, "LA3")
 
 def handle_scan(grammar, chart, s, tokens):
     if s.is_complete():
@@ -161,15 +164,15 @@ def handle_scan(grammar, chart, s, tokens):
     if isinstance(s.next(), str):
         # Scan (4)
         if s.j + 1 < len(tokens) and s.next() == tokens[s.j+1]:
-            chart.add(State(s.tree, s.dot+1, s.i, s.j+1), s, "SC4")
+            chart.add(State(s.tree, s.dot+1, s.i, s.j+1, s.prev), s, "SC4")
         
         # Scan (5)
         if s.next() == "":
-            chart.add(State(s.tree, s.dot+1, s.i, s.j), s, "SC5")
+            chart.add(State(s.tree, s.dot+1, s.i, s.j, s.prev), s, "SC5")
 
     # Scan (6)
     if isinstance(s.next(), Foot):
-        chart.add(State(s.tree, s.dot+1, s.i, s.j), s, "SC6")
+        chart.add(State(s.tree, s.dot+1, s.i, s.j, s.prev), s, "SC6")
 
 def handle_substitution(grammar, chart, s):
     if s.is_complete() or not isinstance(s.next(), NonTerminal):
@@ -179,12 +182,12 @@ def handle_substitution(grammar, chart, s):
     
     # Substitution (7)
     for t in grammar.get_init_trees(r):
-        chart.add(State(t, 0, s.j, s.j), s, "SU7")
+        chart.add(State(t, 0, s.j, s.j, s.prev), s, "SU7")
 
     # Substitution (8)
     for s2 in chart:
         if s2.tree.root == r and s2.is_complete() and s2.i == s.j and s2.tree in grammar.init_trees:
-            chart.add(State(s.tree, s.dot + 1, s.i, s2.j), s2, "SU8")
+            chart.add(State(s.tree, s.dot + 1, s.i, s2.j, s.prev), s2, "SU8")
 
 def handle_subtree(grammar, chart, s):
     if s.is_complete() or not isinstance(s.next(), Node):
@@ -193,12 +196,12 @@ def handle_subtree(grammar, chart, s):
     r = s.next()
     
     # Subtree (9)
-    chart.add(State(r, 0, s.j, s.j), s, "ST9")
+    chart.add(State(r, 0, s.j, s.j, s.prev), s, "ST9")
     
     # Subtree (10)
     for s2 in chart:
         if s2.tree == r and s2.is_complete() and s2.i == s.j:
-            chart.add(State(s.tree, s.dot+1, s.i, s2.j), s2, "ST10")
+            chart.add(State(s.tree, s.dot+1, s.i, s2.j, s.prev), s2, "ST10")
 
 def handle_right_aux(grammar, chart, s):
     if not s.is_complete():
@@ -207,13 +210,13 @@ def handle_right_aux(grammar, chart, s):
     # Right Aux (11)
     for t in grammar.get_aux_trees(s.tree.root):
         if t.direction == RIGHT_AUX:
-            chart.add(State(t, 0, s.j, s.j), s, "RA11")
+            chart.add(State(t, 0, s.j, s.j, s.prev), s, "RA11")
 
     # Right Aux (12)
     for s2 in chart:
         if (hasattr(s2.tree, "direction") and s2.tree.root == s.tree.root and 
                 s2.is_complete() and s2.i == s.j and s2.tree.direction == RIGHT_AUX):
-            chart.add(State(s.tree, s.dot, s.i, s2.j), s2, "RA12")
+            chart.add(State(s.tree, s.dot, s.i, s2.j, s2), s2, "RA12")
 
 
 def parse(start_symbol, grammar, tokens):
@@ -241,24 +244,18 @@ def parse(start_symbol, grammar, tokens):
             matches.append(s)
     return matches, chart
 
-def print_chart(chart):
+def print_chart(chart, completed = False):
     for s in sorted(chart, key = lambda s: s.index):
+        if completed and not s.is_complete():
+            continue
         reasons = []
         for s2, r in chart[s]:
-            reasons.append("%s:%s" % (getattr(s2, "index", ""), r))
+            if isinstance(s2, tuple):
+                reasons.append("(%s,%s):%s" % (s2[0].index, s2[1].index, r))
+            else:
+                reasons.append("%s:%s" % (getattr(s2, "index", ""), r))
         
-        print "% 3d   % -30s    [%s]" % (s.index, s, ", ".join(reasons))
-
-
-class DevirationNode(object):
-    def __init__(self, name, children):
-        self.name = name
-        self.children = children
-    def __repr__(self):
-        return "(%s: %r)" % (self.name, self.children)
-
-def extract_tree(root, chart):
-    pass
+        print "% 3d   % -50s    [%s]" % (s.index, s, ", ".join(reasons))
 
 
 if __name__ == "__main__":
@@ -288,26 +285,88 @@ if __name__ == "__main__":
         ],
     )
 
-#    matches, chart = parse(NP, g, "the tasty banana".split())
-#    print_chart(chart)
-    
-    T = NonTerminal("Term")
-    g2 = TIG([T("x"), T(T, "+", T)], [])
-    
-    matches, chart = parse(T, g2, "x + x + x".split())
-    print_chart(chart)
-    
-    def f(s, chart):
+    def get_paths(s, chart):
         if s is None:
             return
-        print s
-        for s2 in chart[s]:
-            s2 = s2[0]
-            f(s2, chart)
+        yield s
+        for s2 in get_paths(list(chart[s])[0][0], chart):
+            if s2.is_complete():
+                yield s2    
+
+    class DerivationTree(object):
+        def __init__(self, root, span, children):
+            self.root = root
+            self.span = span
+            self.children = children
+        def __str__(self):
+            return "%s%s(%s)" % (self.root, self.span, ", ".join(str(c) for c in self.children))
+        def show(self, level = 0):
+            print "%s%s  %s" % ("  " * level, self.root, self.span)
+            for c in self.children:
+                if isinstance(c, DerivationTree):
+                    c.show(level + 1)
+                else:
+                    print "  " * (level + 1) + repr(c)
     
-    print "=============="
-    #f(matches[0], chart)
+    class Span(object):
+        def __init__(self, i, j):
+            self.i = i
+            self.j = j
+        def __repr__(self):
+            return "[%s..%s]" % (self.i, self.j)
+        def inside(self, enclosing):
+            return self.i >= enclosing.i and self.j <= enclosing.j
     
+    def extract(path):
+        trees = []
+        for s in path:
+            sp = Span(s.i, s.j)
+            enclosed = False
+            children = []
+            first = None
+            last = None
+            for i, t in enumerate(trees):
+                if t.span.inside(sp):
+                    if first is None:
+                        first = i
+                    last = i
+                    children.append(t)
+            if children:
+                if getattr(trees[first], "foot", False):
+                    del trees[first+1:last+1]
+                    trees[first].children[-1].children = s.tree.children
+                else:
+                    del trees[first:last+1]
+                    foot = False
+                    if isinstance(s.tree.children[-1], Foot):
+                        children.append(DerivationTree(s.tree.children[-1].nonterm, Span(sp.j, sp.j + 1), ()))
+                        sp = Span(sp.i, sp.j + 1)
+                        foot = True
+                    dt = DerivationTree(s.tree.root, sp, children)
+                    dt.foot = foot
+                    trees.insert(first, dt)
+            else:
+                trees.append(DerivationTree(s.tree.root, sp, s.tree.children))
+        assert len(trees) == 1
+        return trees[0]
+
+    matches, chart = parse(S, g, "john likes the banana".split())
+    path = list(get_paths(matches[0], chart))[::-1]
+    print path
+
+    matches, chart = parse(NP, g, "the tasty banana".split())
+    path = list(get_paths(matches[0], chart))[::-1]
+    print path
+    
+    #t = extract(path)
+    #t.show()
+
+
+
+
+
+
+
 
 
 
