@@ -32,11 +32,83 @@ class Node(object):
                     yield n
             else:
                 yield child
-
 LEFT_AUX = 1
 RIGHT_AUX = 2
 
+#===================================================================================================
+# parser state
+#===================================================================================================
+class State(object):
+    def __init__(self, tree, dot, i, j, prev = None):
+        self.tree = tree
+        self.dot = dot
+        self.i = i
+        self.j = j
+        self.prev = prev
+    def __hash__(self):
+        return hash((self.tree, self.dot, self.i, self.j))
+    def __eq__(self, other):
+        return (self.tree, self.dot, self.i, self.j) == (other.tree, other.dot, other.i, other.j)
+    def __ne__(self, other):
+        return not (self == other)
+    def __repr__(self):
+        prod = [u"%s\u2193" % (c,) if isinstance(c, NonTerminal) else str(c) 
+            for c in self.tree.children]
+        prod.insert(self.dot, u"\u00b7")
+        #if self.prev:
+        #    prod.insert(0, "<" +" ".join([str(n) for n in self.prev.tree.children]) + ">")
+        return u"(%s \u2192 %s, %r:%r)" % (self.tree.root, " ".join(prod), self.i, self.j)
+    def next(self):
+        if self.is_complete():
+            return None
+        return self.tree.children[self.dot]
+    def is_complete(self):
+        return self.dot >= len(self.tree.children)
 
+
+class Chart(object):
+    def __init__(self):
+        self._elements = {}
+        self._additions = []
+        self.counter = itertools.count()
+    def __len__(self):
+        return len(self._elements)
+    def __iter__(self):
+        return iter(self._elements)
+    def __getitem__(self, key):
+        return self._elements[key]
+    def add(self, state, prev = None, reason = None):
+        self._additions.append((state, prev, reason))
+    def commit(self):
+        prev_len = len(self._elements)
+        for s, prev, reason in self._additions:
+            if s not in self._elements:
+                s.index = self.counter.next()
+                self._elements[s] = {(prev, reason)}
+            else:
+                if isinstance(prev, State) and s == prev:
+                    continue
+                self._elements[s].add((prev, reason))
+        del self._additions[:]
+        return prev_len != len(self._elements)
+    
+    def show(self, completed = False):
+        for s in sorted(self, key = lambda s: s.index):
+            if completed and not s.is_complete():
+                continue
+            reasons = []
+            for s2, r in chart[s]:
+                if isinstance(s2, tuple):
+                    reasons.append("(%s,%s):%s" % (s2[0].index, s2[1].index, r))
+                else:
+                    reasons.append("%s:%s" % (getattr(s2, "index", ""), r))
+            
+            print "% 3d   % -25s    [%s]" % (s.index, s, ", ".join(reasons))
+
+
+#===================================================================================================
+# TIG parser
+#===================================================================================================
 class TIG(object):
     def __init__(self, init_trees, aux_trees):
         self.init_trees = set(init_trees)
@@ -183,75 +255,6 @@ class TIG(object):
                 matches.append(s)
         return matches, chart
 
-#===================================================================================================
-# parser state
-#===================================================================================================
-class State(object):
-    def __init__(self, tree, dot, i, j, prev = None):
-        self.tree = tree
-        self.dot = dot
-        self.i = i
-        self.j = j
-        self.prev = prev
-    def __hash__(self):
-        return hash((self.tree, self.dot, self.i, self.j))
-    def __eq__(self, other):
-        return (self.tree, self.dot, self.i, self.j) == (other.tree, other.dot, other.i, other.j)
-    def __ne__(self, other):
-        return not (self == other)
-    def __repr__(self):
-        prod = [u"%s\u2193" % (c,) if isinstance(c, NonTerminal) else str(c) 
-            for c in self.tree.children]
-        prod.insert(self.dot, u"\u00b7")
-        #if self.prev:
-        #    prod.insert(0, "<" +" ".join([str(n) for n in self.prev.tree.children]) + ">")
-        return u"(%s \u2192 %s, %r:%r)" % (self.tree.root, " ".join(prod), self.i, self.j)
-    def next(self):
-        if self.is_complete():
-            return None
-        return self.tree.children[self.dot]
-    def is_complete(self):
-        return self.dot >= len(self.tree.children)
-
-
-class Chart(object):
-    def __init__(self):
-        self._elements = {}
-        self._additions = []
-        self.counter = itertools.count()
-    def __len__(self):
-        return len(self._elements)
-    def __iter__(self):
-        return iter(self._elements)
-    def __getitem__(self, key):
-        return self._elements[key]
-    def add(self, state, prev = None, reason = None):
-        self._additions.append((state, prev, reason))
-    def commit(self):
-        prev_len = len(self._elements)
-        for s, prev, reason in self._additions:
-            if s not in self._elements:
-                s.index = self.counter.next()
-                self._elements[s] = {(prev, reason)}
-            else:
-                if isinstance(prev, State) and s == prev:
-                    continue
-                self._elements[s].add((prev, reason))
-        del self._additions[:]
-        return prev_len != len(self._elements)
-
-def print_chart(chart, completed = False):
-    for s in sorted(chart, key = lambda s: s.index):
-        if completed and not s.is_complete():
-            continue
-        reasons = []
-        for s2, r in chart[s]:
-            if isinstance(s2, tuple):
-                reasons.append("(%s,%s):%s" % (s2[0].index, s2[1].index, r))
-            else:
-                reasons.append("%s:%s" % (getattr(s2, "index", ""), r))
-        
-        print "% 3d   % -50s    [%s]" % (s.index, s, ", ".join(reasons))
 
 
 if __name__ == "__main__":
@@ -281,14 +284,6 @@ if __name__ == "__main__":
         ],
     )
 
-    def get_paths(s, chart):
-        if s is None:
-            return
-        yield s
-        for s2 in get_paths(list(chart[s])[0][0], chart):
-            if s2.is_complete():
-                yield s2    
-
     class DerivationTree(object):
         def __init__(self, root, span, children):
             self.root = root
@@ -312,6 +307,14 @@ if __name__ == "__main__":
             return "[%s..%s]" % (self.i, self.j)
         def inside(self, enclosing):
             return self.i >= enclosing.i and self.j <= enclosing.j
+
+    def get_paths(s, chart):
+        if s is None:
+            return
+        yield s
+        for s2 in get_paths(list(chart[s])[0][0], chart):
+            if s2.is_complete():
+                yield s2    
     
     def extract(path):
         trees = []
@@ -361,21 +364,29 @@ if __name__ == "__main__":
 
     T = NonTerminal("T")
     OP = NonTerminal("OP")
-    g2 = TIG([T("x"), T(T,OP("+"),T)], [])
+    g2 = TIG([T("x"), T(T, OP("+"), T)], [])
     matches, chart = g2.parse(T, "x + x + x".split())
-    #path = list(get_paths(matches[0], chart))[::-1]
-    #print path
     #t = extract(path)
     #t.show()
-    print_chart(chart)
+#    chart.show()
+#    print
+#    path = list(get_paths(matches[0], chart))[::-1]
+#    print path
 
-
-
-
-
-
-
-
+    def get_paths(s, chart):
+        if s is None:
+            return []
+        outputs = []
+        for s2, _ in chart[s]:
+            for s3 in get_paths(s2, chart):
+                if s2.is_complete():
+                    outputs.append([s, s2])
+                
+                outputs.append([s] + get_paths(s2, chart))
+        return outputs
+    
+    for p in get_paths(matches[0], chart):
+        print "!!", p
 
 
 
