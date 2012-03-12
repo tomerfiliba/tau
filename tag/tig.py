@@ -343,21 +343,31 @@ if __name__ == "__main__":
         assert len(trees) == 1
         return trees[0]
 
-    matches, chart = g.parse(S, "john really likes the tasty banana".split())
-    path = list(get_paths(matches[0], chart))[::-1]
-    print path
+#    matches, chart = g.parse(S, "john really likes the tasty banana".split())
+#    path = list(get_paths(matches[0], chart))[::-1]
+#    print path
+#
+#    t = extract(path)
+#    t.show()
+#
+#    print "================="
+#
+#    matches, chart = g.parse(NP, "the tasty banana".split())
+#    path = list(get_paths(matches[0], chart))[::-1]
+#    print path
+#    
+#    t = extract(path)
+#    t.show()
 
-    t = extract(path)
-    t.show()
-
-    print "================="
-
-    matches, chart = g.parse(NP, "the tasty banana".split())
-    path = list(get_paths(matches[0], chart))[::-1]
-    print path
-    
-    t = extract(path)
-    t.show()
+    T = NonTerminal("T")
+    OP = NonTerminal("OP")
+    g2 = TIG([T("x"), T(T,OP("+"),T)], [])
+    matches, chart = g2.parse(T, "x + x + x".split())
+    #path = list(get_paths(matches[0], chart))[::-1]
+    #print path
+    #t = extract(path)
+    #t.show()
+    print_chart(chart)
 
 
 
