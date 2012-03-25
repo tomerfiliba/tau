@@ -1,9 +1,11 @@
 import itertools
+from decimal import Decimal
 
+EPSILON = Decimal(1e-20)
 
 class Matrix(object):
     def __init__(self, *rows):
-        self.rows = [[float(v) for v in row] for row in rows]
+        self.rows = [[Decimal(v) for v in row] for row in rows]
         self.m = len(self.rows)
         self.n = len(self.rows[0])
         if any(len(row) != self.n for row in self.rows):
@@ -32,7 +34,7 @@ class Matrix(object):
                 if abs(outmatrix[y2][y]) > abs(outmatrix[maxrow][y]):
                     maxrow = y2
             outmatrix[y], outmatrix[maxrow] = outmatrix[maxrow], outmatrix[y]
-            if outmatrix[y][y] == 0:   
+            if abs(outmatrix[y][y]) <= EPSILON:
                 # Singular
                 continue
             # Eliminate column y
@@ -44,7 +46,7 @@ class Matrix(object):
         # Backsubstitute
         for y in range(self.m-1, -1, -1):
             for i in range(0, self.n):
-                if outmatrix[y][i] != 0:
+                if abs(outmatrix[y][i]) > EPSILON:
                     break
             else:
                 continue
@@ -70,19 +72,19 @@ mul.__name__ = "*"
 
 class ExprMixin(object):
     def __mul__(self, other):
-        if other == 0:
-            return 0.0
+        if isinstance(other, (int, long, float, Decimal)) and abs(other) <= EPSILON:
+            return Decimal(0)
         return BinExpr(mul, self, other)
     def __sub__(self, other):
-        if other == 0:
+        if isinstance(other, (int, long, float, Decimal)) and abs(other) <= EPSILON:
             return self
         return BinExpr(sub, self, other)
     def __rmul__(self, other):
-        if other == 0:
-            return 0.0
+        if isinstance(other, (int, long, float, Decimal)) and abs(other) <= EPSILON:
+            return Decimal(0)
         return BinExpr(mul, other, self)
     def __rsub__(self, other):
-        if other == 0:
+        if isinstance(other, (int, long, float, Decimal)) and abs(other) <= EPSILON:
             return self
         return BinExpr(sub, other, self)
 
@@ -120,7 +122,7 @@ def solve(origmatrix, variables):
     assignments = {}
     
     for row in reversed(matrix.rows):
-        nonzero = list(itertools.dropwhile(lambda v: v == 0, row))
+        nonzero = list(itertools.dropwhile(lambda v: abs(v) <= EPSILON, row))
         if not nonzero:
             continue
         const = nonzero.pop(-1)
@@ -129,7 +131,7 @@ def solve(origmatrix, variables):
             raise ValueError("No solutions exist")
         vars = variables[-len(nonzero):]
         assignee = vars.pop(0)
-        assert nonzero.pop(0) == 1
+        assert abs(nonzero.pop(0) - 1) <= EPSILON
         assignments[assignee] = const
         
         for i, v in enumerate(vars):
@@ -142,10 +144,24 @@ def solve(origmatrix, variables):
 if __name__ == "__main__":
     m = Matrix([1,2,4,2], [3,7,6,8])
     print m.eliminate()
-    
     sol = solve(m, ["x", "y", "z"])
     print sol
-    #print sol["x"].eval(dict(z=10))
+    print sol["x"].eval({"z" : 10})
+    
+    print
+
+    m = Matrix([1,2,4,2], [3,7,6,8], [2,2,2,8], [2,3,5,6])
+    print m.eliminate()
+    sol = solve(m, ["x", "y", "z"])
+    print sol
+
+
+
+
+
+
+
+
 
 
 
