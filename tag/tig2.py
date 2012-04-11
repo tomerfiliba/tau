@@ -147,7 +147,7 @@ class Chart(object):
         for i, st in enumerate(self._ordered_states):
             if only_completed and not st.is_complete():
                 continue
-            print "%3d)  %-60s [%s]" % (i, st, st.reason)
+            print "%3d)  %-100s [%s]" % (i, st, st.reason)
 
 
 #===================================================================================================
@@ -164,8 +164,8 @@ def handle_left_aux(grammar, chart, st):
     # (3)
     for st2 in chart:
         if st2.tree.type == LEFT_AUX and st.tree.root == st2.tree.root and st2.is_complete() and st2.i == st.j:
-            #chart.add(State(st.tree, 0, st.i, st2.j, "LA3"))
-            chart.add(State(st2.tree.modify(-1, st.tree, st.tree.type), len(st2.tree.children) - 1, st.i, st2.j, "LA3"))
+            chart.add(State(st2.tree.modify(-1, st.tree, st.tree.type), len(st2.tree.children) - 1, st.i, st2.j, "LA3'"))
+            chart.add(State(st.tree, 0, st2.j, st2.j, "LA3"))
 
 def handle_right_aux(grammar, chart, st):
     if not st.is_complete():
@@ -178,8 +178,8 @@ def handle_right_aux(grammar, chart, st):
     # (12)
     for st2 in chart:
         if st2.tree.type == RIGHT_AUX and st2.tree.root == st.tree.root and st2.is_complete() and st2.i == st.j:
-            #chart.add(State(st.tree, st.dot, st.i, st2.j, "RA12"))
-            chart.add(State(st2.tree.modify(0, st.tree, st.tree.type), len(st2.tree.children), st.i, st2.j, "RA12"))
+            chart.add(State(st2.tree.modify(0, st.tree, st.tree.type), len(st2.tree.children), st.i, st2.j, "RA12'"))
+            chart.add(State(st.tree, st.dot, st2.i, st2.j, "RA12"))
 
 def handle_scan(grammar, chart, st, token):
     prod = st.next()
@@ -242,10 +242,10 @@ def parse(grammar, start_symbol, tokens):
             break
     
     #chart.show()
-    matches = [st for st in chart if st.is_complete() and st.i == 0 and st.j == len(tokens)  
-        and st.tree.root == start_symbol and st.tree.type == INIT_TREE and list(st.tree.leaves()) == tokens]
+    matches = [st.tree for st in chart if st.is_complete() and st.i == 0 and st.j == len(tokens)  
+        and st.tree.root == start_symbol and st.tree.type == INIT_TREE
+        and list(st.tree.leaves()) == tokens]
     return matches
-
 
 
 #===================================================================================================
@@ -261,8 +261,8 @@ g = TIG(init_trees = [
     aux_trees = [
     ]
 )
-#matches = parse(g, T, " + ".join(["a"] * 4).split())
-#print len(matches)
+#for i in range(1,8):
+#    print len(parse(g, T, " + ".join(["a"] * i).split()))
 
 #===================================================================================================
 # 
@@ -300,19 +300,16 @@ g2 = TIG(
     ],
 )
 
-#matches = parse(g2, S, "john really really likes the tasty banana".split())
-#for m in matches:
-#    m.tree.show()
-
-matches = parse(g2, S, "john saw the boy with the telescope".split())
-for m in matches:
-    print "========="
-    m.tree.show()
-
-
-
-
-
+for text in ["john saw the boy", "john really likes the tasty banana", 
+        "john really really really likes the tasty tasty banana", 
+        "john saw the boy with the telescope"]:
+    print "============================"
+    print text
+    print "============================"
+    for i, t in enumerate(parse(g2, S, text.split())):
+        print "(%d)" % (i+1,)
+        t.show(1)
+        print
 
 
 
