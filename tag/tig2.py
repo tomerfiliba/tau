@@ -196,8 +196,8 @@ def handle_scan(grammar, chart, st, token):
 
 def handle_substitution(grammar, chart, st):
     prod = st.next()
-    #if isinstance(prod, Tree):
-    #    prod = prod.root
+    if isinstance(prod, Tree):
+        prod = prod.root
     if isinstance(prod, NonTerminal):
         # (7)
         for t in grammar.get_init_trees_for(prod):
@@ -241,7 +241,7 @@ def parse(grammar, start_symbol, tokens):
             # no more changes, we're done
             break
     
-    chart.show()
+    #chart.show()
     matches = [st.tree for st in chart if st.is_complete() and st.i == 0 and st.j == len(tokens)  
         and st.tree.root == start_symbol and st.tree.type == INIT_TREE]
         #and list(st.tree.leaves()) == tokens]
@@ -312,12 +312,12 @@ g2 = TIG(
 #parse(g2, NP, "the tasty tasty banana".split())[0].show()
 #exit()
 
-#for text in ["john saw the boy", "john really likes the tasty banana", 
-#        "john really really really likes the tasty tasty banana", 
-#        "john saw the boy with the telescope",
-#        "the tasty apple likes the boy with the banana"]:
-if True:
-    text = "john saw the boy"
+for text in ["john saw the boy", "john really likes the tasty banana", 
+        "john really really really likes the tasty tasty banana", 
+        "john saw the boy with the telescope",
+        "the tasty apple likes the boy with the banana"]:
+#if True:
+#    text = "john really saw the boy with the telescope"
     print "============================"
     print text
     print "============================"
