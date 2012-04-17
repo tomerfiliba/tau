@@ -292,18 +292,14 @@ g2 = TIG(init_trees = [
 
 #chart, matches = parse(g2, T, "a + a + a".split())
 #chart, matches = parse(g, NP, "the tasty banana".split())
-chart, matches = parse(g, NP, "the tasty tasty banana".split())
 #chart.show()
-print len(chart), len(matches)
-
-print "============================"
 
 class DerivationTree(object):
     def __init__(self, root, span, children):
         self.root = root
         self.span = span
         self.children = children
-    def __str__(self):
+    def __repr__(self):
         return "%s%s(%s)" % (self.root, self.span, ", ".join(str(c) for c in self.children))
     def show(self, level = 0):
         print "%s%s  %s" % ("    " * level, self.root, self.span)
@@ -318,7 +314,7 @@ class Span(object):
         self.i = i
         self.j = j
     def __repr__(self):
-        return "[%s..%s]" % (self.i, self.j)
+        return "[%s-%s]" % (self.i, self.j)
     def inside(self, enclosing):
         return self.i >= enclosing.i and self.j <= enclosing.j
 
@@ -339,22 +335,22 @@ def extract(path):
             elif first is not None:
                 break
         
-        print "##", s
+        print "CURR:    ", s
         
         if children:
+            print "CHILDREN:", children
             del trees[first:last+1]
             if isinstance(s.tree.children[-1], Foot) and path and path[0].i == s.i:
-                print "!!", s
                 s2 = path.pop(0)
+                print "LEFT:    ", s2
                 sp = Span(s2.i, s2.j)
                 children.append(DerivationTree(s.tree.root, Span(s.j, s2.j), s2.tree.children))
-            #if isinstance(s.tree.children[0], Foot) and path and path[0].i == s.i:
-            #    s2 = path.pop(0)
-            #    sp = Span(s2.i, s2.j)
-            #    children.append(DerivationTree(s.tree.root, Span(s.j, s2.j), s2.tree.children))
             trees.insert(first, DerivationTree(s.tree.root, sp, children))
         else:
             trees.append(DerivationTree(s.tree.root, sp, s.tree.children))
+        
+        print "TREES:   ", trees
+        print
     
     assert len(trees) == 1
     return trees[0]
@@ -371,11 +367,12 @@ def find_paths(chart, st):
                 yield st2
             return
 
+chart, matches = parse(g, NP, "the tasty tasty banana".split())
+print len(chart), len(matches)
+
 path = list(find_paths(chart, matches[0]))[::-1]
-for p in path:
-    print p.index, p
-print "============================"
 tree = extract(path)
+print
 tree.show()
 
 
