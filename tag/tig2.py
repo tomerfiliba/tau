@@ -261,9 +261,9 @@ g = TIG(init_trees = [
     aux_trees = [
     ]
 )
-#for i in range(1,8):
-#    matches = parse(g, T, " + ".join(["a"] * i).split())
-#    print len(matches)
+for i in range(1,8):
+    matches = parse(g, T, " + ".join(["a"] * i).split())
+    print len(matches)
 #1 5
 #1 14
 #2 28
@@ -287,6 +287,8 @@ PP = NonTerminal("PP")
 Adv = NonTerminal("Adv")
 Adj = NonTerminal("Adj")
 
+Conj = NonTerminal("Conj")
+
 g2 = TIG(
     init_trees = [
         NP("john"),
@@ -298,29 +300,47 @@ g2 = TIG(
         NP(D("a"), N),
         NP(D("an"), N),
         NP(D("the"), N),
-        S(NP, VP(V("likes"), NP)),
+        S(NP, VP(V("ate"), NP)),
         S(NP, VP(V("saw"), NP)),
     ],
     aux_trees = [
         VP(Adv("really"), Foot(VP)),
+        N(Adj("nice"), Foot(N)),
         N(Adj("tasty"), Foot(N)),
+        Adj(Adv("very"), Foot(Adj)),
         N(Foot(N), PP(P("with"), NP)),
         VP(Foot(VP), PP(P("with"), NP)),
+        
+        NP(NP, Conj("and"), Foot(NP)),
+        N(N, Conj("and"), Foot(N)),
+        V(V, Conj("and"), Foot(V)),
+        VP(VP, Conj("and"), Foot(VP)),
     ],
 )
 
-#parse(g2, NP, "the tasty tasty banana".split())[0].show()
-#exit()
 
-for text in ["john saw the boy", "john really likes the tasty banana", 
-        "john really really really likes the tasty tasty banana", 
-        "john saw the boy with the telescope",
-        "the tasty apple likes the boy with the banana"]:
-#if True:
-#    text = "john really saw the boy with the telescope"
-    print "============================"
+sentences = [
+    "john saw the boy",
+    "john saw the nice boy",
+    "john and mary ate the banana",
+    "john ate the banana and apple",
+    "john ate the banana and the apple",
+    "john saw and ate the apple",
+    
+    "john saw the boy with the telescope",
+    "john saw the nice boy with the telescope",
+    
+#    "john saw the boy", 
+#    "john really likes the tasty banana", 
+#    "john really really really likes the tasty tasty banana", 
+#    "john saw the boy with the telescope",
+#    "the tasty apple likes the boy with the banana"
+]
+
+for text in sentences:
+    print "=============================================================="
     print text
-    print "============================"
+    print "=============================================================="
     for i, t in enumerate(parse(g2, S, text.split())):
         print "(%d)" % (i+1,)
         t.show(1)
