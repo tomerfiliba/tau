@@ -249,10 +249,11 @@ class Chart(object):
         item = self._states[st]
         if item.stage == ChartItem.PROCESSED:
             return item.subtrees
+        # make sure we're not accidentally reentrant
         assert item.stage == ChartItem.UNPROCESSED
         item.stage = ChartItem.PROCESSING
         for func, args in item.subtreefuncs:
-            item.subtrees.update(func(self, st, *args))
+            item.subtrees.update(func(self, *args))
         item.stage = ChartItem.PROCESSED
         return item.subtrees
     
@@ -266,50 +267,19 @@ class Chart(object):
 #===================================================================================================
 # Tree extraction combinators
 #===================================================================================================
-def BUILD_CONST(chart, this, t):
+def BUILD_CONST(chart, t):
     return [t]
 
-def BUILD_SCAN(chart, this, st):
-    trees = chart.get_subtrees(st)
-    #print "[SCAN> %s: %s" % (this.index, st.index)
-    #print "<SCAN]", "; ".join(str(t) for t in trees)
-    #print
-    return trees
+def BUILD_SCAN(chart, st):
+    return chart.get_subtrees(st)
 
-def BUILD_SUBSTITUTION(chart, this, st, st2):
-    chart.get_subtrees(st)
-    chart.get_subtrees(st2)
-
-    #print "[SUBS> %s: (%s, %s)" % (this.index, st.index, st2.index)
-    #print "      ", "; ".join(str(t) for t in chart.get_subtrees(st))
-    #print "      ", "; ".join(str(t) for t in chart.get_subtrees(st2))
-
-    trees = [t1.deep_substitute(st.dot, t2) 
+def BUILD_SUBSTITUTION(chart, st, st2):
+    return [t1.deep_substitute(st.dot, t2) 
         for t1 in chart.get_subtrees(st) for t2 in chart.get_subtrees(st2)]
-    #print "<SUBS]", "; ".join(str(t) for t in trees)
-    #print 
 
-    return trees
-
-def BUILD_LEFTAUX(chart, this, st, st2):
-    chart.get_subtrees(st)
-    chart.get_subtrees(st2)
-    
-    #print "[LEFT> %s: (%s, %s)" % (this.index, st.index, st2.index)
-    #print "      ", "; ".join(str(t) for t in chart.get_subtrees(st))
-    #print "      ", "; ".join(str(t) for t in chart.get_subtrees(st2))
-    
-    trees = [t2.substitute_foot(t1) 
+def BUILD_AUX(chart, st, st2):
+    return [t2.substitute_foot(t1) 
         for t1 in chart.get_subtrees(st) for t2 in chart.get_subtrees(st2)]
-    #print "<LEFT]", "; ".join(str(t) for t in trees)
-    #print 
-    return trees
-
-def BUILD_RIGHTAUX(chart, this, st, st2):
-    return BUILD_LEFTAUX(chart, this, st, st2)
-    #1/0
-    #return [t2.substitute(0, t1) 
-    #    for t1 in chart.get_subtrees(st) for t2 in chart.get_subtrees(st2)]
 
 #===================================================================================================
 # Parser
@@ -327,7 +297,7 @@ def handle_left_aux(grammar, chart, st):
         if (st2.tree.type == Tree.LEFT_AUX and st.tree.root == st2.tree.root and 
                 st.j == st2.i and st2.is_complete()): 
             chart.add(State(st.tree, 0, st.i, st2.j), "[3]/%d,%d" % (st.index, st2.index), 
-                BUILD_LEFTAUX, st, st2)
+                BUILD_AUX, st, st2)
 
 def handle_scan(grammar, chart, st, token):
     prod = st.next()
@@ -384,7 +354,7 @@ def handle_right_aux(grammar, chart, st):
         if (st2.tree.type == Tree.RIGHT_AUX and st2.tree.root == st.tree.root 
                 and st.j == st2.i and st2.is_complete()):
             chart.add(State(st.tree, len(st.tree.children), st.i, st2.j), 
-                "[12]/%d,%d" % (st.index, st2.index), BUILD_RIGHTAUX, st, st2)
+                "[12]/%d,%d" % (st.index, st2.index), BUILD_AUX, st, st2)
 
 def parse(grammar, start_symbol, tokens, debug = False):
     if isinstance(tokens, str):
@@ -427,113 +397,3 @@ def parse(grammar, start_symbol, tokens, debug = False):
     return trees
 
 
-#===================================================================================================
-# Test Grammar
-#===================================================================================================
-S = NonTerminal("S")
-NP = NonTerminal("NP")
-VP = NonTerminal("VP")
-V = NonTerminal("V")
-N = NonTerminal("N")
-D = NonTerminal("D")
-P = NonTerminal("P")
-PP = NonTerminal("PP")
-Adv = NonTerminal("Adv")
-Adj = NonTerminal("Adj")
-Conj = NonTerminal("Conj")
-
-g = TIG(
-    init_trees = [
-        NP("john"),
-        NP("mary"),
-        NP("bill"),
-        N("apple"),
-        N("banana"),
-        N("boy"),
-        N("telescope"),
-        NP(D("a"), N),
-        NP(D("an"), N),
-        NP(D("the"), N),
-        VP(V("kissed"), NP),
-        VP(V("hugged"), NP),
-        VP(V("ate"), NP),
-        VP(V("saw"), NP),
-        # non lexicalized, but required to allow VP-level adjunction
-        S(NP, VP), 
-    ],
-    aux_trees = [
-        VP(Adv("really"), Foot(VP)),
-        N(Adj("nice"), Foot(N)),
-        N(Adj("little"), Foot(N)),
-        N(Adj("tasty"), Foot(N)),
-        Adj(Adv("very"), Foot(Adj)),
-        N(Foot(N), PP(P("with"), NP)),
-        VP(Foot(VP), PP(P("with"), NP)),
-        
-        V(V, Conj("and"), Foot(V)),
-
-        NP(Foot(NP), Conj("and"), NP),
-        N(Foot(N), Conj("and"), N),
-        VP(Foot(VP), Conj("and"), VP),
-    ],
-)
-
-T = NonTerminal("T")
-OP = NonTerminal("OP")
-g2 = TIG(init_trees = [
-        T("a"), 
-        T(T, OP("+"), T),
-    ],
-    aux_trees = []
-)
-
-# john kissed and hugged mary and ate the apple and banana
-for t in parse(g, S, "john saw and hugged the boy with the telescope"):
-    t.show()
-    print
-
-
-
-
-#parse(g, S, "mary saw john and kissed bill".split())
-
-#
-#
-if __name__ == "__main__":
-    # 1, 1, 2, 5, 14, 42, 132, 429, 1430, 4862
-    for i in range(1, 11):
-        trees = parse(g2, T, " + ".join("a" * i).split())
-        print i, len(trees)
-#    
-#    sentences = [
-#        #"john saw the boy",
-#        #"john saw the nice boy",
-#        #"john ate the very tasty apple",
-#        
-#        #"john and mary ate the banana",
-#        #"john ate the banana and the apple",
-#        #"john ate the banana and apple",
-#
-#        #"john saw the boy and ate the apple",
-#        #"john saw the nice boy with the telescope",
-#        #"john saw the nice boy with the telescope and ate the very tasty apple",
-#        
-#        "saw john and mary",
-#    ]
-#    
-#    for text in sentences:
-#        print "==============================================================="
-#        print text
-#        print "==============================================================="
-#        trees = parse(g, VP, text.split())
-#        for i, t in enumerate(trees):
-#            print "%d)" % (i + 1,)
-#            t.show()
-#            print
-#    
-#    
-    
-    
-    
-    
-    

@@ -241,10 +241,10 @@ def parse(grammar, start_symbol, tokens):
             # no more changes, we're done
             break
     
-    #chart.show()
+    chart.show()
     matches = [st.tree for st in chart if st.is_complete() and st.i == 0 and st.j == len(tokens)  
-        and st.tree.root == start_symbol and st.tree.type == INIT_TREE]
-        #and list(st.tree.leaves()) == tokens]
+        and st.tree.root == start_symbol and st.tree.type == INIT_TREE
+        and list(st.tree.leaves()) == tokens]
     if not matches:
         raise ValueError("Parsing failed")
     return matches
@@ -288,85 +288,75 @@ P = NonTerminal("P")
 PP = NonTerminal("PP")
 Adv = NonTerminal("Adv")
 Adj = NonTerminal("Adj")
-
 Conj = NonTerminal("Conj")
 
 g2 = TIG(
     init_trees = [
-        NP("john"),
-        NP("mary"),
+        # nouns
         N("apple"),
         N("banana"),
         N("boy"),
         N("telescope"),
+        N("ideas"),
+        
+        # NP's
+        NP("john"),
+        NP("mary"),
+        NP("bill"),
+        
+        NP(D("some"), N),
         NP(D("a"), N),
         NP(D("an"), N),
         NP(D("the"), N),
-        S(NP, VP(V("ate"), NP)),
-        S(NP, VP(V("saw"), NP)),
-
-#        NP(NP, Conj("and"), NP),
-#        N(N, Conj("and"), N),
-#        VP(VP, Conj("and"), VP),
-#        V(V, Conj("and"), V),
+        
+        # some intransitive verbs
+        VP(V("ran")),
+        VP(V("sleep")),
+        
+        # some transitive verbs
+        VP(V("kissed"), NP),
+        VP(V("hugged"), NP),
+        VP(V("ate"), NP),
+        VP(V("saw"), NP),
+        
+        # S itself is non lexicalized, but this is required to allow VP-level adjunction
+        S(NP, VP), 
     ],
     aux_trees = [
-        VP(Adv("really"), Foot(VP)),
+        # some adjectives
         N(Adj("nice"), Foot(N)),
-        N(Adj("tasty"), Foot(N)),
         N(Adj("little"), Foot(N)),
+        N(Adj("tasty"), Foot(N)),
+        N(Adj("colorless"), Foot(N)),
+        N(Adj("green"), Foot(N)),
+        
+        # some adverbs
+        VP(Adv("really"), Foot(VP)),
         Adj(Adv("very"), Foot(Adj)),
+        VP(Foot(VP), Adv("quickly")),
+        VP(Foot(VP), Adv("furiously")),
+        
+        # PP's can adjoin both N's and VP's
         N(Foot(N), PP(P("with"), NP)),
         VP(Foot(VP), PP(P("with"), NP)),
         
-        NP(NP, Conj("and"), Foot(NP)),
-        N(N, Conj("and"), Foot(N)),
-        V(V, Conj("and"), Foot(V)),
-        VP(VP, Conj("and"), Foot(VP)),
-
+        # conjunction (at V, N, NP and VP levels)
+#        V(Foot(V), Conj("and"), V),
 #        NP(Foot(NP), Conj("and"), NP),
 #        N(Foot(N), Conj("and"), N),
 #        VP(Foot(VP), Conj("and"), VP),
-#        V(Foot(V), Conj("and"), V),
+
+        V(V, Conj("and"), Foot(V)),
+        NP(NP, Conj("and"), Foot(NP)),
+        N(N, Conj("and"), Foot(N)),
+        VP(VP, Conj("and"), Foot(VP)),
+
     ],
 )
 
-
-sentences = [
-    #"john saw the boy",
-    #"john saw the nice boy",
-    #"john and mary ate the banana",
-    #"john ate the banana and apple",
-    #"john ate the banana and the apple",
-    #"john saw and ate the apple",
-    
-    #"john saw the boy with the telescope",
-    #"john saw the nice boy with the telescope",
-    
-    #"john saw the boy and ate the apple",
-    "the nice little boy",
-    
-#    "john saw the boy", 
-#    "john really likes the tasty banana", 
-#    "john really really really likes the tasty tasty banana", 
-#    "john saw the boy with the telescope",
-#    "the tasty apple likes the boy with the banana"
-]
-
-for text in sentences:
-    print "=============================================================="
-    print text
-    print "=============================================================="
-    for i, t in enumerate(parse(g2, NP, text.split())):
-        print "(%d)" % (i+1,)
-        t.show(1)
-        print
-
-#for text in ["john", "the banana", "the tasty banana", "john likes really the banana"]:
-#    assert not parse(g2, S, text.split())
-
-
-
+for t in parse(g2, S, "john saw and hugged the nice boy with the telescope".split()):
+    t.show()
+    print
 
 
 
