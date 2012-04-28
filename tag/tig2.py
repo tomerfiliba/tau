@@ -314,6 +314,7 @@ g2 = TIG(
         VP(Adv("really"), Foot(VP)),
         N(Adj("nice"), Foot(N)),
         N(Adj("tasty"), Foot(N)),
+        N(Adj("little"), Foot(N)),
         Adj(Adv("very"), Foot(Adj)),
         N(Foot(N), PP(P("with"), NP)),
         VP(Foot(VP), PP(P("with"), NP)),
@@ -342,7 +343,8 @@ sentences = [
     #"john saw the boy with the telescope",
     #"john saw the nice boy with the telescope",
     
-    "john saw the boy and ate the apple",
+    #"john saw the boy and ate the apple",
+    "the nice little boy",
     
 #    "john saw the boy", 
 #    "john really likes the tasty banana", 
@@ -355,7 +357,7 @@ for text in sentences:
     print "=============================================================="
     print text
     print "=============================================================="
-    for i, t in enumerate(parse(g2, S, text.split())):
+    for i, t in enumerate(parse(g2, NP, text.split())):
         print "(%d)" % (i+1,)
         t.show(1)
         print
