@@ -179,12 +179,14 @@ def BUILD_SUBSTITUTION(chart, st, st2):
         for t in chart.get_subtrees(st) for t2 in chart.get_subtrees(st2)]
 
 def BUILD_LEFTAUX(chart, st, st2):
+    print "@@", st, st2
     return [t2.modify(-1, t) 
         for t in chart.get_subtrees(st) for t2 in chart.get_subtrees(st2)]
 
 def BUILD_RIGHTAUX(chart, st, st2):
-    return [t2.modify(0, t) 
-        for t in chart.get_subtrees(st) for t2 in chart.get_subtrees(st2)]
+    return []
+    #return [t2.modify(0, t) 
+    #    for t in chart.get_subtrees(st) for t2 in chart.get_subtrees(st2)]
 
 #===================================================================================================
 # 
@@ -279,10 +281,18 @@ def parse(grammar, start_symbol, tokens):
     if not matches:
         raise ValueError("Parsing failed")
     
+    chart.show()
+    
+    print "-" * 50
     print "!!", len(matches)
-    trees = set()
-    for m in matches:
-        trees.update(t for t in chart.get_subtrees(matches[0]) if list(t.leaves()) == tokens)
+    trees = set(t for m in matches for t in chart.get_subtrees(matches[0]) 
+        #if list(t.leaves()) == tokens
+        )
+    for t in trees:
+        t.show()
+        print
+
+    exit()
     
     assert trees
     return trees
@@ -307,15 +317,18 @@ g = TIG(
     init_trees = [
         NP("john"),
         NP("mary"),
-        N("apple"),
-        N("banana"),
-        N("boy"),
-        N("telescope"),
-        NP(D("a"), N),
-        NP(D("an"), N),
-        NP(D("the"), N),
-        S(NP, VP(V("ate"), NP)),
-        S(NP, VP(V("saw"), NP)),
+        #N("apple"),
+        #N("banana"),
+        #N("boy"),
+        #N("telescope"),
+        #NP(D("a"), N),
+        #NP(D("an"), N),
+        #NP(D("the"), N),
+        VP(V("ate"), NP),
+        VP(V("saw"), NP),
+        #S(NP, VP),
+        #S(NP, VP(V("ate"), NP)),
+        #S(NP, VP(V("saw"), NP)),
         
         #NP(NP, Conj("and"), NP),
         #N(N, Conj("and"), N),
@@ -323,17 +336,17 @@ g = TIG(
         #V(V, Conj("and"), V),
     ],
     aux_trees = [
-        VP(Adv("really"), Foot(VP)),
-        N(Adj("nice"), Foot(N)),
-        N(Adj("tasty"), Foot(N)),
-        Adj(Adv("very"), Foot(Adj)),
-        N(Foot(N), PP(P("with"), NP)),
-        VP(Foot(VP), PP(P("with"), NP)),
+        #VP(Adv("really"), Foot(VP)),
+        #N(Adj("nice"), Foot(N)),
+        #N(Adj("tasty"), Foot(N)),
+        #Adj(Adv("very"), Foot(Adj)),
+        #N(Foot(N), PP(P("with"), NP)),
+        #VP(Foot(VP), PP(P("with"), NP)),
         
         #NP(NP, Conj("and"), Foot(NP)),
         #N(N, Conj("and"), Foot(N)),
-        #VP(VP, Conj("and"), Foot(VP)),
-        V(V, Conj("and"), Foot(V)),
+        VP(VP, Conj("and"), Foot(VP)),
+        #V(V, Conj("and"), Foot(V)),
 
         #NP(Foot(NP), Conj("and"), NP),
         #N(Foot(N), Conj("and"), N),
@@ -369,16 +382,18 @@ if __name__ == "__main__":
         #"john ate the banana and the apple",
         #"john ate the banana and apple",
 
-        "john saw the boy and ate the apple",
+        #"john saw the boy and ate the apple",
         #"john saw the nice boy with the telescope",
         #"john saw the nice boy with the telescope and ate the very tasty apple",
+        
+        "saw john and ate mary",
     ]
     
     for text in sentences:
         print "==============================================================="
         print text
         print "==============================================================="
-        trees = parse(g, S, text.split())
+        trees = parse(g, VP, text.split())
         for i, t in enumerate(trees):
             print "%d)" % (i + 1,)
             t.show()
