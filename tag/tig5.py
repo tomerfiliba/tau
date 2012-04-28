@@ -1,10 +1,10 @@
-#===================================================================================================
-#===================================================================================================
+#==============================================================================
+#==============================================================================
 # Tree Insertion Grammar recognizer and parser
 # By Tomer Filiba, 2012-04-28
 # Based on an algorithm outlined in [Schabes 94]
-#===================================================================================================
-#===================================================================================================
+#==============================================================================
+#==============================================================================
 
 # Whether or not to use unicode (some terminals choke on this)
 USE_UNICODE = True
@@ -17,9 +17,9 @@ else:
     SYM_RIGHT_ARRROW = "->"
     SYM_DOT = "@"
 
-#===================================================================================================
+#==============================================================================
 # Exceptions
-#===================================================================================================
+#==============================================================================
 class GrammarError(Exception):
     """Raised when constructing the TIG"""
     pass
@@ -27,9 +27,9 @@ class ParsingError(Exception):
     """Raised when parsing fails"""
     pass
 
-#===================================================================================================
+#==============================================================================
 # Building Blocks
-#===================================================================================================
+#==============================================================================
 class NonTerminal(object):
     """
     Represents a non-terminal in the grammar; there's no need for a class to 
@@ -44,7 +44,8 @@ class NonTerminal(object):
 
 class Foot(object):
     """
-    Represents a foot node in an auxiliary tree; it simply wraps the given non-terminal
+    Represents a foot node in an auxiliary tree; it simply wraps the given 
+    non-terminal
     """
     def __init__(self, nonterminal):
         self.nonterminal = nonterminal
@@ -53,9 +54,10 @@ class Foot(object):
 
 class Tree(object):
     """
-    Represents a grammar tree. This could be either an initial, left-aux or right-aux tree,
-    or a deviation tree (we reuse this class for this purpose too).
-    Note that trees compare by *value*, not identity, and are immutable once created.
+    Represents a grammar tree. This could be either an initial, left-aux or
+    right-aux tree, or a deviation tree (we reuse this class for this purpose 
+    too). Note that trees compare by *value*, not identity, and are 
+    immutable once created.
     """
     INIT_TREE = 0
     LEFT_AUX = 1
@@ -70,8 +72,9 @@ class Tree(object):
         self._path = NotImplemented
 
     def __str__(self):
-        return "%s(%s)" % (self.root, ", ".join((repr(c) if isinstance(c, str) else str(c)) 
-            for c in self.children))
+        return "%s(%s)" % (self.root, 
+            ", ".join((repr(c) if isinstance(c, str) else str(c)) 
+                for c in self.children))
     def __eq__(self, other):
         if not isinstance(other, Tree):
             return False
@@ -95,8 +98,8 @@ class Tree(object):
     
     def path_to_foot(self):
         """
-        Returns the path from the root of this tree to the foot, or None if no foot exists;
-        this is similar to Gorn-positions
+        Returns the path from the root of this tree to the foot, or None
+        if no foot exists; this is similar to Gorn tree-addresses
         """
         if self._path is NotImplemented:
             self._path = self._path_to_foot()
@@ -109,9 +112,9 @@ class Tree(object):
     
     def deep_substitute(self, i, child):
         """
-        Returns a copy of this tree, in which the i'th child is replaced by the given subtree.
-        If this tree contains a foot, substitution occurs in the i'th child of the parent of 
-        the foot instead
+        Returns a copy of this tree, in which the i'th child is replaced by 
+        the given subtree. If this tree contains a foot, substitution occurs 
+        in the i'th child of the parent of the foot instead
         """
         path = self.path_to_foot()
         if not path:
@@ -127,8 +130,8 @@ class Tree(object):
     
     def substitute_foot(self, subtree):
         """
-        Returns a copy of this tree, in which the foot (should it exist) is replaced 
-        by the given subtree
+        Returns a copy of this tree, in which the foot (should it exist) is 
+        replaced by the given subtree
         """
         children2 = list(self.children)
         for i, child in enumerate(children2):
@@ -165,9 +168,9 @@ class Tree(object):
 
 class TIG(object):
     """
-    Represents a TIG grammar instance; it basically holds the initial and auxiliary trees
-    that make up the grammar. Upon creation, this class verifies the given trees indeed
-    form a valid TIG.  
+    Represents a TIG grammar instance; it basically holds the initial and
+    auxiliary trees that make up the grammar. Upon creation, this class 
+    verifies the given trees indeed form a valid TIG.  
     """
     def __init__(self, init_trees, aux_trees):
         self.init_trees_by_symbol = {}
@@ -188,7 +191,8 @@ class TIG(object):
             if not leaves:
                 raise GrammarError("Auxiliary trees must not be empty", t)
             if len([n for n in leaves if isinstance(n, Foot)]) != 1:
-                raise GrammarError("Auxiliary trees must contain exactly one foot", t)
+                raise GrammarError("Auxiliary trees must contain exactly one "
+                    "foot", t)
             if isinstance(leaves[-1], Foot):
                 foot = leaves[-1]
                 coll = self.left_aux_trees_by_symbol
@@ -201,8 +205,8 @@ class TIG(object):
                 raise GrammarError("Auxiliary trees must contain either a "
                     "leftmost or a rightmost foot", t)
             if foot.nonterminal != t.root:
-                raise GrammarError("The foot of an auxiliary tree must be of the "
-                    "same nonterminal as the root", t)
+                raise GrammarError("The foot of an auxiliary tree must be "
+                    "of the same nonterminal as the root", t)
             
             if t.root not in coll:
                 coll[t.root] = []
@@ -210,28 +214,30 @@ class TIG(object):
     
     def get_init_trees_for(self, symbol):
         """
-        Returns a (possibly empty) list of initial trees whose roots are the given non-terminal
+        Returns a (possibly empty) list of initial trees whose roots are the 
+        given non-terminal
         """
         return self.init_trees_by_symbol.get(symbol, ())
     def get_left_aux_trees_for(self, symbol):
         """
-        Returns a (possibly empty) list of left-auxiliary trees whose roots are the 
-        given non-terminal
+        Returns a (possibly empty) list of left-auxiliary trees whose roots 
+        are the given non-terminal
         """
         return self.left_aux_trees_by_symbol.get(symbol, ())
     def get_right_aux_trees_for(self, symbol):
         """
-        Returns a (possibly empty) list of right-auxiliary trees whose roots are the 
-        given non-terminal
+        Returns a (possibly empty) list of right-auxiliary trees whose roots
+        are the given non-terminal
         """
         return self.right_aux_trees_by_symbol.get(symbol, ())
 
-#===================================================================================================
+#==============================================================================
 # Chart and Chart States
-#===================================================================================================
+#==============================================================================
 class State(object):
     """
-    The chart state. This is in essence a 4-tuple <tree, dot, i, j>, with some helper methods
+    The chart state. This is in essence a 4-tuple <tree, dot, i, j>, with some 
+    helper methods
     """
     def __init__(self, tree, dot, i, j):
         self.tree = tree
@@ -241,13 +247,15 @@ class State(object):
         self.index = None
         self._hash = None
     def __str__(self):
-        prod = ["%s%s" % (c, SYM_DOWN_ARROW) if isinstance(c, NonTerminal) else str(c) 
+        prod = ["%s%s" % (c, SYM_DOWN_ARROW) 
+            if isinstance(c, NonTerminal) else str(c) 
             for c in self.tree.children]
         prod.insert(self.dot, SYM_DOT)
         return "%s %s %s,  %r:%r" % (self.tree.root, SYM_RIGHT_ARRROW, 
             " ".join(prod), self.i, self.j)
     def __eq__(self, other):
-        return (self.tree, self.dot, self.i, self.j) == (other.tree, other.dot, other.i, other.j)
+        return (self.tree, self.dot, self.i, self.j) == (
+                other.tree, other.dot, other.i, other.j)
     def __ne__(self, other):
         return not (self == other)
     def __hash__(self):
@@ -256,7 +264,8 @@ class State(object):
         return self._hash
     def is_complete(self):
         """
-        Returns True iff the dot is passed the last child (thus the state is complete)
+        Returns True iff the dot is passed the last child (thus the state 
+        is complete)
         """
         return self.dot >= len(self.tree.children)
     def next(self):
@@ -270,8 +279,8 @@ class State(object):
 
 class ChartItem(object):
     """
-    A helper object, associated with each chart state, that holds the reasons for adding
-    this state and the state's subtree builders
+    A helper object, associated with each chart state, that holds the reasons
+    for adding this state and the state's subtree builders
     """
     UNPROCESSED = 1
     PROCESSING = 2
@@ -294,10 +303,10 @@ class ChartItem(object):
 class Chart(object):
     """
     Represents the parser chart. It comprises of states (without duplicates),
-    but it preserves the ordering relations for debugging purposes. With each state
-    we associates a ChartItem, to hold some extra info. 
-    States are add()ed to the chart, but they don't actually become part of it until commit()ted.
-    This prevents some issues with dictionary iteration.
+    but it preserves the ordering relations for debugging purposes. With each
+    state we associates a ChartItem, to hold some extra info. 
+    States are add()ed to the chart, but they don't actually become part of 
+    it until commit()ted. This prevents some issues with dictionary iteration.
     """
     
     def __init__(self):
@@ -313,8 +322,9 @@ class Chart(object):
     
     def add(self, state, reason, subtreefunc = None, *args):
         """
-        Adds a new state to the chart, including the state's reason and subtree-builder
-        Note that it's not actually added to the chart until commit() is called
+        Adds a new state to the chart, including the state's reason and 
+        subtree-builder. Note that it's not actually added to the chart 
+        until commit() is called
         """
         if subtreefunc is None:
             subtreefunc = BUILD_CONST
@@ -322,8 +332,10 @@ class Chart(object):
         self._changes.append((state, reason, (subtreefunc, args)))
     
     def commit(self):
-        """commits the changes to the chart -- returns True if the chart has grew, 
-        False otherwise"""
+        """
+        commits the changes to the chart -- returns True if the chart
+        has grew, False otherwise
+        """
         added = False
         while self._changes:
             st, reason, subtreefunc = self._changes.pop(0)
@@ -339,8 +351,9 @@ class Chart(object):
 
     def get_subtrees(self, st):
         """
-        Gets the set of subtrees for a given state; this is cached ("dynamic programming") 
-        so once the subtrees of some state have been built, future calls are O(1)
+        Gets the set of subtrees for a given state; this is memoized (cached) 
+        so once the subtrees of some state have been built, 
+        future calls are O(1)
         """
         item = self._states[st]
         if item.stage == ChartItem.PROCESSED:
@@ -355,21 +368,23 @@ class Chart(object):
     
     def show(self, only_completed = False):
         """
-        Print the chart in a human-readble manner
+        Print the chart in a human-readable manner
         """
         for st in self._ordered_states:
             if only_completed and not st.is_complete():
                 continue
-            print "%3d | %-40s | %s" % (st.index, st, " ; ".join(self._states[st].reasons))
+            print "%3d | %-40s | %s" % (st.index, st, 
+                " ; ".join(self._states[st].reasons))
         print "-" * 80
 
-#===================================================================================================
+#==============================================================================
 # Tree extraction combinators: 
 #
-# Whenever we add a new state to the chart, we associate with it a subtree-builder,
-# which serves us later (we get_subtrees() is called). These builders combine partial 
-# trees to form bigger ones, according to the rules of the grammar 
-#===================================================================================================
+# Whenever we add a new state to the chart, we associate with it a 
+# subtree-builder, which serves us later (we get_subtrees() is called). 
+# These builders combine partial trees to form bigger ones, according to 
+# the rules of the grammar 
+#==============================================================================
 def BUILD_CONST(chart, t):
     return [t]
 
@@ -384,9 +399,9 @@ def BUILD_AUX(chart, st, st2):
     return [t2.substitute_foot(t1) 
         for t1 in chart.get_subtrees(st) for t2 in chart.get_subtrees(st2)]
 
-#===================================================================================================
+#==============================================================================
 # Parser
-#===================================================================================================
+#==============================================================================
 def handle_left_adj(grammar, chart, st):
     """
     handles the case of left-adjunction rules (2) and (3)
@@ -400,9 +415,10 @@ def handle_left_adj(grammar, chart, st):
     
     # (3)
     for st2 in chart:
-        if (st2.tree.type == Tree.LEFT_AUX and st.tree.root == st2.tree.root and 
-                st.j == st2.i and st2.is_complete()): 
-            chart.add(State(st.tree, 0, st.i, st2.j), "[3]/%d,%d" % (st.index, st2.index), 
+        if (st2.tree.type == Tree.LEFT_AUX and st.tree.root == st2.tree.root 
+                and st.j == st2.i and st2.is_complete()): 
+            chart.add(State(st.tree, 0, st.i, st2.j), 
+                "[3]/%d,%d" % (st.index, st2.index), 
                 BUILD_AUX, st, st2)
 
 def handle_scan(grammar, chart, st, token):
@@ -413,15 +429,18 @@ def handle_scan(grammar, chart, st, token):
     if isinstance(prod, str):
         if prod == token:
             # (4)
-            chart.add(State(st.tree, st.dot+1, st.i, st.j+1), "[4]/%d" % (st.index,), 
+            chart.add(State(st.tree, st.dot+1, st.i, st.j+1), 
+                "[4]/%d" % (st.index,), 
                 BUILD_PROPAGATE, st)
         elif prod == "":
             # (5)
-            chart.add(State(st.tree, st.dot+1, st.i, st.j), "[5]/%d" % (st.index,), 
+            chart.add(State(st.tree, st.dot+1, st.i, st.j), 
+                "[5]/%d" % (st.index,), 
                 BUILD_PROPAGATE, st)
     elif isinstance(prod, Foot):
         # (6)
-        chart.add(State(st.tree, st.dot+1, st.i, st.j), "[6]/%d" % (st.index,), 
+        chart.add(State(st.tree, st.dot+1, st.i, st.j), 
+            "[6]/%d" % (st.index,), 
             BUILD_PROPAGATE, st)
 
 def handle_substitution(grammar, chart, st):
@@ -439,7 +458,8 @@ def handle_substitution(grammar, chart, st):
             if (st2.tree.root == prod and st.j == st2.i and st2.is_complete() 
                     and st2.tree.type == Tree.INIT_TREE):
                 chart.add(State(st.tree, st.dot + 1, st.i, st2.j), 
-                    "[8]/%d,%d" % (st.index, st2.index), BUILD_SUBSTITUTION, st, st2)
+                    "[8]/%d,%d" % (st.index, st2.index), 
+                    BUILD_SUBSTITUTION, st, st2)
  
 def handle_subtree_traversal(grammar, chart, st):
     """
@@ -454,7 +474,8 @@ def handle_subtree_traversal(grammar, chart, st):
         for st2 in chart:
             if st2.tree == prod and st.j == st2.i and st2.is_complete():
                 chart.add(State(st.tree, st.dot + 1, st.i, st2.j), 
-                    "[10]/%d,%d" % (st.index, st2.index), BUILD_SUBSTITUTION, st, st2)
+                    "[10]/%d,%d" % (st.index, st2.index), 
+                    BUILD_SUBSTITUTION, st, st2)
 
 def handle_right_adj(grammar, chart, st):
     """
@@ -476,21 +497,23 @@ def handle_right_adj(grammar, chart, st):
 
 def parse(grammar, start_symbol, tokens, debug = False):
     """
-    The actual parser: it takes a TIG grammar object, a start symbol (NonTerminal) of that grammar,
-    and a list of tokens, and returns (hopefully) all possible parse trees for them.
+    The actual parser: it takes a TIG grammar object, a start symbol 
+    (NonTerminal) of that grammar, and a list of tokens, and returns 
+    (hopefully) all possible parse trees for them.
     
-    It works by first applying the initialization rule (1), then applying rules (2)-(12) 
-    for as long as the chart keeps changing, and once it's stable, it looks for matching states
-    according to acceptance rule (13).
+    It works by first applying the initialization rule (1), 
+    then applying rules (2)-(12) for as long as the chart keeps changing, 
+    and once it's stable, it looks for matching states according to 
+    acceptance rule (13).
     
-    It then takes all matching states (normally there should be only one), extracts
-    the trees of each state, and returns a set of them.
+    It then takes all matching states (normally there should be only one),
+    extracts the trees of each state, and returns a set of them.
     
     Note that TIG is assumed to be lexicalized, or at least finitely-ambiguous, 
     so we know the number of trees is bounded.
     
-    The parsing is done in O(|G|^2 * n^3), as discussed in the paper, and tree extraction
-    is linear in the size of the chart (O(|G| * n^2)) for each tree.
+    The parsing is done in O(|G|^2 * n^3), as discussed in the paper, 
+    and tree extraction is performed in amortized linear time, per each tree.
     """
     if isinstance(tokens, str):
         tokens = tokens.split()
@@ -506,7 +529,7 @@ def parse(grammar, start_symbol, tokens, debug = False):
     while True:
         for st in chart:
             handle_left_adj(grammar, chart, st)
-            tok = padded_tokens[st.j+1] if st.j + 1 < len(padded_tokens) else None
+            tok = padded_tokens[st.j+1] if st.j+1 < len(padded_tokens) else None
             handle_scan(grammar, chart, st, tok)
             handle_substitution(grammar, chart, st)
             handle_subtree_traversal(grammar, chart, st)
@@ -517,8 +540,9 @@ def parse(grammar, start_symbol, tokens, debug = False):
             break
 
     # (13)
-    matches = [st for st in chart if st.is_complete() and st.i == 0 and st.j == len(tokens)  
-        and st.tree.root == start_symbol and st.tree.type == Tree.INIT_TREE]
+    matches = [st for st in chart if st.is_complete() and st.i == 0 
+        and st.j == len(tokens) and st.tree.root == start_symbol 
+        and st.tree.type == Tree.INIT_TREE]
     if debug:
         chart.show()
         print "Matches:", [st.index for st in matches]
@@ -528,7 +552,7 @@ def parse(grammar, start_symbol, tokens, debug = False):
     if not matches:
         raise ParsingError("Grammar does not derive the given sequence")
     
-    # extract trees
+    # extract trees, drop ones that do not generate the correct token sequence
     trees = set(t for m in matches for t in chart.get_subtrees(m)
          if list(t.leaves()) == tokens)
     
