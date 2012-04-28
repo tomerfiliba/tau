@@ -115,12 +115,12 @@ class Tree(object):
         """
         path = self.path_to_foot()
         if not path:
-            return self.substitute(i, child)
+            return self._substitute(i, child)
         return self._deep_substitute(path[:-1], i, child)
     
     def _deep_substitute(self, path, i, child):
         if not path:
-            return self.substitute(i, child)
+            return self._substitute(i, child)
         children2 = list(self.children)
         children2[path[0]]._deep_substitute(path[1:], i, child)
         return Tree(self.root, children2, self.DERIVATION_TREE)
@@ -293,7 +293,11 @@ class ChartItem(object):
 
 class Chart(object):
     """
-    Represents the parser chart
+    Represents the parser chart. It comprises of states (without duplicates),
+    but it preserves the ordering relations for debugging purposes. With each state
+    we associates a ChartItem, to hold some extra info. 
+    States are add()ed to the chart, but they don't actually become part of it until commit()ted.
+    This prevents some issues with dictionary iteration.
     """
     
     def __init__(self):
@@ -349,8 +353,10 @@ class Chart(object):
         item.stage = ChartItem.PROCESSED
         return item.subtrees
     
-    # print the chart in a human-readble manner
     def show(self, only_completed = False):
+        """
+        Print the chart in a human-readble manner
+        """
         for st in self._ordered_states:
             if only_completed and not st.is_complete():
                 continue
@@ -358,12 +364,16 @@ class Chart(object):
         print "-" * 80
 
 #===================================================================================================
-# Tree extraction combinators
+# Tree extraction combinators: 
+#
+# Whenever we add a new state to the chart, we associate with it a subtree-builder,
+# which serves us later (we get_subtrees() is called). These builders combine partial 
+# trees to form bigger ones, according to the rules of the grammar 
 #===================================================================================================
 def BUILD_CONST(chart, t):
     return [t]
 
-def BUILD_SCAN(chart, st):
+def BUILD_PROPAGATE(chart, st):
     return chart.get_subtrees(st)
 
 def BUILD_SUBSTITUTION(chart, st, st2):
@@ -377,7 +387,10 @@ def BUILD_AUX(chart, st, st2):
 #===================================================================================================
 # Parser
 #===================================================================================================
-def handle_left_aux(grammar, chart, st):
+def handle_left_adj(grammar, chart, st):
+    """
+    handles the case of left-adjunction rules (2) and (3)
+    """
     if st.dot != 0:
         return
     
@@ -393,22 +406,28 @@ def handle_left_aux(grammar, chart, st):
                 BUILD_AUX, st, st2)
 
 def handle_scan(grammar, chart, st, token):
+    """
+    handles the case of scanning rules (4), (5) and (6)
+    """
     prod = st.next()
     if isinstance(prod, str):
         if prod == token:
             # (4)
             chart.add(State(st.tree, st.dot+1, st.i, st.j+1), "[4]/%d" % (st.index,), 
-                BUILD_SCAN, st)
+                BUILD_PROPAGATE, st)
         elif prod == "":
             # (5)
             chart.add(State(st.tree, st.dot+1, st.i, st.j), "[5]/%d" % (st.index,), 
-                BUILD_SCAN, st)
+                BUILD_PROPAGATE, st)
     elif isinstance(prod, Foot):
         # (6)
         chart.add(State(st.tree, st.dot+1, st.i, st.j), "[6]/%d" % (st.index,), 
-            BUILD_SCAN, st)
+            BUILD_PROPAGATE, st)
 
 def handle_substitution(grammar, chart, st):
+    """
+    handles the case of substitution rules (7) and (8)
+    """
     prod = st.next()
     if isinstance(prod, NonTerminal):
         # (7)
@@ -423,6 +442,9 @@ def handle_substitution(grammar, chart, st):
                     "[8]/%d,%d" % (st.index, st2.index), BUILD_SUBSTITUTION, st, st2)
  
 def handle_subtree_traversal(grammar, chart, st):
+    """
+    handles the case of subtree-traversal rules (9) and (10)
+    """
     prod = st.next()
     if isinstance(prod, Tree):
         # (9)
@@ -434,7 +456,10 @@ def handle_subtree_traversal(grammar, chart, st):
                 chart.add(State(st.tree, st.dot + 1, st.i, st2.j), 
                     "[10]/%d,%d" % (st.index, st2.index), BUILD_SUBSTITUTION, st, st2)
 
-def handle_right_aux(grammar, chart, st):
+def handle_right_adj(grammar, chart, st):
+    """
+    handles the case of right-adjunction rules (11) and (12)
+    """
     if not st.is_complete():
         return
     
@@ -450,6 +475,23 @@ def handle_right_aux(grammar, chart, st):
                 "[12]/%d,%d" % (st.index, st2.index), BUILD_AUX, st, st2)
 
 def parse(grammar, start_symbol, tokens, debug = False):
+    """
+    The actual parser: it takes a TIG grammar object, a start symbol (NonTerminal) of that grammar,
+    and a list of tokens, and returns (hopefully) all possible parse trees for them.
+    
+    It works by first applying the initialization rule (1), then applying rules (2)-(12) 
+    for as long as the chart keeps changing, and once it's stable, it looks for matching states
+    according to acceptance rule (13).
+    
+    It then takes all matching states (normally there should be only one), extracts
+    the trees of each state, and returns a set of them.
+    
+    Note that TIG is assumed to be lexicalized, or at least finitely-ambiguous, 
+    so we know the number of trees is bounded.
+    
+    The parsing is done in O(|G|^2 * n^3), as discussed in the paper, and tree extraction
+    is linear in the size of the chart (O(|G| * n^2)) for each tree.
+    """
     if isinstance(tokens, str):
         tokens = tokens.split()
     chart = Chart()
@@ -463,12 +505,12 @@ def parse(grammar, start_symbol, tokens, debug = False):
     # main loop: run (2)-(12) until no more changes occur
     while True:
         for st in chart:
-            handle_left_aux(grammar, chart, st)
+            handle_left_adj(grammar, chart, st)
             tok = padded_tokens[st.j+1] if st.j + 1 < len(padded_tokens) else None
             handle_scan(grammar, chart, st, tok)
             handle_substitution(grammar, chart, st)
             handle_subtree_traversal(grammar, chart, st)
-            handle_right_aux(grammar, chart, st)
+            handle_right_adj(grammar, chart, st)
         
         if not chart.commit():
             # no more changes, we're done
@@ -480,6 +522,7 @@ def parse(grammar, start_symbol, tokens, debug = False):
     if debug:
         chart.show()
         print "Matches:", [st.index for st in matches]
+        print
 
     # fail if no matching state was found
     if not matches:
