@@ -264,7 +264,7 @@ class State(object):
         return self._hash
     def is_complete(self):
         """
-        Returns True iff the dot is passed the last child (thus the state 
+        Returns True iff the dot is past the last child (thus the state 
         is complete)
         """
         return self.dot >= len(self.tree.children)
@@ -493,7 +493,8 @@ def handle_right_adj(grammar, chart, st):
         if (st2.tree.type == Tree.RIGHT_AUX and st2.tree.root == st.tree.root 
                 and st.j == st2.i and st2.is_complete()):
             chart.add(State(st.tree, len(st.tree.children), st.i, st2.j), 
-                "[12]/%d,%d" % (st.index, st2.index), BUILD_AUX, st, st2)
+                "[12]/%d,%d" % (st.index, st2.index), 
+                BUILD_AUX, st, st2)
 
 def parse(grammar, start_symbol, tokens, debug = False):
     """

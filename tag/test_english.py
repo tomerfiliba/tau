@@ -47,7 +47,7 @@ g = TIG(
         VP(V("saw"), NP),
         
         # S itself is non lexicalized, but this is required to allow VP-level adjunction
-        S(NP, VP), 
+        S(NP, VP),
     ],
     aux_trees = [
         # some adjectives
@@ -68,10 +68,10 @@ g = TIG(
         VP(Foot(VP), PP(P("with"), NP)),
         
         # conjunction (at V, N, NP and VP levels)
-        V(V, Conj("and"), Foot(V)),
         NP(Foot(NP), Conj("and"), NP),
         N(Foot(N), Conj("and"), N),
         VP(Foot(VP), Conj("and"), VP),
+        V(V, Conj("and"), Foot(V)),
     ],
 )
 
@@ -93,6 +93,7 @@ sentences = [
     "john ate the banana and the apple",
     "john ate the banana and apple",
     "john ate the apple and saw the boy",
+    "john kissed and hugged mary",
     
     # ambiguity
     "john saw the nice boy with the telescope",
