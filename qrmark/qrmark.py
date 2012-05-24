@@ -1,6 +1,6 @@
 import qrcode
 from scipy import misc
-from PIL import Image
+#from PIL import Image
 import numpy
 
 def generate_qr(text):
@@ -9,35 +9,32 @@ def generate_qr(text):
     qr.add_data(text)
     qr.make(fit = True)
     img = qr.make_image()._img
-    return numpy.array(img).reshape(img.size[0], img.size[1])
+    return numpy.array(img.getdata()).reshape(img.size[0], img.size[1])
 
 host = misc.lena()
 payload = generate_qr("Hello world")
+misc.imsave("pay.png", payload)
 
-def embed_lsb(host, payload):
-    for r in range(len(host)):
-        if r >= len(payload):
-            break
-        hrow = host[r]
-        prow = host[r]
-        for c in range(len(hrow)):
-            if c >= len(prow):
-                break
-            if prow[c]:
-                hrow[c] |= 1
+def embed(host, payload):
+    assert host.shape >= payload.shape
+    for i in range(payload.shape[0]):
+        for j in range(payload.shape[1]):
+            if payload[i][j]:
+                host[i][j] |= 1
             else:
-                hrow[c] &= 0xFE
+                host[i][j] &= 0xFE
     return host
 
-embedded = embed_lsb(host, payload)
-misc.imsave('emb.png', embedded)
+emb = embed(host, payload)
+misc.imsave("emb.png", emb)
 
-#def decode_lsb(host):
-#    for row in host:
-#        pass
+dec = (emb & 1) * 255
+misc.imsave("dec.png", dec)
 
-
-
+misc.imsave("emb.jpg", emb)
+emb2 = misc.imread("emb.jpg")
+dec2 = (emb2 & 1) * 255
+misc.imsave("dec2.png", dec2)
 
 
 
