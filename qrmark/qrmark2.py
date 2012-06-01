@@ -2,6 +2,7 @@ import qrcode
 from scipy.fftpack import dct, idct
 from scipy import misc
 import numpy
+from PIL import Image
 
 def generate_qr(text):
     qr = qrcode.QRCode(error_correction = qrcode.constants.ERROR_CORRECT_H,
@@ -53,13 +54,19 @@ def decode(watermarked, k):
     for i in range(0, watermarked.shape[0], 8):
         for j in range(0, watermarked.shape[1], 8):
             block = watermarked[i:i+8, j:j+8].astype(float)
+            if block.shape != (8,8):
+                continue
             dct_block = dct(block, norm='ortho', overwrite_x = True)
             bit = dct_block[A] - dct_block[B] >= k
             output[i // 8, j // 8] = bit
     return output
 
 
-watermarked = misc.imread("out.jpg")
+img = Image.open("out.png")
+img2 = img.rotate(90, expand = True)
+img2.save("out2.png")
+
+watermarked = misc.imread("out2.png")
 pay2 = decode(watermarked, K)
 misc.imsave("pay2.png", pay2)
 
