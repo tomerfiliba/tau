@@ -11,29 +11,36 @@ class Stack(object):
         elif elem is not None:
             self._items.append(elem)
 
-class INST(object):
+class Instruction(object):
     def __init__(self, name, func):
         self.name = name
         self.func = func
     def __repr__(self):
         return self.name
 
-class BIN(INST):
+class BIN(Instruction):
     def eval(self, stack):
         b = stack.pop()
         a = stack.pop()
         stack.push(self.func(a, b))
 
-class UNI(INST):
-    def __init__(self, name, func):
-        self.name = name
-        self.func = func
+class UNI(Instruction):
     def eval(self, stack):
         self.stack.push(self.func(stack.pop()))
 
-class Terminated(Exception):
-    pass
+class PUSH(Instruction):
+    def __init__(self):
+        Instruction.__init__(self, "PSH", None)
+    def eval(self, stack):
+        pass
 
+class Halt(Exception):
+    def __init__(self, value):
+        self.value = value
+
+def raise_halt(value):
+    raise Halt(value)
+    
 
 INSTRUCTION_SET = [
     BIN("ADD", operator.add),
@@ -46,11 +53,23 @@ INSTRUCTION_SET = [
     BIN("AND", operator.and_),
     BIN("OR", operator.or_),
     BIN("XOR", operator.xor),
+    
+    BIN("EQ", operator.eq),
+    BIN("NE", operator.ne),
+    BIN("GT", operator.gt),
+    BIN("GE", operator.ge),
+    BIN("LT", operator.lt),
+    BIN("LE", operator.le),
+    
     UNI("INV", operator.inv),
     UNI("POP", lambda a: None),
     UNI("DUP", lambda a: (a, a)),
     UNI("NOP", lambda a: a),
+    UNI("HLT", raise_halt),
 ]
+
+JMP
+PSH
 
 class CPU(object):
     def __init__(self):
@@ -61,3 +80,15 @@ class CPU(object):
         inst = self.instructions[self.ip]
         inst(self.stack)
         self.ip = (self.ip + 1) % len(self.instructions)
+
+
+
+
+
+
+
+
+
+
+
+
