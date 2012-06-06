@@ -79,9 +79,8 @@ if __name__ == "__main__":
     #print "PNG ", extract(misc.imread("out.png"), len(payload))
     #print "JPG ", extract(misc.imread("out.jpg"), len(payload))
     #print "CAP ", extract(misc.imread("Untitled3.bmp"), len(payload))
-    #pic = misc.imread("out2.jpg")[:,:,0]
-    #print "ROT", extract(pic, len(payload))
-    #print "SCALE", extract(misc.imread("out3.jpg"), len(payload))
+    pic = misc.imread("out3.jpg")[:,:,0]
+    print extract(pic, len(payload))
 
 
 
