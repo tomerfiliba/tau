@@ -53,6 +53,16 @@ class Radio(BoxAtom):
 class Image(BoxAtom):
     def __init__(self, filename):
         self.filename = filename
+class Button(BoxAtom):
+    def __init__(self, text):
+        self.text = text
+class Tab(BoxAtom):
+    def __init__(self, title, box):
+        self.title = title
+        self.box = box
+class TabColl(BoxAtom):
+    def __init__(self, *tabs):
+        self.tabs = list(tabs)
 
 class ExprMixin(object):
     __slots__ = ()
@@ -108,7 +118,7 @@ class Var(ExprMixin):
     def __repr__(self):
         return self.name
     def __call__(self, env):
-        return env[name]
+        return env[self.name]
 
 class Cond(ExprMixin):
     def __init__(self, value, choices):
