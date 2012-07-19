@@ -1,7 +1,7 @@
 import numpy
 import math
 from pywt import dwt2, idwt2
-from scipy.fftpack import fft2, ifft, fftshift, ifftshift
+from scipy.fftpack import fft2, ifft2, fftshift, ifftshift, dct, idct
 from scipy.stats import pearsonr
 from scipy import mean, median, misc
 from skimage.filter import canny, sobel, threshold_otsu
@@ -219,9 +219,72 @@ def embed_img(w, src, payload, k):
 
 
 if __name__ == "__main__":
-    img = expand_rotate(misc.lena(), 7)
-    fft2()
+#    img = misc.imread("unrot.png")
+#    sob = sobel(img)
+#    bw = sob > threshold_otsu(sob)
+#    misc.imsave("sob.png", bw)
+#    lines = probabilistic_hough(bw, line_length = 200)
+#    sorted_lines = sorted(lines, key = lambda l: distance(line_to_vector(l)), reverse = True)[:4]
+#    min_y = bw.shape[0]
+#    max_y = 0
+#    min_x = bw.shape[1]
+#    max_x = 0
+#    for l in sorted_lines:
+#        (x1, y1), (x2, y2) = l
+#        if x1 < min_x:
+#            min_x = x1
+#        if x1 > max_x:
+#            max_x = x1
+#        if x2 < min_x:
+#            min_x = x2
+#        if x2 > max_x:
+#            max_x = x2
+#        if y1 < min_y:
+#            min_y = y1
+#        if y1 > max_y:
+#            max_y = y1
+#        if y2 < min_y:
+#            min_y = y2
+#        if y2 > max_y:
+#            max_y = y2
+#    img2 = img[min_y+1:max_y, min_x+1:max_x]
+#    print img2.shape
+#    misc.imsave("cut.png", img2)
+
+
     
+    w = Watermarker(8, 4, 239047238847, "db6")
+    print w.extract(misc.imread("cut2.png"))
+
+#    img = misc.lena().astype(float)
+#    cA, (cH, cV, cD) = dwt2(img, "haar")
+#    rand = Random(23895712)
+#    seq = numpy.array([[rand.choice([0,0,0,0,1]) for _ in range(cA.shape[1])] for _ in range(cA.shape[0])])
+#    cA += 3 * seq
+#    img2 = idwt2((cA, (cH, cV, cD)), "haar")
+#    
+#    img2 = w.embed(img2, "helloman", 20)
+#    
+#    img3 = expand_rotate(img2, 16)
+#    misc.imsave("rot.png", img3)
+#    seq = seq.reshape(seq.size)
+#    
+#    results = []
+#    for a in range(340, 350):
+#        rot = misc.imrotate(img3, a)
+#        cA, (cH, cV, cD) = dwt2(rot, "haar")
+#        corr, _ = pearsonr(cA.reshape(cA.size)[:seq.size], seq)
+#        if corr != corr:  # NaN
+#            corr = 0.95
+#        print ".",
+#        results.append((corr, a))
+#    
+#    angle = max(results, key = lambda x:x[0])[1]
+#    print "angle =", angle
+#    img4 = misc.imrotate(img3, angle)
+#    misc.imsave("unrot.png", img4)
+#    print w.extract(img2)
+#    print w.extract(img4)
     
     #w = Watermarker(8, 4, 239047238847, "db6")
     #embed_img(w, "pics/munich.jpg", "foobar", 30)
