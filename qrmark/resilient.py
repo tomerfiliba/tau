@@ -8,7 +8,7 @@ from skimage.filter import canny, sobel, threshold_otsu
 from skimage.transform import probabilistic_hough
 from PIL import Image
 from random import Random
-from reedsolo import RSCodec
+from reedsolo import RSCodec, ReedSolomonError
 
 
 def distance(vec):
@@ -104,6 +104,13 @@ def iterbits(data):  # MSB first
         for i in (7,6,5,4,3,2,1,0):
             yield (n >> i) & 1
 
+def grayscale(img):
+    if len(img.shape) == 2:
+        return img
+    else:
+        return mean(img, 2)
+        #return img[:,:,1]
+
 
 class Watermarker(object):
     def __init__(self, msg_bytes, ec_bytes, seed, mother = "haar"):
@@ -113,42 +120,64 @@ class Watermarker(object):
         self.total_bits = (msg_bytes + ec_bytes) * 8
 
         rand = Random()
+        #self.mask = [rand.randint(0,255) for _ in range(msg_bytes + ec_bytes)]
+        self.mask = [0] * (msg_bytes + ec_bytes)
         rand.seed(seed)
         chunk_size = 256*512 // self.total_bits
+        espilon = 0.001
         while True:
-            self.seq0 = numpy.array([rand.choice([1, 0, 0]) for _ in range(chunk_size)])
-            self.seq1 = numpy.array([rand.choice([1, 0, 0]) for _ in range(chunk_size)])
+            self.seq0 = numpy.array([int(rand.random() > 0.75) for _ in range(chunk_size)])
+            self.seq1 = numpy.array([int(rand.random() > 0.65) for _ in range(chunk_size)])
+            #self.seqTerm = numpy.array([int(rand.random() > 0.65) for _ in range(chunk_size)])
             corr, _ = pearsonr(self.seq0, self.seq1)
-            if abs(corr) < 0.001:
+            #corr2, _ = pearsonr(self.seq0, self.seqTerm)
+            #corr3, _ = pearsonr(self.seq1, self.seqTerm)
+            if abs(corr) < espilon:
                 break
     
-    def embed(self, img, payload, k = 2):
+    def _embed(self, img, payload, k):
+        cA, (cH, cV, cD) = dwt2(img, self.mother)
+        w, h = cH.shape
+        cH2 = cH.reshape(cH.size)
+        cV2 = cV.reshape(cV.size)
+        chunk_size = cH2.size // (self.total_bits // 2)
+        assert chunk_size >= self.seq0.size
+        
+        for i, bit in enumerate(iterbits(payload)):
+            dst = (cH2, cV2)[i % 2]
+            seq = (self.seq0, self.seq1)[bit]
+            dst[(i//2)*chunk_size:(i//2)*chunk_size + seq.size] += k * seq
+        return idwt2((cA, (cH2.reshape(w, h), cV2.reshape(w, h), cD)), self.mother)[:img.shape[0],:img.shape[1]]
+    
+    def embed(self, img, payload, k = 10):
         if len(payload) > self.msg_bytes:
             raise ValueError("payload too long")
-        
+        if isinstance(payload, str):
+            payload = bytearray(payload)
+        payload.extend([0] * (self.msg_bytes - len(payload)))
+        encoded = self.rscodec.encode(payload)
+        masked = [ord(v) ^ m for v, m in zip(encoded, self.mask)]
+
+        if len(img.shape) == 2:
+            return self._embed(img, masked, k)
+        elif len(img.shape) == 3:
+            res = numpy.zeros(img.shape)
+            for i in range(img.shape[2]):
+                layer = self._embed(img[:,:,i], masked, k)
+                res[:,:,i] = layer
+            return res
+        else:
+            raise TypeError("image must be a 2d or 3d array")
+
+    def _extract(self, img):
         cA, (cH, cV, cD) = dwt2(img, self.mother)
         w, h = cH.shape
         cH2 = cH.reshape(cH.size)
         cV2 = cV.reshape(cV.size)
         chunk_size = cH2.size // (self.total_bits // 2)
         
-        encoded = self.rscodec.encode(payload)
-        for i, bit in enumerate(iterbits(encoded)):
-            dst = (cH2, cV2)[i % 2]
-            seq = (self.seq0, self.seq1)[bit]
-            dst[(i//2)*chunk_size:(i//2)*chunk_size + seq.size] += k * seq
-        
-        return idwt2((cA, (cH2.reshape(w, h), cV2.reshape(w, h), cD)), self.mother)
-
-    def extract(self, img):
-        cA, (cH, cV, cD) = dwt2(grayscale(img), self.mother)
-
-        w, h = cH.shape
-        cH2 = cH.reshape(cH.size)
-        cV2 = cV.reshape(cV.size)
-        chunk_size = cH2.size // (self.total_bits // 2)
-        
-        bytes = ""
+        maskiter = iter(self.mask)
+        payload = bytearray()
         byte = 0
         for i in range(self.total_bits):
             src = (cH2, cV2)[i % 2]
@@ -158,75 +187,24 @@ class Watermarker(object):
             bit = int(corr1 > corr0)
             byte = bit | (byte << 1)
             if i % 8 == 7:
-                bytes += chr(byte)
+                payload.append(byte ^ maskiter.next())
                 byte = 0
-        print repr(bytes)
-        return self.rscodec.decode([ord(b) for b in bytes])
-
-class Watermarker2(object):
-    def __init__(self, msg_bytes, ec_bytes, seed, mother = "haar"):
-        self.rscodec = RSCodec(ec_bytes)
-        self.msg_bytes = msg_bytes
-        self.total_bits = (msg_bytes + ec_bytes) * 8
-        self.seed = seed
-        self.mother = mother
-    
-    def _get_sequences(self, size):
-        rand = Random()
-        rand.seed()
-        while True:
-            yield numpy.array([int(rand.random() > 0.8) for _ in range(size)])
-    
-    def embed(self, img, payload, k = 2):
-        if len(payload) > self.msg_bytes:
-            raise ValueError("payload too long")
-        
-        cA, (cH, cV, cD) = dwt2(img, self.mother)
-        w, h = cH.shape
-        cH2 = cH.reshape(cH.size)
-        cV2 = cV.reshape(cV.size)
-        encoded = self.rscodec.encode(payload)
-        sequences = self._get_sequences(cH2.size)
-        
-        for i, bit in enumerate(iterbits(encoded)):
-            if i % 10 == 0:
-                print i
-            dst = (cH2, cV2)[i % 2]
-            seq = sequences.next()
-            if bit:
-                dst += k * seq
-        
-        return idwt2((cA, (cH2.reshape(w, h), cV2.reshape(w, h), cD)), self.mother)
+        print repr(payload)
+        return self.rscodec.decode(payload)
 
     def extract(self, img):
-        cA, (cH, cV, cD) = dwt2(grayscale(img), self.mother)
-        cH2 = cH.reshape(cH.size)
-        cV2 = cV.reshape(cV.size)
-        sequences = self._get_sequences(cH2.size)
-        
-        bytes = ""
-        byte = 0
-        for i in range(self.total_bits):
-            if i % 10 == 0:
-                print i
-            src = (cH2, cV2)[i % 2]
-            seq = sequences.next()
-            corr, _ = pearsonr(src, seq)
-            bit = int(corr > 0.1)
-            byte = bit | (byte << 1)
-            if i % 8 == 7:
-                bytes += chr(byte)
-                byte = 0
-        print repr(bytes)
-        return self.rscodec.decode([ord(b) for b in bytes])
+        if len(img.shape) == 2:
+            return self._extract(img)
+        elif len(img.shape) == 3:
+            for i in range(img.shape[2]):
+                try:
+                    return self._extract(img[:,:,i])
+                except ReedSolomonError:
+                    pass
+            return self._extract(mean(img, 2))
+        else:
+            raise TypeError("image must be a 2d or 3d array")
 
-
-
-def grayscale(img):
-    if len(img.shape) == 2:
-        return img
-    else:
-        return mean(img, 2)
 
 #'bior1.1', 'bior1.3', 'bior1.5', 'bior2.2', 'bior2.4', 'bior2.6', 'bior2.8', 'bior3.1', 
 #'bior3.3', 'bior3.5', 'bior3.7', 'bior3.9', 'bior4.4', 'bior5.5', 'bior6.8', 'coif1', 'coif2', 
@@ -240,11 +218,13 @@ def grayscale(img):
 
 if __name__ == "__main__":
     orig = misc.lena()
-    w = Watermarker(8, 4, 239047238847, "rbio3.9")
+    #orig = misc.imread("thirteen512.jpg")
+    w = Watermarker(8, 4, 239047238847, "db1")
     #img2 = w.embed(orig, "helloman", 10)
     #misc.imsave("out.png", img2)
     #misc.imsave("out.jpg", img2)
-    img3 = misc.imread("lomo11.jpg")
+    #img3 = misc.imread("out.jpg")
+    img3 = misc.imread("crap-18.jpg")
     print repr(w.extract(img3))
     
     
