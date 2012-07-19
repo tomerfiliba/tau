@@ -1,9 +1,9 @@
 import numpy
 import math
 from pywt import dwt2, idwt2
-from scipy.fftpack import fft2, ifft
+from scipy.fftpack import fft2, ifft, fftshift, ifftshift
 from scipy.stats import pearsonr
-from scipy import mean, misc
+from scipy import mean, median, misc
 from skimage.filter import canny, sobel, threshold_otsu
 from skimage.transform import probabilistic_hough
 from PIL import Image
@@ -119,19 +119,15 @@ class Watermarker(object):
         self.msg_bytes = msg_bytes
         self.total_bits = (msg_bytes + ec_bytes) * 8
 
-        rand = Random()
+        rand = Random(seed)
         #self.mask = [rand.randint(0,255) for _ in range(msg_bytes + ec_bytes)]
         self.mask = [0] * (msg_bytes + ec_bytes)
-        rand.seed(seed)
         chunk_size = 256*512 // self.total_bits
-        espilon = 0.001
+        espilon = 0.0001
         while True:
             self.seq0 = numpy.array([int(rand.random() > 0.75) for _ in range(chunk_size)])
-            self.seq1 = numpy.array([int(rand.random() > 0.65) for _ in range(chunk_size)])
-            #self.seqTerm = numpy.array([int(rand.random() > 0.65) for _ in range(chunk_size)])
+            self.seq1 = numpy.array([int(rand.random() > 0.7) for _ in range(chunk_size)])
             corr, _ = pearsonr(self.seq0, self.seq1)
-            #corr2, _ = pearsonr(self.seq0, self.seqTerm)
-            #corr3, _ = pearsonr(self.seq1, self.seqTerm)
             if abs(corr) < espilon:
                 break
     
@@ -156,7 +152,7 @@ class Watermarker(object):
             payload = bytearray(payload)
         payload.extend([0] * (self.msg_bytes - len(payload)))
         encoded = self.rscodec.encode(payload)
-        masked = [ord(v) ^ m for v, m in zip(encoded, self.mask)]
+        masked = [v ^ m for v, m in zip(encoded, self.mask)]
 
         if len(img.shape) == 2:
             return self._embed(img, masked, k)
@@ -216,17 +212,22 @@ class Watermarker(object):
 #'sym15', 'sym16', 'sym17', 'sym18', 'sym19', 'sym20'
 
 
+def embed_img(w, src, payload, k):
+    embedded = w.embed(misc.imread(src), payload, k)
+    misc.imsave("out.png", embedded)
+    misc.imsave("out.jpg", embedded)
+
+
 if __name__ == "__main__":
-    orig = misc.lena()
-    #orig = misc.imread("thirteen512.jpg")
-    w = Watermarker(8, 4, 239047238847, "db1")
-    #img2 = w.embed(orig, "helloman", 10)
-    #misc.imsave("out.png", img2)
-    #misc.imsave("out.jpg", img2)
-    #img3 = misc.imread("out.jpg")
-    img3 = misc.imread("crap-18.jpg")
-    print repr(w.extract(img3))
+    img = expand_rotate(misc.lena(), 7)
+    fft2()
     
+    
+    #w = Watermarker(8, 4, 239047238847, "db6")
+    #embed_img(w, "pics/munich.jpg", "foobar", 30)
+    #print w.extract(misc.imread("lenascan2.png"))
+    #print w.extract(misc.imread("lenascan2.png"))
+    #print w.extract(misc.imread("crap26.png"))
     
     #rot = expand_rotate(img2, 7.5)
     #misc.imsave("out2.png", rot)
