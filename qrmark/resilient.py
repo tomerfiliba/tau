@@ -1,10 +1,9 @@
 import numpy
 import math
-from pylab import mean
 from pywt import dwt2, idwt2
 from scipy.fftpack import fft2, ifft
 from scipy.stats import pearsonr
-from scipy import misc
+from scipy import mean, misc
 from skimage.filter import canny, sobel, threshold_otsu
 from skimage.transform import probabilistic_hough
 from PIL import Image
@@ -22,16 +21,14 @@ def line_to_vector(l):
 
 def align(img, min_line_length = 100):
     sob = sobel(img)
-    print "!! sob"
+    #print "!! sob"
     bw = sob > threshold_otsu(sob)
-    print "!! otsu"
+    #print "!! otsu"
     lines = probabilistic_hough(bw, line_length = min_line_length)
-    print "!! hough"
+    #print "!! hough"
     sorted_lines = sorted(lines, key = lambda l: distance(line_to_vector(l)), 
         reverse = True)[:10]
     
-    print "!!", sorted_lines
-
     rotations = {}
     for l1 in sorted_lines:
         v1 = line_to_vector(l1)
@@ -101,28 +98,35 @@ def expand_rotate(img, angle):
 
 
 def iterbits(data):  # MSB first
+    if isinstance(data, str):
+        data = (ord(ch) for ch in data)
     for n in data:
         for i in (7,6,5,4,3,2,1,0):
             yield (n >> i) & 1
 
 
 class Watermarker(object):
-    def __init__(self, msg_bytes, ec_bytes, seed):
-        self.seed = seed
+    def __init__(self, msg_bytes, ec_bytes, seed, mother = "haar"):
+        self.mother = mother
         self.rscodec = RSCodec(ec_bytes)
         self.msg_bytes = msg_bytes
         self.total_bits = (msg_bytes + ec_bytes) * 8
-        self.rand = Random()
-    def _reset(self):
-        self.rand.seed(self.seed)
+
+        rand = Random()
+        rand.seed(seed)
+        chunk_size = 256*512 // self.total_bits
+        while True:
+            self.seq0 = numpy.array([rand.choice([1, 0, 0]) for _ in range(chunk_size)])
+            self.seq1 = numpy.array([rand.choice([1, 0, 0]) for _ in range(chunk_size)])
+            corr, _ = pearsonr(self.seq0, self.seq1)
+            if abs(corr) < 0.001:
+                break
     
     def embed(self, img, payload, k = 2):
-        img = grayscale(img)
         if len(payload) > self.msg_bytes:
             raise ValueError("payload too long")
-        self._reset()
-        cA, (cH, cV, cD) = dwt2(img, "haar")
         
+        cA, (cH, cV, cD) = dwt2(img, self.mother)
         w, h = cH.shape
         cH2 = cH.reshape(cH.size)
         cV2 = cV.reshape(cV.size)
@@ -130,17 +134,14 @@ class Watermarker(object):
         
         encoded = self.rscodec.encode(payload)
         for i, bit in enumerate(iterbits(encoded)):
-            seq = [self.rand.choice([k, 0]) for _ in range(chunk_size)]
             dst = (cH2, cV2)[i % 2]
-            if bit:
-                dst[(i//2)*chunk_size:(i//2+1)*chunk_size] += seq
+            seq = (self.seq0, self.seq1)[bit]
+            dst[(i//2)*chunk_size:(i//2)*chunk_size + seq.size] += k * seq
         
-        return idwt2((cA, (cH2.reshape(w, h), cV2.reshape(w, h), cD)), "haar")
+        return idwt2((cA, (cH2.reshape(w, h), cV2.reshape(w, h), cD)), self.mother)
 
     def extract(self, img):
-        img = grayscale(img)
-        self._reset()
-        cA, (cH, cV, cD) = dwt2(img, "haar")
+        cA, (cH, cV, cD) = dwt2(grayscale(img), self.mother)
 
         w, h = cH.shape
         cH2 = cH.reshape(cH.size)
@@ -150,11 +151,11 @@ class Watermarker(object):
         bytes = ""
         byte = 0
         for i in range(self.total_bits):
-            seq = [self.rand.choice([1, 0]) for _ in range(chunk_size)]
             src = (cH2, cV2)[i % 2]
-            chunk = src[(i//2)*chunk_size:(i//2+1)*chunk_size]
-            corr, _ = pearsonr(chunk, seq)
-            bit = int(corr > 0.3)
+            chunk = src[(i//2)*chunk_size:(i//2)*chunk_size + self.seq0.size]
+            corr0, _ = pearsonr(chunk, self.seq0)
+            corr1, _ = pearsonr(chunk, self.seq1)
+            bit = int(corr1 > corr0)
             byte = bit | (byte << 1)
             if i % 8 == 7:
                 bytes += chr(byte)
@@ -162,35 +163,104 @@ class Watermarker(object):
         print repr(bytes)
         return self.rscodec.decode([ord(b) for b in bytes])
 
+class Watermarker2(object):
+    def __init__(self, msg_bytes, ec_bytes, seed, mother = "haar"):
+        self.rscodec = RSCodec(ec_bytes)
+        self.msg_bytes = msg_bytes
+        self.total_bits = (msg_bytes + ec_bytes) * 8
+        self.seed = seed
+        self.mother = mother
+    
+    def _get_sequences(self, size):
+        rand = Random()
+        rand.seed()
+        while True:
+            yield numpy.array([int(rand.random() > 0.8) for _ in range(size)])
+    
+    def embed(self, img, payload, k = 2):
+        if len(payload) > self.msg_bytes:
+            raise ValueError("payload too long")
+        
+        cA, (cH, cV, cD) = dwt2(img, self.mother)
+        w, h = cH.shape
+        cH2 = cH.reshape(cH.size)
+        cV2 = cV.reshape(cV.size)
+        encoded = self.rscodec.encode(payload)
+        sequences = self._get_sequences(cH2.size)
+        
+        for i, bit in enumerate(iterbits(encoded)):
+            if i % 10 == 0:
+                print i
+            dst = (cH2, cV2)[i % 2]
+            seq = sequences.next()
+            if bit:
+                dst += k * seq
+        
+        return idwt2((cA, (cH2.reshape(w, h), cV2.reshape(w, h), cD)), self.mother)
+
+    def extract(self, img):
+        cA, (cH, cV, cD) = dwt2(grayscale(img), self.mother)
+        cH2 = cH.reshape(cH.size)
+        cV2 = cV.reshape(cV.size)
+        sequences = self._get_sequences(cH2.size)
+        
+        bytes = ""
+        byte = 0
+        for i in range(self.total_bits):
+            if i % 10 == 0:
+                print i
+            src = (cH2, cV2)[i % 2]
+            seq = sequences.next()
+            corr, _ = pearsonr(src, seq)
+            bit = int(corr > 0.1)
+            byte = bit | (byte << 1)
+            if i % 8 == 7:
+                bytes += chr(byte)
+                byte = 0
+        print repr(bytes)
+        return self.rscodec.decode([ord(b) for b in bytes])
+
+
+
 def grayscale(img):
     if len(img.shape) == 2:
         return img
     else:
         return mean(img, 2)
 
+#'bior1.1', 'bior1.3', 'bior1.5', 'bior2.2', 'bior2.4', 'bior2.6', 'bior2.8', 'bior3.1', 
+#'bior3.3', 'bior3.5', 'bior3.7', 'bior3.9', 'bior4.4', 'bior5.5', 'bior6.8', 'coif1', 'coif2', 
+#'coif3', 'coif4', 'coif5', 'db1', 'db2', 'db3', 'db4', 'db5', 'db6', 'db7', 'db8', 'db9', 
+#'db10', 'db11', 'db12', 'db13', 'db14', 'db15', 'db16', 'db17', 'db18', 'db19', 'db20', 'dmey', 
+#'haar', 'rbio1.1', 'rbio1.3', 'rbio1.5', 'rbio2.2', 'rbio2.4', 'rbio2.6', 'rbio2.8', 'rbio3.1', 
+#'rbio3.3', 'rbio3.5', 'rbio3.7', 'rbio3.9', 'rbio4.4', 'rbio5.5', 'rbio6.8', 'sym2', 'sym3', 
+#'sym4', 'sym5', 'sym6', 'sym7', 'sym8', 'sym9', 'sym10', 'sym11', 'sym12', 'sym13', 'sym14', 
+#'sym15', 'sym16', 'sym17', 'sym18', 'sym19', 'sym20'
+
 
 if __name__ == "__main__":
     orig = misc.lena()
-    w = Watermarker(8, 4, 239047238847)
-    #img2 = w.embed(orig, "helloman", 20)
+    w = Watermarker(8, 4, 239047238847, "rbio3.9")
+    #img2 = w.embed(orig, "helloman", 10)
     #misc.imsave("out.png", img2)
-
-    #img3 = misc.imread("degraded60.jpg")
-    #payload = w.extract(mean(img3, 2))
-    src = misc.imread("lomo1.png")
-    payload = w.extract(src)
-    print repr(payload)
+    #misc.imsave("out.jpg", img2)
+    img3 = misc.imread("lomo11.jpg")
+    print repr(w.extract(img3))
     
-    #print "out"
+    
+    #rot = expand_rotate(img2, 7.5)
+    #misc.imsave("out2.png", rot)
+    #img3 = align(rot)
+    #print img3.shape
+    #misc.imsave("out3.png", img3)
+    #print repr(w.extract(img3))
+    
+    #misc.imsave("out.png", img2)
+    #misc.imsave("out.jpg", img2)
     #img3 = misc.imread("out.jpg")
-    #img3 = misc.imread("scan2.png")
-    #payload = w.extract(img4)
-    #print repr(payload)
-    #src = misc.imread("scan2.png")
-    #img2 = align(src)
-    #misc.imsave("out2.png", img2)
-    #payload = w.extract(img2)
-    #print repr(payload)
+    #img3 = misc.imread("pic3.png")
+    #print repr(w.extract(img3))
+
     
     #rot = expand_rotate(orig, 7)
     #img2 = align(rot)
