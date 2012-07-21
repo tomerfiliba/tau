@@ -219,6 +219,13 @@ def embed_img(w, src, payload, k):
 
 
 if __name__ == "__main__":
+    w = Watermarker(8, 4, 239047238847, "db6")
+    img = w.embed(misc.imread("pics/sky.png"), "helloman", 10)
+    misc.imsave("out.png", img)
+    misc.imsave("out.jpg", img)
+    print w.extract(misc.imread("out.jpg"))
+
+    
 #    img = misc.imread("unrot.png")
 #    sob = sobel(img)
 #    bw = sob > threshold_otsu(sob)
@@ -250,27 +257,26 @@ if __name__ == "__main__":
 #    img2 = img[min_y+1:max_y, min_x+1:max_x]
 #    print img2.shape
 #    misc.imsave("cut.png", img2)
+#    img = w.embed(misc.lena(), "helloman", 2000)
+#    #img2 = misc.imresize(misc.imresize(img, (530, 530)), (512, 512))
+#    img2 = misc.imrotate(misc.imrotate(img, 1), -1)
+#    misc.imsave("out.png",img2)
+#    print w.extract(img2)
 
-
-    
-    w = Watermarker(8, 4, 239047238847, "db6")
-    print w.extract(misc.imread("cut2.png"))
-
-#    img = misc.lena().astype(float)
+#    img = misc.imread("pics/thirteen.png")
 #    cA, (cH, cV, cD) = dwt2(img, "haar")
 #    rand = Random(23895712)
 #    seq = numpy.array([[rand.choice([0,0,0,0,1]) for _ in range(cA.shape[1])] for _ in range(cA.shape[0])])
 #    cA += 3 * seq
 #    img2 = idwt2((cA, (cH, cV, cD)), "haar")
+#    img2 = w.embed(img2, "helloman", 12)
 #    
-#    img2 = w.embed(img2, "helloman", 20)
-#    
-#    img3 = expand_rotate(img2, 16)
+#    img3 = expand_rotate(img2, 7)
 #    misc.imsave("rot.png", img3)
 #    seq = seq.reshape(seq.size)
-#    
+#
 #    results = []
-#    for a in range(340, 350):
+#    for a in range(340, 360):
 #        rot = misc.imrotate(img3, a)
 #        cA, (cH, cV, cD) = dwt2(rot, "haar")
 #        corr, _ = pearsonr(cA.reshape(cA.size)[:seq.size], seq)
@@ -283,8 +289,8 @@ if __name__ == "__main__":
 #    print "angle =", angle
 #    img4 = misc.imrotate(img3, angle)
 #    misc.imsave("unrot.png", img4)
-#    print w.extract(img2)
-#    print w.extract(img4)
+    #print w.extract(img2)
+    #print w.extract(img4)
     
     #w = Watermarker(8, 4, 239047238847, "db6")
     #embed_img(w, "pics/munich.jpg", "foobar", 30)
