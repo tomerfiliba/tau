@@ -21,28 +21,17 @@ class Watermarker(object):
         self.rscodec = RSCodec(ec_bytes)
         self.max_payload = max_payload
         self.total_bits = (max_payload + ec_bytes) * 8
+        self.seed = seed
 
-        rand = Random(seed)
-        chunk_size = 3000
-        while True:
-            self.seq0 = numpy.array([int(rand.random() > 0.8) for _ in range(chunk_size)])
-            self.seq1 = numpy.array([int(rand.random() > 0.75) for _ in range(chunk_size)])
-            corr, _ = pearsonr(self.seq0, self.seq1)
-            if corr < self.EPSILON:
-                break
-    
     def _embed(self, img, payload, k):
+        rand = Random(self.seed)
         cA, (cH, cV, cD) = dwt2(img, self.mother)
-        target = cD.reshape(cD.size)
-        chunk_size = target.size // self.total_bits
-        sequence_of = (self.seq0[:chunk_size], self.seq1[:chunk_size])
-        
-        for i, bit in enumerate(iterbits(payload)):
-            seq = sequence_of[bit]
-            #chunk = target[i::self.total_bits][:seq.size]
-            chunk = target[i * chunk_size:i * chunk_size + seq.size]
-            chunk += k * seq
-        return idwt2((cA, (cH, cV, target.reshape(cD.shape))), self.mother)[:img.shape[0],:img.shape[1]]
+        cD2 = cD.reshape(cD.size)
+        for bit in iterbits(payload):
+            seq = numpy.array([int(rand.random() > 0.95) for _ in range(cD2.size)]) 
+            if bit:
+                cD2 += k * seq
+        return idwt2((cA, (cH, cV, cD2.reshape(cD.shape))), self.mother)[:img.shape[0],:img.shape[1]]
     
     def embed(self, img, payload, k):
         if len(payload) > self.max_payload:
@@ -61,23 +50,15 @@ class Watermarker(object):
             raise TypeError("img must be a 2d or 3d array")
     
     def _extract(self, img):
+        rand = Random(self.seed)
         cA, (cH, cV, cD) = dwt2(img, self.mother)
-        target = cD.reshape(cD.size)
-        chunk_size = target.size // self.total_bits
-        seq0 = self.seq0[:chunk_size]
-        seq1 = self.seq1[:chunk_size]
-
+        cD2 = cD.reshape(cD.size)
         byte = 0
         output = bytearray()
         for i in range(self.total_bits):
-            chunk = target[i * chunk_size : (i * chunk_size) + seq0.size]
-            #chunk = target[i::self.total_bits][:seq0.size]
-            #if not all(chunk[i] == chunk[i+1] for i in range(chunk.size-1)):
-            corr0, _ = pearsonr(chunk, seq0)
-            corr1, _ = pearsonr(chunk, seq1)
-            bit = int(corr1 > corr0)
-            #else:
-            #    bit = 0
+            seq = numpy.array([int(rand.random() > 0.95) for _ in range(cD2.size)]) 
+            corr, _ = pearsonr(cD2, seq)
+            bit = int(corr > 0.1)
             byte = (byte << 1) | bit
             if i % 8 == 7:
                 output.append(byte)
@@ -110,11 +91,12 @@ class Watermarker(object):
 
 
 if __name__ == "__main__":
-    w = Watermarker(6, 3, 8294731, "rbio1.1")
-    img2 = w.embed(misc.lena(), "123456", 60)
+    w = Watermarker(6, 3, 8294731, "haar")
+    img2 = w.embed(misc.lena(), "123456", 15)
+    #img2 = w.embed(misc.imread("pics/munich.jpg"), "123456", 10)
     misc.imsave("out.png", img2)
-    #misc.imsave("out.jpg", img2)
-    #print w.extract(misc.imread("lena30-png-scan.png"))
+    misc.imsave("out.jpg", img2)
+    print w.extract(misc.imread("out.jpg"))
 
 
 
