@@ -1,9 +1,13 @@
 import numpy
+import math
 from pywt import dwt2, idwt2
+import scipy
+from scipy.fftpack import fft2, ifft2, fftshift, ifftshift, dct, idct
 from scipy.stats import pearsonr
 from scipy import misc, mean
 from random import Random
 from reedsolo import RSCodec, ReedSolomonError
+from skimage.color import rgb2hsv, hsv2rgb
 
 
 def iterbits(data):
@@ -30,52 +34,44 @@ class Watermarker(object):
     
     def _embed(self, img, payload, k):
         cA, (cH, cV, cD) = dwt2(img, self.mother)
-        cH2 = cH.reshape(cH.size)
-        cV2 = cV.reshape(cV.size)
-        assert cH2.shape == cV2.shape
-        chunk_size = cH2.size // (self.total_bits // 2)
+        target = cD.reshape(cD.size)
+        chunk_size = target.size // self.total_bits
         sequence_of = (self.seq0[:chunk_size], self.seq1[:chunk_size])
         
         for i, bit in enumerate(iterbits(payload)):
             seq = sequence_of[bit]
             #chunk = target[i::self.total_bits][:seq.size]
-            target = (cH2, cV2)[i % 2]
-            offset = (i//2) * chunk_size
-            target[offset:offset + seq.size] += k * seq
-        w, h = img.shape
-        return idwt2((cA, (cH2.reshape(cH.shape), cV2.reshape(cV.shape), cD)), self.mother)[:w,:h]
+            chunk = target[i * chunk_size:i * chunk_size + seq.size]
+            chunk += k * seq
+        return idwt2((cA, (cH, cV, target.reshape(cH.shape))), self.mother)[:img.shape[0],:img.shape[1]]
     
     def embed(self, img, payload, k):
         if len(payload) > self.max_payload:
             raise ValueError("payload too long")
-        padded = bytearray(payload) + b"\x00" * (self.max_payload - len(payload))
-        encoded = self.rscodec.encode(padded)
+        payload = bytearray(payload) + "\x00" * (self.max_payload - len(payload))
+        encoded = self.rscodec.encode(payload)
         
         if len(img.shape) == 2:
             return self._embed(img, encoded, k)
         elif len(img.shape) == 3:
-            output = numpy.zeros(img.shape)
-            for i in range(img.shape[2]):
-                output[:,:,i] = self._embed(img[:,:,i], encoded, k)
-            return output
+            hsv = rgb2hsv(img)
+            i = 0
+            hsv[:,:,i] = self._embed(hsv[:,:,i], encoded, k)
+            return hsv2rgb(hsv)
         else:
             raise TypeError("img must be a 2d or 3d array")
     
     def _extract(self, img):
         cA, (cH, cV, cD) = dwt2(img, self.mother)
-        cH2 = cH.reshape(cH.size)
-        cV2 = cV.reshape(cV.size)
-        assert cH2.shape == cV2.shape
-        chunk_size = cH2.size // (self.total_bits // 2)
+        target = cD.reshape(cD.size)
+        chunk_size = target.size // self.total_bits
         seq0 = self.seq0[:chunk_size]
         seq1 = self.seq1[:chunk_size]
 
         byte = 0
         output = bytearray()
         for i in range(self.total_bits):
-            target = (cH2, cV2)[i % 2]
-            offset = (i//2) * chunk_size
-            chunk = target[offset : offset + seq0.size]
+            chunk = target[i * chunk_size : (i * chunk_size) + seq0.size]
             #chunk = target[i::self.total_bits][:seq0.size]
             #if not all(chunk[i] == chunk[i+1] for i in range(chunk.size-1)):
             corr0, _ = pearsonr(chunk, seq0)
@@ -94,12 +90,8 @@ class Watermarker(object):
         if len(img.shape) == 2:
             return self.rscodec.decode(self._extract(img))
         elif len(img.shape) == 3:
-            for i in range(img.shape[2]):
-                try:
-                    return self.rscodec.decode(self._extract(img[:,:,i]))
-                except ReedSolomonError:
-                    pass
-            return self.rscodec.decode(self._extract(mean(img, 2)))
+            hsv = rgb2hsv(img)
+            return self.rscodec.decode(self._extract(hsv[:,:,0]))
         else:
             raise TypeError("img must be a 2d or 3d array")
             
@@ -115,11 +107,11 @@ class Watermarker(object):
 
 
 if __name__ == "__main__":
-    w = Watermarker(6, 3, 1829473, "rbio1.1")
-    #img2 = w.embed(misc.imread("pics/munich.jpg"), "123456", 20)
-    #misc.imsave("out.png", img2)
-    #misc.imsave("out.jpg", img2)
-    print w.extract(misc.imread("lomo1.png"))
+    w = Watermarker(6, 3, 1829473, "haar")
+    img2 = w.embed(misc.imread("pics/munich.jpg"), "123456", 10)
+    misc.imsave("out.png", img2)
+    misc.imsave("out.jpg", img2)
+    print w.extract(misc.imread("out.jpg"))
 
 
 
