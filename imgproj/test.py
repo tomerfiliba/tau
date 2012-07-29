@@ -1,5 +1,4 @@
 import os
-import shutil
 import numpy
 from watermarker import Watermarker
 from scipy import misc
@@ -26,28 +25,38 @@ def test_jpg(w, img):
         prev_fn = fn
     return "unbound"
 
-def test_filter(w, img, filterfunc, rng):
+def test_filter(w, img, fmt, filterfunc, rng):
     prev_i = None
+    prev_fn = None
     for i in rng:
-        print i,
-        misc.imsave("out.png", filterfunc(img, i))
-        if w.extract(misc.imread("out.png")) is None:
+        fn = fmt % (i,)
+        misc.imsave(fn, filterfunc(img, i))
+        try:
+            w.extract(misc.imread(fn))
+        except ReedSolomonError:
+            os.remove(fn)
             return prev_i
+        if prev_fn:
+            os.remove(prev_fn)
         prev_i = i
+        prev_fn = fn
     return "unbound"
 
-def test_recursive_filter(w, img, filterfunc, rng):
-    prev_i = -1
-    misc.imsave("out.png", out)
+def test_recursive_filter(w, img, fmt, filterfunc, rng):
+    prev_i = None
+    misc.imsave("tmp.png", img)
     for i in rng:
-        print i, 
-        misc.imsave("out.png", filterfunc(misc.imread("out.png")))
-        if w.extract(misc.imread("out.png")) is None:
+        misc.imsave("tmp.png", filterfunc(misc.imread("tmp.png")))
+        try:
+            w.extract(misc.imread("tmp.png"))
+        except ReedSolomonError:
+            os.rename("tmp.png", fmt % (prev_i,))
             return prev_i
         prev_i = i
+    os.rename("tmp.png", fmt % (prev_i,))
     return "unbound"
 
-def add_noise(img, k, min, max):
+def add_noise(img, k, min = -200, max = 200):
     mask = numpy.zeros(img.size)
     mask[:k*img.size] = 1
     numpy.random.shuffle(mask)
@@ -70,43 +79,47 @@ def add_blocks(img, noise_ratio, w, h):
     return img2
 
 def run_tests(w, payload, k_range):
-    os.chdir(os.path.dirname(__file__))
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
     ROOT = os.getcwd()
-    if os.path.isdir("results"):
-        shutil.rmtree("results")
-    os.mkdir("results")
+    if not os.path.isdir("results"):
+        os.mkdir("results")
     
     for fn in os.listdir("pics"):
         src = misc.imread(os.path.join(ROOT, "pics", fn))
         for k in k_range:
-            out = w.embed(src, payload, k)
             dst = os.path.join(ROOT, "results", "%s-%d" % (fn.split(".")[0], k))
-            os.mkdir(dst)
+            try:
+                os.mkdir(dst)
+            except EnvironmentError:
+                print "skipping", fn, k
+                continue
             os.chdir(dst)
+            out = w.embed(src, payload, k)
             misc.imsave("orig.png", out)
             
             print "%s (k = %d)" % (fn, k)
             print "=" * 20
             print "Minimum JPG quality", test_jpg(w, out)
-            print "Max Gaussian sigma", test_filter(w, out, "gauss-%d.png", gaussian_filter, 
+            print "Max Gaussian sigma:", test_filter(w, out, "gauss-%s.png", gaussian_filter, 
                 [i/10.0 for i in range(1,50)])
-            #print 
-            #print "LoG"
-            #print test_filter(w, out, gaussian_laplace, [i/10.0 for i in range(1,50)])
-            #for flt in ["blur", "contour", "detail", "edge_enhance", "edge_enhance_more", "emboss", 
-            #        "find_edges", "smooth", "smooth_more", "sharpen"]:
-            #    print flt
-            #    print test_recursive_filter(w, out, lambda img: misc.imfilter(img, flt), range(1, 30))
-            #print "TV denoise"
-            #print test_filter(w, out, tv_denoise, range(50,1000,25))
-            #misc.imsave("noise.png", add_noise(out, 1, -128, 128))
-            #misc.imsave("noise.png", add_blocks(out, 0.9, 40, 40))
-            #print w.extract(misc.imread("noise.png"))
-            print 
+            print "Max Laplacian of Gaussian sigma:", test_filter(w, out, "log-%s.png", gaussian_laplace, 
+                [i/10.0 for i in range(1,50)])
+            print "Max tv-denoising weight:", test_filter(w, out, "tv-%s.png", tv_denoise, 
+                range(50,1000,25))
+            print "Max noise ratio: ", test_filter(w, out, "noise-%s.png", add_noise, 
+                [i/20.0 for i in range(1, 21)]) 
+            print "Max random block coverage: ", test_filter(w, out, "blocks-%s.png", 
+                lambda img, k: add_blocks(img, k, 40, 40), [i/20.0 for i in range(1, 21)]) 
+
+            for flt in ["contour", "detail", "edge_enhance", "edge_enhance_more", "emboss", 
+                    "find_edges", "smooth", "smooth_more", "sharpen"]:
+                print "Max iterations of %r: %s" % (flt, test_recursive_filter(w, out, 
+                    "%s-%%s.png" % (flt,), lambda img: misc.imfilter(img, flt), range(1, 30)))
+            print
 
 
 if __name__ == "__main__":
-    w = Watermarker(6, 3)
+    w = Watermarker(6, 4)
     run_tests(w, "123456", [2,4,6,8])
 
 
