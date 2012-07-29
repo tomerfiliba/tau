@@ -4,14 +4,8 @@ import operator
 class BoxMixin(object):
     __slots__ = ()
     def __or__(self, other):
-        #if isinstance(self, Layout) and self.dir == Layout.H:
-        #    self.append(other)
-        #    return self
         return Layout(Layout.H, self, other)
     def __sub__(self, other):
-        #if isinstance(self, Layout) and self.dir == Layout.V:
-        #    self.append(other)
-        #    return self
         return Layout(Layout.V, self, other)
     def __neg__(self):
         return self
@@ -23,7 +17,12 @@ class Layout(BoxMixin):
     V = 2
     def __init__(self, dir, *subboxes):
         self.dir = dir
-        self.subboxes = list(subboxes)
+        self.subboxes = []
+        for b in subboxes:
+            if isinstance(b, Layout) and b.dir == self.dir:
+                self.subboxes.extend(b.subboxes)
+            else:
+                self.subboxes.append(b)
     def __repr__(self):
         if self.dir == self.H:
             return "(" +" | ".join(repr(b) for b in self.subboxes) + ")"
@@ -152,7 +151,7 @@ if __name__ == "__main__":
     L = (
         Label("do you like?") . X(100,20)
         ---
-        Radio(checked = v) | Label("Yes") | Radio(checked = ~v) | Label("No")
+        (Radio(checked = v) | Label("Yes") | Radio(checked = ~v) | Label("No"))
     )
     
     I = (
