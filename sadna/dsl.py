@@ -15,7 +15,7 @@ class BoxMixin(object):
         return Layout(Layout.V, self, other)
     def __neg__(self):
         return self
-    def size(self, w, h):
+    def X(self, w, h):
         return BoxSpec(self, w, h)       
 
 class Layout(BoxMixin):
@@ -38,7 +38,7 @@ class BoxSpec(BoxMixin):
         self.w = w
         self.h = h
     def __repr__(self):
-        return "%s.size(%r, %r)" % (self.box, self.w, self.h)
+        return "%s.X(%r, %r)" % (self.box, self.w, self.h)
 
 class BoxAtom(BoxMixin):
     def __repr__(self):
@@ -144,17 +144,19 @@ Otherwise = Otherwise()
 def run(prog):
     pass
 
+
+
 if __name__ == "__main__":
     v = Var("v")
     
     L = (
-        Label("do you like?") . size(100,20)
+        Label("do you like?") . X(100,20)
         ---
         Radio(checked = v) | Label("Yes") | Radio(checked = ~v) | Label("No")
     )
     
     I = (
-        Image(filename = Cond(v, {True: "like.png", Otherwise: "dislike.png"})) . size(32, 32)
+        Image(filename = Cond(v, {True: "like.png", Otherwise: "dislike.png"})) . X(32, 32)
     )
     
     main = L | I

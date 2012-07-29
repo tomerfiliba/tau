@@ -67,15 +67,18 @@ def add_noise(img, k, min = -200, max = 200):
 def add_blocks(img, noise_ratio, w, h):
     img2 = numpy.array(img)
     area = numpy.zeros(img.shape[:2])
-    min_noise = area.size * noise_ratio
+    min_noise = area.size * min(noise_ratio, 0.98)
     while numpy.sum(area) < min_noise:
         y0=randint(0, img.shape[0])
         x0=randint(0, img.shape[1])
         y1=randint(y0, y0+w)
         x1=randint(x0, x0+h)
-        img2[x0:x1,y0:y1,:] = 0
-        img2[x0:x1,y0:y1,randint(0,2)] = 255
-        area[x0:x1,y0:y1] = 1
+        if img.ndim == 2:
+            img2[y0:y1,x0:x1] = 0
+        elif img.ndim == 3:
+            img2[y0:y1,x0:x1,:] = 0
+            img2[y0:y1,x0:x1,randint(0,2)] = 255
+        area[y0:y1,x0:x1] = 1
     return img2
 
 def run_tests(w, payload, k_range):
@@ -84,9 +87,9 @@ def run_tests(w, payload, k_range):
     if not os.path.isdir("results"):
         os.mkdir("results")
     
-    for fn in os.listdir("pics"):
-        src = misc.imread(os.path.join(ROOT, "pics", fn))
-        for k in k_range:
+    for k in k_range:
+        for fn in os.listdir(os.path.join(ROOT, "pics")):
+            src = misc.imread(os.path.join(ROOT, "pics", fn))
             dst = os.path.join(ROOT, "results", "%s-%d" % (fn.split(".")[0], k))
             try:
                 os.mkdir(dst)
@@ -99,7 +102,7 @@ def run_tests(w, payload, k_range):
             
             print "%s (k = %d)" % (fn, k)
             print "=" * 20
-            print "Minimum JPG quality", test_jpg(w, out)
+            print "Minimum JPG quality:", test_jpg(w, out)
             print "Max Gaussian sigma:", test_filter(w, out, "gauss-%s.png", gaussian_filter, 
                 [i/10.0 for i in range(1,50)])
             print "Max Laplacian of Gaussian sigma:", test_filter(w, out, "log-%s.png", gaussian_laplace, 
@@ -107,14 +110,14 @@ def run_tests(w, payload, k_range):
             print "Max tv-denoising weight:", test_filter(w, out, "tv-%s.png", tv_denoise, 
                 range(50,1000,25))
             print "Max noise ratio: ", test_filter(w, out, "noise-%s.png", add_noise, 
-                [i/20.0 for i in range(1, 21)]) 
+                [i/20.0 for i in range(1, 20)])
             print "Max random block coverage: ", test_filter(w, out, "blocks-%s.png", 
-                lambda img, k: add_blocks(img, k, 40, 40), [i/20.0 for i in range(1, 21)]) 
+                lambda img, k: add_blocks(img, k, 50, 50), [i/20.0 for i in range(1, 20)]) 
 
             for flt in ["contour", "detail", "edge_enhance", "edge_enhance_more", "emboss", 
                     "find_edges", "smooth", "smooth_more", "sharpen"]:
-                print "Max iterations of %r: %s" % (flt, test_recursive_filter(w, out, 
-                    "%s-%%s.png" % (flt,), lambda img: misc.imfilter(img, flt), range(1, 30)))
+                print "Max iterations of %r:" % (flt,), test_recursive_filter(w, out, 
+                    "%s-%%s.png" % (flt,), lambda img: misc.imfilter(img, flt), range(1, 30))
             print
 
 

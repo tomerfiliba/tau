@@ -59,6 +59,31 @@ class Matrix(object):
                 outmatrix[y][x] /= c
         return outmatrix
 
+    def solve(self, variables):
+        if len(variables) != self.n - 1:
+            raise ValueError("Expected %d variables" % (self.n - 1,))
+        matrix = self.eliminate()
+        assignments = {}
+        
+        for row in reversed(matrix.rows):
+            nonzero = list(itertools.dropwhile(lambda v: abs(v) <= EPSILON, row))
+            if not nonzero:
+                continue
+            const = nonzero.pop(-1)
+            if not nonzero:
+                # a row of the form (0 0 ... 0 x) means a contradiction
+                raise ValueError("No solutions exist")
+            vars = variables[-len(nonzero):]
+            assignee = vars.pop(0)
+            assert abs(nonzero.pop(0) - 1) <= EPSILON
+            assignments[assignee] = const
+            
+            for i, v in enumerate(vars):
+                if v not in assignments:
+                    assignments[v] = FreeVar(v)
+                assignments[assignee] -= nonzero[i] * assignments[v]
+        return assignments
+
 #===================================================================================================
 # Linear equations utilities
 #===================================================================================================
@@ -115,48 +140,12 @@ class FreeVar(ExprMixin):
 #===================================================================================================
 # Linear equation solver
 #===================================================================================================
-def solve(origmatrix, variables):
-    if len(variables) != origmatrix.n - 1:
-        raise ValueError("Expected %d variables" % (origmatrix.n - 1,))
-    matrix = origmatrix.eliminate()
-    assignments = {}
-    
-    for row in reversed(matrix.rows):
-        nonzero = list(itertools.dropwhile(lambda v: abs(v) <= EPSILON, row))
-        if not nonzero:
-            continue
-        const = nonzero.pop(-1)
-        if not nonzero:
-            # a row of the form (0 0 ... 0 x) means a contradiction
-            raise ValueError("No solutions exist")
-        vars = variables[-len(nonzero):]
-        assignee = vars.pop(0)
-        assert abs(nonzero.pop(0) - 1) <= EPSILON
-        assignments[assignee] = const
-        
-        for i, v in enumerate(vars):
-            if v not in assignments:
-                assignments[v] = FreeVar(v)
-            assignments[assignee] -= nonzero[i] * assignments[v]
-    return assignments
-
-
 if __name__ == "__main__":
     m = Matrix([1,2,4,2], [3,7,6,8])
-    print m.eliminate()
-    sol = solve(m, ["x", "y", "z"])
+    sol = m.solve(["x", "y", "z"])
     print sol
     print sol["x"].eval({"z" : 10})
     
-    print
-
-    m = Matrix([1,2,4,2], [3,7,6,8], [2,2,2,8], [2,3,5,6])
-    print m.eliminate()
-    sol = solve(m, ["x", "y", "z"])
-    print sol
-
-
-
 
 
 
