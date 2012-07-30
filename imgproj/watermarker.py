@@ -7,6 +7,8 @@ from reedsolo import RSCodec, ReedSolomonError
 
 
 def iterbits(data):
+    if isinstance(data, str):
+        data = [ord(ch) for ch in data]
     for n in data:
         for i in (7,6,5,4,3,2,1,0):
             yield (n >> i) & 1

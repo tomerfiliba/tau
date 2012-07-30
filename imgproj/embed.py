@@ -8,7 +8,7 @@ from scipy import misc
 parser = OptionParser()
 parser.add_option("-o", "--outfile", dest="outfile", default = None,
     help="output filename", metavar="FILE")
-parser.add_option("-k", dest="k", type=int, dest="k", default=6,
+parser.add_option("-k", dest="k", type=int, default=6,
     help="The k value to use in embedding (default is 6)")
 
 if __name__ == "__main__":
@@ -21,7 +21,7 @@ if __name__ == "__main__":
     if not options.outfile:
         options.outfile = "%s-%s.png" % (os.path.basename(infile).split(".")[0], payload)
     w = Watermarker(6, 4)
-    misc.imsave(options.outfile, w.embed(misc.imread(infile), options.k))
+    misc.imsave(options.outfile, w.embed(misc.imread(infile), payload, options.k))
     print "Created %s" % (options.outfile,)
 
 
