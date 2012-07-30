@@ -2,8 +2,11 @@ import numpy
 from pywt import dwt2, idwt2
 from scipy.stats import pearsonr
 from scipy import mean
+from scipy.misc import toimage
 from random import Random
 from reedsolo import RSCodec, ReedSolomonError
+from skimage.filter import tv_denoise
+from skimage.exposure import rescale_intensity
 
 
 def iterbits(data):
@@ -24,7 +27,7 @@ class Watermarker(object):
     @classmethod
     def _interleave(cls, cH, cV, cD):
         arr = numpy.zeros(cH.size + cV.size + cD.size)
-        sources = [cH.reshape(cH.size), cV.reshape(cV.size), cD.reshape(cD.size)]
+        sources = [cH.ravel(), cV.ravel(), cD.ravel()]
         for i in range(arr.size):
             src = sources[i % 3]
             j = i // 3
@@ -64,21 +67,31 @@ class Watermarker(object):
         cH2, cV2, cD2 = self._deinterleave(arr, cH, cV, cD)
         return idwt2((cA, (cH2, cV2, cD2)), self.mother)[:w,:h]
     
-    def embed(self, img, payload, k):
+    def embed(self, img, payload, k = 6, tv_denoising_weight = 4, rescale = True):
         if len(payload) > self.max_payload:
             raise ValueError("payload too long")
         padded = bytearray(payload) + b"\x00" * (self.max_payload - len(payload))
         encoded = self.rscodec.encode(padded)
         
         if img.ndim == 2:
-            return self._embed(img, encoded, k)
+            output = self._embed(img, encoded, k)
         elif img.ndim == 3:
             output = numpy.zeros(img.shape)
             for i in range(img.shape[2]):
                 output[:,:,i] = self._embed(img[:,:,i], encoded, k)
-            return output
         else:
             raise TypeError("img must be a 2d or 3d array")
+        
+        if tv_denoising_weight > 0:
+            output = tv_denoise(output, tv_denoising_weight)
+        if rescale:
+            output = rescale_intensity(output, out_range = (numpy.min(img), numpy.max(img)))
+            #if img.ndim == 2:
+            #elif img.ndim == 3:
+            #    for i in range(img.shape[2]):
+            #        output[:,:,i] = rescale_intensity(output[:,:,i], 
+            #            out_range = (numpy.min(img[:,:,i]), numpy.max(img[:,:,i])))
+        return toimage(output,cmin=0,cmax=255)
     
     def _extract(self, img):
         cA, (cH, cV, cD) = dwt2(img, self.mother)
