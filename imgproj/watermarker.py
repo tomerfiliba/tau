@@ -16,7 +16,7 @@ def iterbits(data):
         for i in (7,6,5,4,3,2,1,0):
             yield (n >> i) & 1
 
-def rgb_to_ycbcr(img):
+'''def rgb_to_ycbcr(img):
     R = img[:,:,0]
     G = img[:,:,1]
     B = img[:,:,2]
@@ -32,57 +32,89 @@ def ycbcr_to_rgb(Y, Cb, Cr):
     img[:,:,0] = Y +                  1.402 * Cr
     img[:,:,1] = Y - 0.34414 * Cb - 0.71414 * Cr
     img[:,:,2] = Y + 1.772 * Cb
-    return img
+    return img'''
+
 
 class Watermarker(object):
-    def __init__(self, max_payload, ec_bytes, seed = 1895746671, mother = "bior3.1"):
+    def __init__(self, max_payload, ec_bytes, seed = 1895746671, mother = "bior3.1", sparsity = 0.7):
         self.mother = mother
+        self.sparsity = sparsity
         self.rscodec = RSCodec(ec_bytes)
         self.max_payload = max_payload
         self.total_bits = (max_payload + ec_bytes) * 8
         self.seed = seed
     
+    '''
+    def _interleave(self, cH, cV, cD):
+        vec = numpy.zeros(cH.size + cV.size + cD.size)
+        rcH = cH.ravel()
+        lH = cH.size
+        rcV = cV.ravel()
+        lV = cH.size + cV.size
+        rcD = cD.ravel()
+        
+        rand = Random(self.seed)
+        indexes = range(vec.size)
+        rand.shuffle(indexes)
+        for i, j in enumerate(indexes):
+            vec[i] = rcD[j - lV] if j >= lV else (rcV[j - lH] if j >= lH else rcH[j])
+        return vec
+    
+    def _deinterleave(self, vec, cH, cV, cD):
+        cH2 = numpy.zeros(cH.shape)
+        rcH = cH2.ravel()
+        lH = cH.size
+        cV2 = numpy.zeros(cV.shape)
+        rcV = cV2.ravel()
+        lV = cH.size + cV.size
+        cD2 = numpy.zeros(cD.shape)
+        rcD = cD2.ravel()
+        
+        rand = Random(self.seed)
+        indexes = range(vec.size)
+        rand.shuffle(indexes)
+        for i, v in enumerate(vec):
+            j = indexes[i]
+            if j >= lV:
+                rcD[j -lV] = v
+            elif j >= lH:
+                rcV[j - lH] = v
+            else:
+                rcH[j] = v
+        return cH2, cV2, cD2
+    '''
+
     @classmethod
     def _interleave(cls, cH, cV, cD):
-        arr = numpy.zeros(cH.size + cV.size + cD.size, dtype = float)
-        sources = [cH.ravel(), cV.ravel(), cD.ravel()]
-        for i in range(arr.size):
-            src = sources[i % 3]
-            j = i // 3
-            if j >= src.size:
-                arr = arr[:i]
-                break
-            arr[i] = src[j]
-        return arr
+        vec = numpy.zeros(cH.size + cV.size + cD.size, dtype = float)
+        vec[0::3] = cH.ravel()
+        vec[1::3] = cV.ravel()
+        vec[2::3] = cD.ravel()
+        return vec
     
     @classmethod
-    def _deinterleave(cls, arr, cH, cV, cD):
-        cH2 = numpy.zeros(cH.size, dtype = float)
-        cV2 = numpy.zeros(cV.size, dtype = float)
-        cD2 = numpy.zeros(cD.size, dtype = float)
-        destinations = [cH2, cV2, cD2]
-        for i in range(arr.size):
-            destinations[i % 3][i // 3] = arr[i]
-        return cH2.reshape(cH.shape), cV2.reshape(cV.shape), cD2.reshape(cD.shape)
+    def _deinterleave(cls, vec, cH, cV, cD):
+        return vec[0::3].reshape(cH.shape), vec[1::3].reshape(cV.shape), vec[2::3].reshape(cD.shape)
     
     def _generate_sequences(self, chunk_size):
         rand = Random(self.seed)
-        seq0 = numpy.array([int(rand.random() > 0.7) for _ in range(chunk_size)])
+        seq0 = numpy.array([int(rand.random() >= self.sparsity) for _ in range(chunk_size)])
         seq1 = seq0[::-1]
         return seq0, seq1
     
     def _embed(self, img, payload, k):
         cA, (cH, cV, cD) = dwt2(img.astype(float), self.mother)
-        arr = self._interleave(cH, cV, cD)
-        chunk_size = arr.size // self.total_bits
+        vec = self._interleave(cH, cV, cD)
+        chunk_size = vec.size // self.total_bits
         sequences = self._generate_sequences(chunk_size)
         
         for i, bit in enumerate(iterbits(payload)):
             offset = i * chunk_size
-            arr[offset : offset + chunk_size] += k * sequences[bit]
+            vec[offset : offset + chunk_size] += k * sequences[bit]
+            #vec[i:self.total_bits*chunk_size:self.total_bits] += k * sequences[bit]
         
         w, h = img.shape
-        cH2, cV2, cD2 = self._deinterleave(arr, cH, cV, cD)
+        cH2, cV2, cD2 = self._deinterleave(vec, cH, cV, cD)
         return idwt2((cA, (cH2, cV2, cD2)), self.mother)[:w,:h]
     
     def embed(self, img, payload, k = 6, tv_denoising_weight = 4, rescale = True):
@@ -94,7 +126,7 @@ class Watermarker(object):
         if img.ndim == 2:
             output = self._embed(img, encoded, k)
         elif img.ndim == 3:
-            output = numpy.zeros(img.shape)
+            output = numpy.zeros(img.shape, dtype=float)
             for i in range(img.shape[2]):
                 output[:,:,i] = self._embed(img[:,:,i], encoded, k)
             #y, cb, cr = rgb_to_ycbcr(img)
@@ -108,23 +140,25 @@ class Watermarker(object):
         else:
             raise TypeError("img must be a 2d or 3d array")
         
-        if tv_denoising_weight > 0:
-            output = tv_denoise(output, tv_denoising_weight)
+        #if tv_denoising_weight > 0:
+        #    output = tv_denoise(output, tv_denoising_weight)
         if rescale:
             output = rescale_intensity(output, out_range = (numpy.min(img), numpy.max(img)))
-        return toimage(output,cmin=0,cmax=255)
+        #return toimage(output,cmin=0,cmax=255)
+        return output
     
     def _extract(self, img):
         cA, (cH, cV, cD) = dwt2(img.astype(float), self.mother)
-        arr = self._interleave(cH, cV, cD)
-        chunk_size = arr.size // self.total_bits
+        vec = self._interleave(cH, cV, cD)
+        chunk_size = vec.size // self.total_bits
         seq0, seq1 = self._generate_sequences(chunk_size)
 
         byte = 0
         output = bytearray()
         for i in range(self.total_bits):
             offset = i * chunk_size
-            chunk = arr[offset: offset + chunk_size]
+            chunk = vec[offset: offset + chunk_size]
+            #chunk = vec[i:self.total_bits*chunk_size:self.total_bits]
             corr0, _ = pearsonr(chunk, seq0)
             corr1, _ = pearsonr(chunk, seq1)
             bit = int(corr1 > corr0)
