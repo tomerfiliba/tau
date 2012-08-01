@@ -16,8 +16,26 @@ def iterbits(data):
         for i in (7,6,5,4,3,2,1,0):
             yield (n >> i) & 1
 
+def rgb_to_ycbcr(img):
+    R = img[:,:,0]
+    G = img[:,:,1]
+    B = img[:,:,2]
+    Y =        (0.299    * R) + (0.587    * G) + (0.114    * B)
+    Cb = 128 - (0.168736 * R) - (0.331264 * G) + (0.5      * B)
+    Cr = 128 + (0.5      * R) - (0.418688 * G) - (0.081312 * B)    
+    return Y, Cb, Cr
+
+def ycbcr_to_rgb(Y, Cb, Cr):
+    img = numpy.zeros((Y.shape[0], Y.shape[1], 3), dtype=float)
+    Cr -= 128
+    Cb -= 128
+    img[:,:,0] = Y +                  1.402 * Cr
+    img[:,:,1] = Y - 0.34414 * Cb - 0.71414 * Cr
+    img[:,:,2] = Y + 1.772 * Cb
+    return img
+
 class Watermarker(object):
-    def __init__(self, max_payload, ec_bytes, seed = 1895746671, mother = "bior3.3"):
+    def __init__(self, max_payload, ec_bytes, seed = 1895746671, mother = "bior3.1"):
         self.mother = mother
         self.rscodec = RSCodec(ec_bytes)
         self.max_payload = max_payload
@@ -26,7 +44,7 @@ class Watermarker(object):
     
     @classmethod
     def _interleave(cls, cH, cV, cD):
-        arr = numpy.zeros(cH.size + cV.size + cD.size)
+        arr = numpy.zeros(cH.size + cV.size + cD.size, dtype = float)
         sources = [cH.ravel(), cV.ravel(), cD.ravel()]
         for i in range(arr.size):
             src = sources[i % 3]
@@ -39,9 +57,9 @@ class Watermarker(object):
     
     @classmethod
     def _deinterleave(cls, arr, cH, cV, cD):
-        cH2 = numpy.zeros(cH.size)
-        cV2 = numpy.zeros(cV.size)
-        cD2 = numpy.zeros(cD.size)
+        cH2 = numpy.zeros(cH.size, dtype = float)
+        cV2 = numpy.zeros(cV.size, dtype = float)
+        cD2 = numpy.zeros(cD.size, dtype = float)
         destinations = [cH2, cV2, cD2]
         for i in range(arr.size):
             destinations[i % 3][i // 3] = arr[i]
@@ -54,7 +72,7 @@ class Watermarker(object):
         return seq0, seq1
     
     def _embed(self, img, payload, k):
-        cA, (cH, cV, cD) = dwt2(img, self.mother)
+        cA, (cH, cV, cD) = dwt2(img.astype(float), self.mother)
         arr = self._interleave(cH, cV, cD)
         chunk_size = arr.size // self.total_bits
         sequences = self._generate_sequences(chunk_size)
@@ -79,6 +97,14 @@ class Watermarker(object):
             output = numpy.zeros(img.shape)
             for i in range(img.shape[2]):
                 output[:,:,i] = self._embed(img[:,:,i], encoded, k)
+            #y, cb, cr = rgb_to_ycbcr(img)
+            #y2 = self._embed(y, encoded, k)
+            #cb = self._embed(cb, encoded, k)
+            #cr = self._embed(cr, encoded, k)
+            #y2 = rescale_intensity(y2, out_range = (numpy.min(y), numpy.max(y)))
+            #Cb2 = rescale_intensity(Cb2, out_range = (numpy.min(Cb), numpy.max(Cb)))
+            #Cr2 = rescale_intensity(Cr2, out_range = (numpy.min(Cr), numpy.max(Cr)))
+            #output = ycbcr_to_rgb(y2, cb, cr)
         else:
             raise TypeError("img must be a 2d or 3d array")
         
@@ -86,15 +112,10 @@ class Watermarker(object):
             output = tv_denoise(output, tv_denoising_weight)
         if rescale:
             output = rescale_intensity(output, out_range = (numpy.min(img), numpy.max(img)))
-            #if img.ndim == 2:
-            #elif img.ndim == 3:
-            #    for i in range(img.shape[2]):
-            #        output[:,:,i] = rescale_intensity(output[:,:,i], 
-            #            out_range = (numpy.min(img[:,:,i]), numpy.max(img[:,:,i])))
         return toimage(output,cmin=0,cmax=255)
     
     def _extract(self, img):
-        cA, (cH, cV, cD) = dwt2(img, self.mother)
+        cA, (cH, cV, cD) = dwt2(img.astype(float), self.mother)
         arr = self._interleave(cH, cV, cD)
         chunk_size = arr.size // self.total_bits
         seq0, seq1 = self._generate_sequences(chunk_size)
