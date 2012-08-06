@@ -3,22 +3,27 @@ from scipy import misc
 from watermarker import Watermarker
 from test import test_jpg, add_blocks, test_filter
 from skimage.exposure import rescale_intensity
+import pywt
 
+data = "the quick brown fox jumped over the lazy dog"
 
-w = Watermarker(6, 4)
-w2 = Watermarker(6, 4, mother="haar", seed = 212219812811)
-#src = misc.imread("../qrmark/pics/sky.png")
-src = misc.imread("pics/face.jpg")
-#src = misc.lena()
-out = w.embed(src, "123456", k = 3, tv_denoising_weight = 0)
-out = w2.embed(out, "789012", k = 4, tv_denoising_weight = 0)
-misc.imsave("orig.png", out)
-out2 = misc.imread("orig.png")
-print w.extract(out2)
-print "min jpg quality:", test_jpg(w, out2)
+for i in range(5, 32, 3):
+    for ecc in range(2, i+1, 3):
+        w = Watermarker(i, ecc)
+        src = misc.lena()
+        out = w.embed(src, data[:i])
+        misc.imsave("orig.png", out)
+        out2 = misc.imread("orig.png")
+        print "%s\t%s\t%s" % (i, ecc, test_jpg(w, out2),)
 
-print w2.extract(out2)
-print "min jpg quality:", test_jpg(w2, out2)
+#out = w2.embed(out, "789012", k = 4, tv_denoising_weight = 0)
+#out2 = misc.imread("orig.png")
+#out2 = misc.imread("facescan.png")
+#print w.extract(out2)
+#print "min jpg quality:", test_jpg(w, out2)
+
+#print w2.extract(out2)
+#print "min jpg quality:", test_jpg(w2, out2)
 
 #import random
 #random.seed(3286912)
