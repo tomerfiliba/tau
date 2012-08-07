@@ -36,7 +36,7 @@ def iterbits(data):
 
 
 class Watermarker(object):
-    def __init__(self, max_payload, ec_bytes, seed = 1895746671, mother = "bior3.1", sparsity = 0.6):
+    def __init__(self, max_payload, ec_bytes, seed = 1895746671, mother = "bior3.1", sparsity = 0.7):
         self.mother = mother
         self.sparsity = sparsity
         self.rscodec = RSCodec(ec_bytes)

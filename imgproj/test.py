@@ -8,11 +8,11 @@ from random import randint
 from reedsolo import ReedSolomonError
 
 
-def test_jpg(w, img):
+def test_jpg(w, img, fmt = "jpg-%d.jpg"):
     prev_i = None
     prev_fn = None
     for i in range(100, 0, -5):
-        fn = "jpg-%d.jpg" % (i,)
+        fn = fmt % (i,)
         misc.toimage(img).save(fn, "JPEG", quality = i)
         try:
             w.extract(misc.imread(fn))
