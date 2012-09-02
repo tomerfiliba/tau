@@ -7,13 +7,18 @@ from scipy.ndimage.filters import gaussian_filter, gaussian_laplace, uniform_fil
 from skimage.filter import tv_denoise
 
 
-src = misc.lena()
-markers = [Watermarker(6, 4, seed = seed) for seed in range(50)]
-text = "the quick brown fox jumped over the lazy dog and laughed a great deal"
+w = Watermarker(6, 4)
+src = misc.imread("scans/facescan.png")
+print w.extract(src)
+print test_jpg(w, src)
 
-for i, w in enumerate(markers):    
-    src = w.embed(src, text[i:i+6])
-    print "%s\t%s" % (i+1, test_jpg(markers[0], src))
+#src = misc.lena()
+#markers = [Watermarker(6, 4, seed = seed) for seed in range(50)]
+#text = "the quick brown fox jumped over the lazy dog and laughed a great deal"
+#
+#for i, w in enumerate(markers):    
+#    src = w.embed(src, text[i:i+6])
+#    print "%s\t%s" % (i+1, test_jpg(markers[0], src))
 
 
 #out = w2.embed(out, "789012", k = 4, tv_denoising_weight = 0)
