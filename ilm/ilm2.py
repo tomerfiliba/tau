@@ -2,11 +2,17 @@ import random
 import itertools
 
 
+class PredLogicElement(object):
+    def equate(self, other):
+        raise NotImplementedError()
+
 class Atom(object):
     def __init__(self, name):
         self.name = name
     def __repr__(self):
         return self.name
+    def equate(self, other):
+        return 
 
 class Pred(object):
     def __init__(self, name, argnum, highorder = False):
