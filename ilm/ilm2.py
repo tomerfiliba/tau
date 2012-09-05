@@ -2,10 +2,6 @@ import random
 import itertools
 
 
-class PredLogicElement(object):
-    def equate(self, other):
-        raise NotImplementedError()
-
 class Atom(object):
     def __init__(self, name):
         self.name = name
@@ -105,10 +101,7 @@ class Grammar(object):
     def remove(self, rule, prod):
         if rule.name not in self.rules:
             return
-        try:
-            self.rules[rule.name].remove((rule, prod))
-        except ValueError:
-            pass
+        self.rules[rule.name].remove((rule, prod))
     def items(self):
         return self.rules.items()
 
@@ -163,20 +156,38 @@ def shortest_string_diff(subs, prod1, prod2):
 #print shortest_string_diff(N, ["bill see sue"], ["bill love sue"])
 #print shortest_string_diff(N, ["bill see john"], ["bill see sue"])
 
+def _substitute_rule(grammar, new, old):
+    for _, productions in grammar.items():
+        for rulepred, prod in productions:
+            for i, p in enumerate(prod):
+                if p == old:
+                    prod[i].name = new.name
+
 def merge(grammar):
     changed = False
-    #for _, productions in grammar.items():
-    #    pairs = list(itertools.combinations(productions.items(), 2))
-    #    for (rulepred1, prod1), (rulepred2, prod2) in pairs:
-    #        if rulepred1 == rulepred2 and prod1 == prod2:
-    #            grammar.remove(rulepred2)
+    all_rules = []
+    removed = []
+    for _, productions in grammar.items():
+        all_rules.extend(productions)
+    
+    for (rulepred1, prod1), (rulepred2, prod2) in itertools.combinations(all_rules, 2):
+        if (rulepred1, prod1) in removed or (rulepred2, prod2) in removed:
+            continue
+        if rulepred1.pred == rulepred2.pred and prod1 == prod2:
+            removed.append((rulepred2, prod2))
+            grammar.remove(rulepred2, prod2)
+            _substitute_rule(grammar, rulepred1, rulepred2)
+            
     return changed
 
 def chunk(grammar):
     changed = False
+    removed = []
     for _, productions in grammar.items():
         pairs = list(itertools.combinations(productions, 2))
         for (rulepred1, prod1), (rulepred2, prod2) in pairs:
+            if (rulepred1, prod1) in removed or (rulepred2, prod2) in removed:
+                continue
             try:
                 newpred, newvar, (repl1, repl2) = predicate_diff(rulepred1.pred, rulepred2.pred)
             except DiffError:
@@ -193,7 +204,9 @@ def chunk(grammar):
                 grammar.remove(rulepred1, prod1)
                 grammar.remove(rulepred2, prod2)
                 grammar.add(rulepred1/newpred, newprod)
-                changed |= True
+                removed.append((rulepred1, prod1))
+                removed.append((rulepred2, prod2))
+                changed = True
     return changed
 
 def chunk_one_sided(grammar, rulepred1, prod1, rulepred2, prod2, newpred, repl1, repl2):
@@ -201,10 +214,57 @@ def chunk_one_sided(grammar, rulepred1, prod1, rulepred2, prod2, newpred, repl1,
 
 def subsume_rules(grammar):
     changed = True
+    #print grammar
     while changed:
+        #print "===================================="
         changed = False
         changed |= chunk(grammar)
         changed |= merge(grammar)
+        #print grammar
+
+
+'''
+S = Rule("S")
+g = Grammar()
+g.add(S/LOVE(bill,mary), ["bill love mary"])
+g.add(S/LOVE(bill,sue), ["bill love sue"])
+g.add(S/LOVE(john,mary), ["john love mary"])
+g.add(S/LOVE(john,sue), ["john love sue"])
+g.add(S/SEE(bill,mary), ["bill see mary"])
+g.add(S/SEE(bill,sue), ["bill see sue"])
+g.add(S/SEE(john,mary), ["john see mary"])
+g.add(S/SEE(john,sue), ["john see sue"])
+
+subsume_rules(g)
+
+g.add(S/KNOW(john, SEE(bill,mary)), ["john know bill see mary"])
+g.add(S/KNOW(john, SEE(bill,sue)), ["john know bill see sue"])
+g.add(S/KNOW(bill, SEE(john,mary)), ["bill know john see mary"])
+g.add(S/KNOW(bill, SEE(john,sue)), ["bill know john see sue"])
+
+subsume_rules(g)
+
+g.add(S/KNOW(john, SEE(bill,mary)), ["john know bill love mary"])
+g.add(S/KNOW(john, SEE(bill,sue)), ["john know bill love sue"])
+g.add(S/KNOW(bill, SEE(john,mary)), ["bill know john love mary"])
+g.add(S/KNOW(bill, SEE(john,sue)), ["bill know john love sue"])
+
+subsume_rules(g)
+
+g.add(S/THINK(john, SEE(bill,mary)), ["john think bill love mary"])
+g.add(S/THINK(john, SEE(bill,sue)), ["john think bill love sue"])
+g.add(S/THINK(bill, SEE(john,mary)), ["bill think john love mary"])
+g.add(S/THINK(bill, SEE(john,sue)), ["bill think john love sue"])
+
+subsume_rules(g)
+
+g.add(S/THINK(john, SEE(mary,bill)), ["john think mary love bill"])
+g.add(S/THINK(john, SEE(mary,sue)), ["john think mary love sue"])
+g.add(S/THINK(bill, SEE(sue,mary)), ["bill think sue love mary"])
+g.add(S/THINK(bill, SEE(sue,sue)), ["bill think sue love bill"])
+
+subsume_rules(g)
+'''
 
 class DeadEnd(Exception):
     pass
@@ -213,7 +273,7 @@ def generate(grammar, symbol, pred):
     relevant_rules = [(rulepred.pred, prod) 
         for rulepred, prod in grammar.rules.get(symbol.name, ())]
     for rulepred, prod in relevant_rules:
-        if pred == rulepred:
+        if pred == rulepred and isinstance(rulepred, (list, tuple)):
             try:
                 output = []
                 for elem in prod:
@@ -229,51 +289,6 @@ def generate(grammar, symbol, pred):
             except DeadEnd:
                 pass
     raise DeadEnd()
-
-
-john = Atom("john")
-bill = Atom("bill")
-sue = Atom("sue")
-mary = Atom("mary")
-SEE = Pred("SEE", 2)
-LOVE = Pred("LOVE", 2)
-KNOW = Pred("KNOW", 2)
-SAY = Pred("SAY", 2)
-#x1 = Var()
-#x2 = Var()
-#x3 = Var()
-#x4 = Var()
-#x5 = Var()
-#x6 = Var()
-
-#S = Rule("S")
-#N = Rule("N")
-#V = Rule("V")
-#VP = Rule("VP")
-#VV = Rule("VV")
-
-##g.add(S/SEE(bill, sue), ["billseesue"])
-##g.add(S/LOVE(bill, sue), ["billlovesue"])
-##subsume_rules(g)
-
-#g = Grammar()
-#g.add(S/(x2, x1, x3), [N/x1, V/x2, N/x3])
-#g.add(S/(x5, x4, x6), [N/x4, VV/x5, S/x6])
-#g.add(N/bill, "bill")
-#g.add(N/sue, "sue")
-#g.add(N/john, "john")
-#g.add(V/LOVE, "love")
-#g.add(V/SEE, "see")
-#g.add(VV/KNOW, "know")
-#g.add(VV/SAY, "say")
-
-#print g
-#print "============================"
-#
-#print generate(g, S, LOVE(bill, sue))
-#print generate(g, S, SAY(bill, KNOW(john, LOVE(bill, sue))))
-
-random.seed(1777)
 
 def random_word():
     return "".join(random.choice("abcdefghijklmnopqrstuvwxyz") for _ in range(random.randint(3,7)))
@@ -310,21 +325,53 @@ def learn(utterances):
     g = Grammar()
     S = Rule("S")
     for pred, utter in utterances.items():
-        g.add(S/pred, utter)
+        g.add(S/pred, [utter])
     subsume_rules(g)
     return g
 
+def iterative_learning(generations, bottleneck, predicates, atoms):
+    g = Grammar()
+    S = Rule("S")
+    for i in range(generations):
+        print "gen %d, rules: %d" % (i, sum(len(prods) for _, prods in g.items())) 
+        utterances = produce(g, S, predicates, atoms, bottleneck)
+        g = learn(utterances)
+        print g
+        print "========================================"
 
-g = Grammar()
-S = Rule("S")
-for i in range(10):
-    print "gen %d, rules: %d" % (i, sum(len(prods) for _, prods in g.items())) 
-    utterances = produce(g, S, [SAY, KNOW, SEE, LOVE], [john, bill, sue, mary], 100)
-    g = learn(utterances)
-    print g
-    print "========================================"
 
-print g
+atoms = [
+    Atom("john"),
+    Atom("bill"),
+    Atom("sam"),
+    #Atom("jack"),
+    Atom("sue"),
+    Atom("mary"),
+    Atom("jill"),
+    #Atom("kate"),
+]
+predicates = [
+    Pred("LOVE", 2),
+    Pred("SEE", 2),
+    Pred("TALK", 2),
+    Pred("INTRODUCE", 3),
+    #Pred("KNOW", 2, True),
+    #Pred("THINK", 2, True),
+    #Pred("SAY", 2, True),
+]
+
+random.seed(1777)
+try:
+    iterative_learning(1000, 80, predicates, atoms)
+except Exception as ex:
+    print "!" * 70
+    print ex
+    print "!" * 70
+    print 
+    import pdb
+    pdb.post_mortem()
+
+
 
 
 
