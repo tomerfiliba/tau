@@ -177,19 +177,7 @@ def merge(grammar):
             removed.append((rulepred2, prod2))
             grammar.remove(rulepred2, prod2)
             _substitute_rule(grammar, rulepred1, rulepred2)
-        #if (rulepred1.pred == rulepred2.pred and isinstance(rulepred1.pred, (list, tuple)) and 
-        #        isinstance(rulepred2.pred, (list, tuple))):
-        #    var1 = sum(1 for p in rulepred1.pred if isinstance(p, Var))
-        #    var2 = sum(1 for p in rulepred2.pred if isinstance(p, Var))
-        #    if var1>var2:
-        #        removed.append((rulepred2, prod2))
-        #        grammar.remove(rulepred2, prod2)
-        #        _substitute_rule(grammar, rulepred1, rulepred2)
-        #    elif var2>var1:
-        #        removed.append((rulepred1, prod1))
-        #        grammar.remove(rulepred1, prod1)
-        #        _substitute_rule(grammar, rulepred2, rulepred1)
-        
+            
     return changed
 
 def chunk(grammar):
@@ -281,7 +269,7 @@ subsume_rules(g)
 class DeadEnd(Exception):
     pass
 
-def generate(grammar, symbol, pred, randomize = False):
+def generate(grammar, symbol, pred):
     relevant_rules = [(rulepred.pred, prod) 
         for rulepred, prod in grammar.rules.get(symbol.name, ())]
     for rulepred, prod in relevant_rules:
@@ -300,10 +288,7 @@ def generate(grammar, symbol, pred, randomize = False):
                 return "".join(output)
             except DeadEnd:
                 pass
-    if randomize:
-        return random_word()
-    else:
-        raise DeadEnd()
+    raise DeadEnd()
 
 def random_word():
     return "".join(random.choice("abcdefghijklmnopqrstuvwxyz") for _ in range(random.randint(3,7)))
@@ -331,61 +316,24 @@ def produce(grammar, symbol, predicates, atoms, count, nesting = 1):
         try:
             utter = generate(grammar, symbol, pred)
         except DeadEnd:
-            utter = utter = generate(grammar, symbol, pred, True)
+            utter = random_word()
         utterances[pred] = utter
     
     return utterances
-
-def learn(utterances):
-    g = Grammar()
-    S = Rule("S")
-    for pred, utter in utterances.items():
-        g.add(S/pred, [utter])
-    subsume_rules(g)
-    return g
-
-def iterative_learning(generations, bottleneck, predicates, atoms):
-    g = Grammar()
-    S = Rule("S")
-    for i in range(generations):
-        print "gen %d, rules: %d" % (i, sum(len(prods) for _, prods in g.items())) 
-        utterances = produce(g, S, predicates, atoms, bottleneck)
-        g = learn(utterances)
-        print g
-        print "========================================"
 
 
 atoms = [
     Atom("john"),
     Atom("bill"),
-    #Atom("sam"),
-    #Atom("jack"),
-    Atom("sue"),
     Atom("mary"),
-    #Atom("jill"),
-    #Atom("kate"),
+    Atom("jill"),
 ]
 predicates = [
     Pred("LOVE", 2),
     Pred("SEE", 2),
-    #Pred("TALK", 2),
-    #Pred("INTRODUCE", 3),
-    #Pred("KNOW", 2, True),
-    #Pred("THINK", 2, True),
-    #Pred("SAY", 2, True),
+    Pred("TALK", 2),
+    Pred("INTRODUCE", 3),
 ]
-
-random.seed(1777)
-try:
-    iterative_learning(200, 40, predicates, atoms)
-except Exception as ex:
-    print "!" * 70
-    print ex
-    print "!" * 70
-    print 
-    import pdb
-    pdb.post_mortem()
-
 
 
 
