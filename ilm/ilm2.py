@@ -296,12 +296,14 @@ def generate(grammar, symbol, pred, randomize = False):
                             if isinstance(rp, Var) and rp.id == elem.pred.id]
                         if len(index) != 1:
                             raise DeadEnd()
-                        output.append(generate(grammar, elem, pred[index[0]]))
+                        output.append(generate(grammar, elem, pred[index[0]], randomize))
                 return "".join(output)
             except DeadEnd:
                 pass
     if randomize:
-        return random_word()
+        word = random_word()
+        grammar.add(symbol / pred, word)
+        return word
     else:
         raise DeadEnd()
 
@@ -331,7 +333,7 @@ def produce(grammar, symbol, predicates, atoms, count, nesting = 1):
         try:
             utter = generate(grammar, symbol, pred)
         except DeadEnd:
-            utter = utter = generate(grammar, symbol, pred, True)
+            utter = generate(grammar, symbol, pred, True)
         utterances[pred] = utter
     
     return utterances
@@ -358,18 +360,18 @@ def iterative_learning(generations, bottleneck, predicates, atoms):
 atoms = [
     Atom("john"),
     Atom("bill"),
-    #Atom("sam"),
-    #Atom("jack"),
+    Atom("sam"),
+    Atom("jack"),
     Atom("sue"),
     Atom("mary"),
-    #Atom("jill"),
-    #Atom("kate"),
+    Atom("jill"),
+    Atom("kate"),
 ]
 predicates = [
     Pred("LOVE", 2),
     Pred("SEE", 2),
-    #Pred("TALK", 2),
-    #Pred("INTRODUCE", 3),
+    Pred("TALK", 2),
+    Pred("INTRODUCE", 3),
     #Pred("KNOW", 2, True),
     #Pred("THINK", 2, True),
     #Pred("SAY", 2, True),
